@@ -46,4 +46,19 @@ describe('AI candidate commit protocol', () => {
     stale.candidate!.baseRevisionId = 'revision-older';
     expect(() => buildAiCandidatePatch(stale)).toThrow('candidate base revision is stale');
   });
+
+  it('requires lineage when an accepted revision already exists', () => {
+    const unbased = context();
+    unbased.candidate!.baseRevisionId = undefined;
+    expect(() => buildAiCandidatePatch(unbased)).toThrow('candidate base revision is stale');
+  });
+
+  it('does not judge or rewrite authored presentation', () => {
+    const divergent = context();
+    const source = 'export default function App(){return <main className="bg-[#101014] text-white grid"><aside/><article/></main>}';
+    divergent.candidate!.fileOps = [{ type: 'replace', path: '/src/App.tsx', content: source }];
+    expect(buildAiCandidatePatch(divergent).fileOps).toEqual([
+      { type: 'replace', path: '/src/App.tsx', contents: source },
+    ]);
+  });
 });

@@ -314,12 +314,14 @@ const PALETTE_ESCAPES: ReadonlyArray<{ pattern: RegExp; label: string }> = [
 ];
 
 export interface SiteDesignContractReport {
-  /** Files after deterministic repair (unchanged entries are the same reference). */
+  /** Authored files are inspection input only; this audit never rewrites them. */
   files: Record<string, string>;
-  /** Mechanical drift repaired without discarding any authored design. */
+  /** Retained for compatibility. Acceptance-time design audits never repair source. */
   repairs: string[];
-  /** Real contract breaches the caller may reject on. */
+  /** Sealed site-chrome contradictions the caller may reject on. */
   violations: string[];
+  /** Creative-coherence observations that must never reject or rewrite source. */
+  advisories: string[];
   /** True when nothing has been established yet — nothing to enforce. */
   skipped: boolean;
 }
@@ -328,8 +330,12 @@ const isPageSource = (path: string): boolean =>
   /^\/src\/pages\/.+\.(?:tsx|jsx)$/.test(path);
 
 /**
- * Enforce the homepage-established language across every page in a file set.
- * Never throws: the caller decides what a violation costs.
+ * Audit the homepage-established language across every page in a file set.
+ *
+ * This deliberately does not normalize authored presentation. Shared chrome is
+ * a sealed site invariant, while palette choices, typography hierarchy and
+ * page-body composition are authoring decisions. The latter can be surfaced as
+ * guidance, but acceptance must preserve the candidate's exact source bytes.
  */
 export function enforceSiteDesignContract(options: {
   files: Record<string, string>;
@@ -346,39 +352,32 @@ export function enforceSiteDesignContract(options: {
     ?? (homePath ? extractHomepageVisualLanguage(files[homePath], homePath) : undefined);
 
   if (!hasEstablishedVisualLanguage(language)) {
-    return { files, repairs: [], violations: [], skipped: true };
+    return { files, repairs: [], violations: [], advisories: [], skipped: true };
   }
 
-  const next: Record<string, string> = { ...files };
-  const repairs: string[] = [];
   const violations: string[] = [];
+  const advisories: string[] = [];
 
   for (const [path, source] of Object.entries(files)) {
     if (typeof source !== 'string' || !isPageSource(path) || path === homePath) continue;
 
-    let content = alignWithHomepageVisualLanguage(source, language);
-    if (content !== source) repairs.push(`${path}: site chrome realigned with the homepage design.`);
-
-    if (content.includes(HOMEPAGE_ONLY_TYPE_TIER) && language!.typography.includes(HOMEPAGE_ONLY_TYPE_TIER)) {
-      const demoted = content.replace(new RegExp(`\\b${HOMEPAGE_ONLY_TYPE_TIER}\\b`, 'g'), INHERITED_TYPE_TIER);
-      if (demoted !== content) {
-        content = demoted;
-        repairs.push(`${path}: headline tier demoted to ${INHERITED_TYPE_TIER}; ${HOMEPAGE_ONLY_TYPE_TIER} is the homepage headline tier.`);
-      }
+    if (source.includes(HOMEPAGE_ONLY_TYPE_TIER) && language!.typography.includes(HOMEPAGE_ONLY_TYPE_TIER)) {
+      advisories.push(
+        `${path} reuses ${HOMEPAGE_ONLY_TYPE_TIER}; consider ${INHERITED_TYPE_TIER} when the larger tier weakens page hierarchy.`,
+      );
     }
 
     for (const escape of PALETTE_ESCAPES) {
-      const hits = Array.from(new Set(content.match(escape.pattern) ?? []));
+      const hits = Array.from(new Set(source.match(escape.pattern) ?? []));
       if (hits.length) {
-        violations.push(
-          `${path} uses ${escape.label} (${hits.slice(0, 4).join(', ')}). Pages must use the site theme tokens the homepage established.`,
+        advisories.push(
+          `${path} uses ${escape.label} (${hits.slice(0, 4).join(', ')}); verify contrast and dark-mode behavior.`,
         );
       }
     }
 
-    violations.push(...validateHomepageInheritance({ path, content, language }));
-    if (content !== source) next[path] = content;
+    violations.push(...validateHomepageInheritance({ path, content: source, language }));
   }
 
-  return { files: next, repairs, violations, skipped: false };
+  return { files, repairs: [], violations, advisories, skipped: false };
 }

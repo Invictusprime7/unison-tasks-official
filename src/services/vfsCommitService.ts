@@ -714,12 +714,10 @@ export async function commitMutation(
     ),
   );
 
-  // 6b. Site-wide design contract -------------------------------------------
-  // The homepage established the visual language at generation time; every
-  // later mutation stays inside it. Mechanical drift (a page picking different
-  // site chrome, or claiming the homepage headline tier) is repaired here, and
-  // a palette escape is a blocker for AI-authored edits rather than a silent
-  // regression the user discovers in preview.
+  // 6b. Site-wide authoring validation --------------------------------------
+  // Acceptance may inspect authored presentation but must never normalize it.
+  // Only sealed shared-chrome contradictions are hard failures; unfamiliar
+  // palette, typography and page-body choices are advisory authoring feedback.
   if ((input.source === 'ai-builder' || input.source === 'playground-edit')
     && !restoredRevision && !reviewedArtifact && !reviewedComposition) {
     const registryPages = ((snapshotForPersistence as SiteBundleSnapshot | null)?.pageRegistry as
@@ -727,9 +725,8 @@ export async function commitMutation(
     const homePath = Object.values(registryPages).find(page => page?.isHome)?.filePath ?? null;
     const designContract = enforceSiteDesignContract({ files, homePath });
     if (!designContract.skipped) {
-      files = designContract.files;
-      if (designContract.repairs.length) {
-        log('siteDesignContract', 'info', `repaired ${designContract.repairs.length} design drift(s)`, designContract.repairs);
+      if (designContract.advisories.length) {
+        log('siteDesignContract', 'info', 'recorded non-blocking design advisories', designContract.advisories);
       }
       if (designContract.violations.length) {
         log('siteDesignContract', 'warn', 'site design contract violations', designContract.violations);

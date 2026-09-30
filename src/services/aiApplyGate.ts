@@ -54,7 +54,10 @@ export interface AiCommitContext {
 export function buildAiCandidatePatch(ctx: AiCommitContext): PatchPlan {
   const candidate = ctx.candidate;
   if (!candidate) return legacyFilesToPatchPlan(ctx.nextFiles, 'ai-builder legacy candidate');
-  if (candidate.baseRevisionId && ctx.revisionId && candidate.baseRevisionId !== ctx.revisionId) {
+  if (!candidate.id.trim()) {
+    throw new Error('[aiApplyGate] candidate identity is required.');
+  }
+  if ((candidate.baseRevisionId ?? null) !== (ctx.revisionId ?? null)) {
     throw new Error('[aiApplyGate] candidate base revision is stale; regenerate from the current revision.');
   }
   return {

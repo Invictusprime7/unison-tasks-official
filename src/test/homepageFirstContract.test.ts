@@ -138,7 +138,7 @@ describe('site-wide design contract enforcement', () => {
     <footer data-ut-variant="footer:rich-columns" className="ut-surface bg-background text-foreground" />
   `;
 
-  it('repairs chrome drift and the reserved headline tier on other pages', () => {
+  it('preserves authored source while reporting sealed chrome drift', () => {
     const report = enforceSiteDesignContract({
       files: {
         '/src/pages/Index.tsx': home,
@@ -152,15 +152,15 @@ describe('site-wide design contract enforcement', () => {
     });
 
     expect(report.skipped).toBe(false);
-    expect(report.files['/src/pages/About.tsx']).toContain('data-ut-variant="navbar:aurora-rail"');
-    expect(report.files['/src/pages/About.tsx']).toContain('ut-display');
-    expect(report.files['/src/pages/About.tsx']).not.toContain('ut-hero');
-    expect(report.repairs).toHaveLength(2);
-    expect(report.violations).toEqual([]);
+    expect(report.files['/src/pages/About.tsx']).toContain('data-ut-variant="navbar:slab-bar"');
+    expect(report.files['/src/pages/About.tsx']).toContain('ut-hero');
+    expect(report.repairs).toEqual([]);
+    expect(report.violations).toEqual([expect.stringContaining('Site chrome must be identical')]);
+    expect(report.advisories).toEqual([expect.stringContaining('consider ut-display')]);
     expect(report.files['/src/pages/Index.tsx']).toBe(home);
   });
 
-  it('reports hardcoded palette escapes as contract violations', () => {
+  it('treats novel authored palette choices as non-blocking advisories', () => {
     const report = enforceSiteDesignContract({
       files: {
         '/src/pages/Index.tsx': home,
@@ -169,9 +169,10 @@ describe('site-wide design contract enforcement', () => {
       homePath: '/src/pages/Index.tsx',
     });
 
-    expect(report.violations).toHaveLength(2);
-    expect(report.violations.join(' ')).toContain('/src/pages/Contact.tsx');
-    expect(report.violations.join(' ')).toContain('theme tokens');
+    expect(report.files['/src/pages/Contact.tsx']).toBe('<section className="bg-[#101014] text-white" />');
+    expect(report.violations).toEqual([]);
+    expect(report.advisories).toHaveLength(2);
+    expect(report.advisories.join(' ')).toContain('/src/pages/Contact.tsx');
   });
 
   it('is a no-op when the homepage has established nothing', () => {
@@ -179,6 +180,7 @@ describe('site-wide design contract enforcement', () => {
     const report = enforceSiteDesignContract({ files, homePath: '/src/pages/Index.tsx' });
     expect(report.skipped).toBe(true);
     expect(report.violations).toEqual([]);
+    expect(report.advisories).toEqual([]);
     expect(report.files).toBe(files);
   });
 });
