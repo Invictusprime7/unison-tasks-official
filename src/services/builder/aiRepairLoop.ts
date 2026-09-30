@@ -148,7 +148,11 @@ export async function runComposerRepairLoop(input: ComposerLoopInput): Promise<C
       origin: input.candidateOrigin ?? 'builder',
       intent: input.candidateIntent ?? request.task,
       routeOps: [...accumulatedRouteOps.values()],
-      evidence: request.evidence,
+      evidence: request.evidence ? {
+        ...request.evidence,
+        baseRevisionId: request.evidence.baseRevisionId ?? input.baseRevisionId ?? null,
+        registryContextHash: request.evidence.registryContextHash ?? null,
+      } : undefined,
       preflight: input.preflight,
       affinity: input.affinity,
     });
