@@ -3,6 +3,8 @@
  * Adding an industry means adding profiles here; the planner never changes.
  */
 import type { CompositionCharacter, IndustryPageCompositionProfile } from './types';
+import type { CompositionResolution, CompositionResolutionInput } from './types';
+import { hashSeed } from '@/platform/core/generationSeed';
 
 type ProfileSeed = Omit<IndustryPageCompositionProfile, 'industryId' | 'pageRole' | 'compositionCharacter' | 'customCompositionAllowed' | 'customComponentsAllowed'> & {
   character: Partial<CompositionCharacter> & Pick<CompositionCharacter, 'density'>;
@@ -33,7 +35,12 @@ const SALON = build('salon', {
     primaryIntent: 'booking.open', requiredCapabilities: ['booking'],
     domainVocabulary: ['signature treatments', 'stylists', 'rituals', 'appointments'],
     character: { density: 'low', mediaDominance: 0.85, editoriality: 0.6, conversionPressure: 0.6, layering: 0.6 },
-    preferredFamilies: ['hero', 'services', 'gallery', 'testimonials', 'cta'],
+    preferredFamilies: ['hero', 'services', 'gallery', 'before-after', 'about', 'testimonials', 'cta'],
+    sectionOrderCandidates: [
+      ['hero', 'services', 'gallery', 'testimonials', 'cta'],
+      ['hero', 'about', 'services', 'before-after', 'testimonials', 'cta'],
+      ['hero', 'gallery', 'services', 'about', 'cta'],
+    ],
     heroCandidates: ['immersive-media', 'split-media'], geometryCandidates: ['full-bleed', 'layered', 'asymmetric'],
     preferredCompositionPatterns: ['atmospheric full-bleed opener', 'curated service teaser', 'social proof strip'],
     discouragedCompositionPatterns: ['full price list', 'dense FAQ'], noveltyBudget: 0.6,
@@ -43,10 +50,28 @@ const SALON = build('salon', {
     primaryIntent: 'booking.open', requiredCapabilities: ['booking'],
     domainVocabulary: ['treatment menu', 'duration', 'from price', 'add-ons'],
     character: { density: 'high', mediaDominance: 0.3, informationDensity: 0.85, typographyDominance: 0.6 },
-    preferredFamilies: ['services', 'pricing', 'faq', 'cta'],
+    preferredFamilies: ['hero', 'services', 'pricing', 'before-after', 'testimonials', 'faq', 'cta'],
+    sectionOrderCandidates: [
+      ['hero', 'services', 'pricing', 'faq', 'cta'],
+      ['hero', 'services', 'before-after', 'testimonials', 'faq', 'cta'],
+    ],
     heroCandidates: ['utility-header', 'typographic'], geometryCandidates: ['grid', 'split'],
     preferredCompositionPatterns: ['categorised treatment menu', 'price/duration rows'],
     discouragedCompositionPatterns: ['immersive hero', 'repeat of home service teaser'], noveltyBudget: 0.3,
+  },
+  'service-detail': {
+    narrativeGoals: ['explain one treatment deeply', 'show credible transformation proof', 'drive a confident booking'],
+    primaryIntent: 'booking.open', requiredCapabilities: ['booking'],
+    domainVocabulary: ['treatment benefits', 'consultation', 'aftercare', 'results'],
+    character: { density: 'medium', mediaDominance: 0.6, editoriality: 0.65, conversionPressure: 0.75 },
+    preferredFamilies: ['hero', 'about', 'before-after', 'testimonials', 'faq', 'cta'],
+    sectionOrderCandidates: [
+      ['hero', 'about', 'before-after', 'testimonials', 'faq', 'cta'],
+      ['hero', 'before-after', 'about', 'faq', 'testimonials', 'cta'],
+    ],
+    heroCandidates: ['split-media', 'editorial-intro'], geometryCandidates: ['split', 'asymmetric'],
+    preferredCompositionPatterns: ['treatment narrative with proof', 'results-led consultation path'],
+    discouragedCompositionPatterns: ['generic service grid', 'full catalog'], noveltyBudget: 0.5,
   },
   gallery: {
     narrativeGoals: ['prove craft through results', 'let imagery lead'],
@@ -71,7 +96,11 @@ const SALON = build('salon', {
     primaryIntent: 'booking.open', requiredCapabilities: ['booking'],
     domainVocabulary: ['choose a service', 'pick a time', 'confirm'],
     character: { density: 'low', mediaDominance: 0.2, conversionPressure: 0.95, interactionDepth: 0.8 },
-    preferredFamilies: ['booking', 'faq'],
+    preferredFamilies: ['services', 'contact', 'faq'],
+    sectionOrderCandidates: [
+      ['hero', 'services', 'contact', 'faq'],
+      ['hero', 'contact', 'faq', 'testimonials'],
+    ],
     heroCandidates: ['utility-header'], geometryCandidates: ['centered', 'split'],
     preferredCompositionPatterns: ['focused booking flow', 'reassurance sidebar'],
     discouragedCompositionPatterns: ['gallery', 'long story copy', 'immersive hero'], noveltyBudget: 0.2,
@@ -81,10 +110,20 @@ const SALON = build('salon', {
     primaryIntent: 'contact.submit', requiredCapabilities: ['contact'],
     domainVocabulary: ['visit the studio', 'hours', 'directions'],
     character: { density: 'medium', mediaDominance: 0.35, informationDensity: 0.6, conversionPressure: 0.6 },
-    preferredFamilies: ['contact', 'map', 'faq'],
+    preferredFamilies: ['contact', 'faq', 'stats'],
     heroCandidates: ['utility-header', 'typographic'], geometryCandidates: ['split', 'centered'],
     preferredCompositionPatterns: ['hours + location + form split'],
     discouragedCompositionPatterns: ['service grid', 'gallery'], noveltyBudget: 0.3,
+  },
+  faq: {
+    narrativeGoals: ['resolve practical objections', 'route unresolved questions to the studio'],
+    requiredCapabilities: [], domainVocabulary: ['appointments', 'consultations', 'policies', 'aftercare'],
+    character: { density: 'medium', informationDensity: 0.8, typographyDominance: 0.65, conversionPressure: 0.35 },
+    preferredFamilies: ['hero', 'faq', 'contact', 'cta'],
+    sectionOrderCandidates: [['hero', 'faq', 'contact', 'cta'], ['hero', 'faq', 'cta']],
+    heroCandidates: ['utility-header', 'typographic'], geometryCandidates: ['centered', 'split'],
+    preferredCompositionPatterns: ['grouped questions with a contact escape hatch'],
+    discouragedCompositionPatterns: ['immersive media', 'service catalog'], noveltyBudget: 0.25,
   },
 });
 
@@ -94,7 +133,11 @@ const RESTAURANT = build('restaurant', {
     primaryIntent: 'booking.open', requiredCapabilities: ['booking'],
     domainVocabulary: ['chef', 'seasonal menu', 'reserve a table'],
     character: { density: 'low', mediaDominance: 0.9, editoriality: 0.6, conversionPressure: 0.6, layering: 0.6 },
-    preferredFamilies: ['hero', 'menu', 'gallery', 'testimonials', 'cta'],
+    preferredFamilies: ['hero', 'services', 'gallery', 'about', 'testimonials', 'cta'],
+    sectionOrderCandidates: [
+      ['hero', 'services', 'gallery', 'testimonials', 'cta'],
+      ['hero', 'about', 'services', 'gallery', 'cta'],
+    ],
     heroCandidates: ['immersive-media', 'split-media'], geometryCandidates: ['full-bleed', 'layered'],
     preferredCompositionPatterns: ['atmospheric food/room imagery', 'menu highlights'],
     discouragedCompositionPatterns: ['full menu', 'dense FAQ'], noveltyBudget: 0.6,
@@ -103,10 +146,27 @@ const RESTAURANT = build('restaurant', {
     narrativeGoals: ['let guests browse dishes and prices quickly'],
     requiredCapabilities: [], domainVocabulary: ['starters', 'mains', 'dietary notes', 'wine'],
     character: { density: 'high', mediaDominance: 0.25, informationDensity: 0.9, typographyDominance: 0.7 },
-    preferredFamilies: ['menu', 'pricing', 'cta'],
+    preferredFamilies: ['hero', 'services', 'faq', 'cta'],
+    sectionOrderCandidates: [
+      ['hero', 'services', 'faq', 'cta'],
+      ['hero', 'services', 'about', 'cta'],
+    ],
     heroCandidates: ['typographic', 'utility-header'], geometryCandidates: ['grid', 'split'],
     preferredCompositionPatterns: ['sectioned menu with dotted price leaders'],
     discouragedCompositionPatterns: ['immersive hero'], noveltyBudget: 0.3,
+  },
+  services: {
+    narrativeGoals: ['let guests browse the menu by course', 'surface dietary context without card-grid sameness'],
+    requiredCapabilities: [], domainVocabulary: ['starters', 'mains', 'dietary notes', 'wine'],
+    character: { density: 'high', mediaDominance: 0.25, informationDensity: 0.9, typographyDominance: 0.7 },
+    preferredFamilies: ['hero', 'services', 'faq', 'about', 'cta'],
+    sectionOrderCandidates: [
+      ['hero', 'services', 'faq', 'cta'],
+      ['hero', 'about', 'services', 'cta'],
+    ],
+    heroCandidates: ['typographic', 'utility-header'], geometryCandidates: ['grid', 'split'],
+    preferredCompositionPatterns: ['course-led menu typography', 'chef context followed by menu'],
+    discouragedCompositionPatterns: ['generic service cards', 'immersive hero'], noveltyBudget: 0.3,
   },
   gallery: {
     narrativeGoals: ['show the room, the plates and the mood'],
@@ -129,7 +189,11 @@ const RESTAURANT = build('restaurant', {
     primaryIntent: 'booking.open', requiredCapabilities: ['booking'],
     domainVocabulary: ['party size', 'date', 'time'],
     character: { density: 'low', mediaDominance: 0.2, conversionPressure: 0.95, interactionDepth: 0.8 },
-    preferredFamilies: ['booking', 'faq'],
+    preferredFamilies: ['contact', 'faq', 'testimonials'],
+    sectionOrderCandidates: [
+      ['hero', 'contact', 'faq'],
+      ['hero', 'contact', 'testimonials', 'faq'],
+    ],
     heroCandidates: ['utility-header'], geometryCandidates: ['centered', 'split'],
     preferredCompositionPatterns: ['focused reservation widget'], discouragedCompositionPatterns: ['gallery'], noveltyBudget: 0.2,
   },
@@ -138,7 +202,7 @@ const RESTAURANT = build('restaurant', {
     primaryIntent: 'contact.submit', requiredCapabilities: ['contact'],
     domainVocabulary: ['opening hours', 'address', 'private dining'],
     character: { density: 'medium', mediaDominance: 0.35, informationDensity: 0.6 },
-    preferredFamilies: ['contact', 'map'],
+    preferredFamilies: ['contact', 'faq', 'about'],
     heroCandidates: ['utility-header', 'typographic'], geometryCandidates: ['split', 'centered'],
     preferredCompositionPatterns: ['hours + map split'], discouragedCompositionPatterns: ['menu list'], noveltyBudget: 0.3,
   },
@@ -178,4 +242,26 @@ export function resolvePageCompositionProfile(industryId: string, role: string):
   // Unknown role: a loose, medium-density editorial page.
   const about = REGISTRY.find((p) => p.industryId === '*' && p.pageRole === 'about')!;
   return { ...about, industryId, pageRole: r, narrativeGoals: [`serve the "${role}" page purpose`] };
+}
+
+/** Universal resolver: industries add data above; selection logic stays here. */
+export function resolveComposition(input: CompositionResolutionInput): CompositionResolution {
+  const profile = resolvePageCompositionProfile(input.industry, input.pageIntent);
+  const candidates = profile.sectionOrderCandidates?.length
+    ? profile.sectionOrderCandidates
+    : [profile.preferredFamilies];
+  const keyParts = [
+    input.industry,
+    profile.pageRole,
+    input.artDirection ?? 'default',
+    [...(input.businessTraits ?? [])].sort().join(','),
+    [...(input.availableCapabilities ?? [])].sort().join(','),
+    input.seed,
+  ];
+  const index = hashSeed(keyParts.join('|')) % candidates.length;
+  return {
+    profile,
+    sectionOrder: [...candidates[index]],
+    compositionKey: `${input.industry}:${profile.pageRole}:${input.artDirection ?? 'default'}:${index}`,
+  };
 }

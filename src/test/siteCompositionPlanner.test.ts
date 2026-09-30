@@ -7,6 +7,7 @@ import {
   planSiteComposition,
   renderCompositionBrief,
 } from '@/services/composition';
+import { getAllSections } from '@/sections/registry';
 
 const roles = ['home', 'services', 'gallery', 'about', 'booking', 'contact'];
 const pages = roles.map((role) => ({ pageId: `p-${role}`, role }));
@@ -27,10 +28,37 @@ describe('siteCompositionPlanner', () => {
     expect(plan.pages.find((p) => p.role === 'menu')?.profile.industryId).toBe('restaurant');
     expect(new Set(plan.pages.map((p) => key(p.target))).size).toBe(plan.pages.length);
     expect(listIndustryProfiles('restaurant').length).toBeGreaterThanOrEqual(6);
+    expect(plan.pages.find((p) => p.role === 'services')?.profile.domainVocabulary).toContain('mains');
   });
 
   it('is deterministic for the same seed', () => {
     expect(planSiteComposition('salon', pages, 'x')).toEqual(planSiteComposition('salon', pages, 'x'));
+  });
+
+  it('selects multiple proven architectures for one industry without losing page intent', () => {
+    const orders = new Map<string, string[]>();
+    for (let index = 0; index < 24; index += 1) {
+      const plan = planSiteComposition('salon', [{ pageId: 'services', role: 'services' }], `seed-${index}`, {
+        artDirection: 'soft-editorial', availableCapabilities: ['booking'], businessTraits: ['appointment-led'],
+      });
+      const page = plan.pages[0];
+      orders.set(page.target.sectionOrder.join('>'), page.profile.narrativeGoals);
+      expect(page.compositionKey).toContain('salon:services:soft-editorial');
+    }
+    expect(orders.size).toBeGreaterThanOrEqual(2);
+    expect(new Set([...orders.values()].map((goals) => goals.join('|'))).size).toBe(1);
+  });
+
+  it('only selects registered executable section families', () => {
+    const registered = new Set(Object.keys(getAllSections()));
+    for (const industry of ['salon', 'restaurant']) {
+      for (const seed of ['one', 'two', 'three']) {
+        const plan = planSiteComposition(industry, pages, seed);
+        for (const page of plan.pages) {
+          for (const family of page.target.sectionOrder) expect(registered.has(family), `${industry}:${page.role}:${family}`).toBe(true);
+        }
+      }
+    }
   });
 
   it('keeps page jobs regardless of art direction seed', () => {
@@ -46,7 +74,7 @@ describe('siteCompositionPlanner', () => {
 });
 
 describe('redundancy detection', () => {
-  const src = `<section data-ut-section="hero" className="min-h-screen"><img/></section><section data-ut-section="services"/><section data-ut-section="cta"/>`;
+  const src = `<section data-ut-section="hero" className="min-h-screen"><img alt=""/></section><section data-ut-section="services"/><section data-ut-section="cta"/>`;
   it('flags near-identical topology and feeds the repair brief', () => {
     const sig = extractCompositionSignature(src);
     expect(sig.sectionOrder).toEqual(['hero', 'services', 'cta']);

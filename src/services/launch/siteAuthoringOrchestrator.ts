@@ -151,6 +151,12 @@ export async function authorSitePages(input: SiteAuthoringInput): Promise<SiteAu
     input.designContext?.contract.industry ?? 'generic',
     ordered.map((p) => ({ pageId: p.pageId, role: p.role })),
     input.designContext?.fingerprint ?? input.businessName,
+    {
+      artDirection: input.designContext?.contract.artDirectionPackId,
+      businessTraits: input.designContext
+        ? [input.designContext.contract.experience, input.designContext.contract.mode]
+        : [],
+    },
   );
   const visualMemory = createSiteVisualMemory();
 

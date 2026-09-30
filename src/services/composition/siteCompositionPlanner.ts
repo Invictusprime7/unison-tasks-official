@@ -4,7 +4,7 @@
  * the design seed. Industry behaviour comes only from registry data.
  */
 import { hashSeed } from '@/platform/core/generationSeed';
-import { normalizePageRole, resolvePageCompositionProfile } from './industryCompositionRegistry';
+import { normalizePageRole, resolveComposition } from './industryCompositionRegistry';
 import type { HeroPattern, LayoutGeometry, PlannedPage, SiteCompositionPlan } from './types';
 
 export interface PlannerPageInput { pageId: string; role: string }
@@ -15,7 +15,12 @@ function rotate<T>(list: T[], seed: string): T[] {
   return [...list.slice(k), ...list.slice(0, k)];
 }
 
-export function planSiteComposition(industryId: string, pages: PlannerPageInput[], seed: string): SiteCompositionPlan {
+export function planSiteComposition(
+  industryId: string,
+  pages: PlannerPageInput[],
+  seed: string,
+  context: { artDirection?: string | null; businessTraits?: readonly string[]; availableCapabilities?: readonly string[] } = {},
+): SiteCompositionPlan {
   const heroUsed = new Map<HeroPattern, number>();
   const pairUsed = new Set<string>();
   const planned: PlannedPage[] = [];
@@ -23,7 +28,15 @@ export function planSiteComposition(industryId: string, pages: PlannerPageInput[
   // Home first, then remaining pages in input order — stable and seed-driven.
   const ordered = [...pages].sort((a, b) => (normalizePageRole(a.role) === 'home' ? -1 : normalizePageRole(b.role) === 'home' ? 1 : 0));
   for (const page of ordered) {
-    const profile = resolvePageCompositionProfile(industryId, page.role);
+    const resolution = resolveComposition({
+      industry: industryId,
+      pageIntent: page.role,
+      artDirection: context.artDirection,
+      businessTraits: context.businessTraits,
+      availableCapabilities: context.availableCapabilities,
+      seed: `${seed}:${page.pageId}`,
+    });
+    const profile = resolution.profile;
     const heroes = profile.heroCandidates.length > 1 && profile.pageRole !== 'home'
       ? rotate(profile.heroCandidates, `${seed}:${page.pageId}:hero`)
       : profile.heroCandidates;
@@ -42,11 +55,12 @@ export function planSiteComposition(industryId: string, pages: PlannerPageInput[
       pageId: page.pageId,
       role: page.role,
       profile,
+      compositionKey: resolution.compositionKey,
       target: {
         hero: pick.hero,
         geometry: pick.geometry,
         density: profile.compositionCharacter.density,
-        sectionOrder: profile.preferredFamilies,
+        sectionOrder: resolution.sectionOrder,
       },
     });
   }

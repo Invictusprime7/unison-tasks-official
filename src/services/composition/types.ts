@@ -6,6 +6,8 @@
  * them for every industry.
  */
 
+import type { SectionType } from '@/sections/types';
+
 export type HeroPattern =
   | 'immersive-media'
   | 'split-media'
@@ -39,7 +41,9 @@ export interface IndustryPageCompositionProfile {
   optionalCapabilities?: string[];
   domainVocabulary?: string[];
   compositionCharacter: CompositionCharacter;
-  preferredFamilies: string[];
+  preferredFamilies: SectionType[];
+  /** Proven executable section architectures; the seed chooses among data, never invents one. */
+  sectionOrderCandidates?: SectionType[][];
   /** Hero patterns in preference order; the planner allocates across the site. */
   heroCandidates: HeroPattern[];
   geometryCandidates: LayoutGeometry[];
@@ -66,6 +70,23 @@ export interface PlannedPage {
   role: string;
   profile: IndustryPageCompositionProfile;
   target: CompositionSignature;
+  /** Stable identity of the chosen industry x intent x art-direction architecture. */
+  compositionKey: string;
+}
+
+export interface CompositionResolutionInput {
+  industry: string;
+  pageIntent: string;
+  artDirection?: string | null;
+  businessTraits?: readonly string[];
+  availableCapabilities?: readonly string[];
+  seed: string;
+}
+
+export interface CompositionResolution {
+  profile: IndustryPageCompositionProfile;
+  sectionOrder: SectionType[];
+  compositionKey: string;
 }
 
 export interface SiteCompositionPlan {
