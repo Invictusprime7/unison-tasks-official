@@ -31,7 +31,7 @@ DESIGN DECISIONS
 
 HARD RULES
 - Never touch protected canonical runtime files: /src/App.tsx, /src/main.tsx, /src/index.css, /package.json, /.unison/**, /src/unison/**, /src/integrations/**.
-- Routes and page identity are owned by the platform. Keep the page's default export and file path.
+- Routes and page identity are owned by the platform. Never author /src/App.tsx. For page additions, removals, renames, home changes, or navigation-order changes, emit matching typed ROUTE_OPS so the canonical compiler can update the registry and router.
 - Only import files that exist in FILES, files you create in this response, or packages already used in FILES (react, react-router-dom, lucide-react, framer-motion). No new dependencies unless listed in requestedDependencies.
 - Use Tailwind with semantic tokens (bg-background, text-foreground, primary, muted, accent, border). Never hardcode colors.
 - Keep every existing data-ut-intent attribute on interactive elements. Exactly one <h1>.
@@ -49,6 +49,7 @@ SUMMARY: <one line describing the change>
 >>>END
 <<<DELETE /src/path/Old.tsx
 Optional lines: DEPENDENCIES: a,b   INTENTS: x,y
+Optional typed topology line (single-line JSON): ROUTE_OPS: [{"type":"add_page","pageId":"pricing","title":"Pricing","route":"/pricing","pageType":"pricing","showInNav":true}]
 Every create/replace carries the COMPLETE file contents. Output nothing else.`;
 
 const FILE_BLOCK = /<<<FILE\s+(create|replace)\s+(\S+)[ \t]*\r?\n([\s\S]*?)\r?\n?>>>END/g;
@@ -75,6 +76,8 @@ export function parseFileBlocks(raw: string): unknown {
   };
   const deps = list('DEPENDENCIES'); if (deps?.length) out.requestedDependencies = deps;
   const intents = list('INTENTS'); if (intents?.length) out.intentsUsed = intents;
+  const routeOps = text.match(/^ROUTE_OPS:\s*(\[[^\r\n]*\])\s*$/m)?.[1];
+  if (routeOps) out.routeOps = JSON.parse(routeOps);
   return out;
 }
 

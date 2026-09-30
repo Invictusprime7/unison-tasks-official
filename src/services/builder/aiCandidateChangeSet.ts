@@ -18,6 +18,7 @@ import {
   validateAIFileEdits,
 } from '@/services/aiVFSOrchestrator';
 import { getDependenciesForSandpack } from '@/utils/dependencyExtractor';
+import type { TopologyChange } from '@/services/pageTopologyOrchestrator';
 
 export type CandidateFileOp =
   | { type: 'create'; path: string; content: string }
@@ -33,6 +34,7 @@ export interface AICandidateChangeSet {
     knowledgeVersion: string;
   };
   fileOps: CandidateFileOp[];
+  routeOps: TopologyChange[];
   requestedDependencies?: string[];
   targetPages: string[];
   attempt: number;
@@ -50,6 +52,7 @@ export interface BuildCandidateInput {
   attempt?: number;
   origin?: AICandidateChangeSet['provenance']['origin'];
   intent?: string;
+  routeOps?: readonly TopologyChange[];
   /** Resolve deps and regenerate package.json in the candidate (default true). */
   resolveDependencies?: boolean;
 }
@@ -107,7 +110,8 @@ export function buildAICandidateChangeSet(input: BuildCandidateInput): Candidate
   }
 
   const attempt = input.attempt ?? 1;
-  const id = `cand_${fnv1a(`${input.baseRevisionId ?? ''}|${attempt}|${JSON.stringify(fileOps)}`)}`;
+  const routeOps = (input.routeOps ?? []).map((op) => ({ ...op }));
+  const id = `cand_${fnv1a(`${input.baseRevisionId ?? ''}|${attempt}|${JSON.stringify({ fileOps, routeOps })}`)}`;
   return {
     changeSet: {
       id,
@@ -119,6 +123,7 @@ export function buildAICandidateChangeSet(input: BuildCandidateInput): Candidate
         knowledgeVersion: '2026-09-29.2',
       },
       fileOps,
+      routeOps,
       requestedDependencies,
       targetPages: [...(input.targetPages ?? [])].sort(),
       attempt,

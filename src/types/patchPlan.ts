@@ -11,6 +11,7 @@
  */
 
 import type { BusinessSystemState } from '@/platform/core/capabilityRegistry';
+import type { TopologyChange } from '@/services/pageTopologyOrchestrator';
 
 export type PatchSource =
   | 'wizard-launch'
@@ -93,6 +94,8 @@ export interface PatchPlan {
   bindingOps: BindingOp[];
   backendOps: BackendOp[];
   presentationOps: PresentationOp[];
+  /** Typed page/route mutations; the compiler owns App.tsx projection. */
+  routeOps?: TopologyChange[];
   /** Immutable context for an AI candidate; persisted with the revision patch. */
   candidate?: {
     id: string;
@@ -176,6 +179,25 @@ export function assertPatchPlan(plan: unknown, context = 'assertPatchPlan'): ass
   for (const op of p.presentationOps as PresentationOp[]) {
     if (!op || typeof op !== 'object' || !isValidPresentationOp(op)) {
       throw new Error(`[${context}] invalid PresentationOp: ${JSON.stringify(op)}`);
+    }
+  }
+  if (p.routeOps !== undefined) {
+    if (!Array.isArray(p.routeOps)) throw new Error(`[${context}] PatchPlan.routeOps must be an array`);
+    for (const op of p.routeOps) {
+      if (!op || typeof op !== 'object' || !['add_page', 'remove_page', 'rename_page', 'set_home', 'toggle_nav', 'reorder'].includes(op.type)) {
+        throw new Error(`[${context}] invalid route operation`);
+      }
+      if (op.type === 'add_page' && (
+        typeof op.pageId !== 'string' || !op.pageId.trim()
+        || typeof op.title !== 'string' || !op.title.trim()
+        || typeof op.route !== 'string' || !/^\/[A-Za-z0-9/_-]*$/.test(op.route)
+      )) throw new Error(`[${context}] add_page requires a stable pageId, title and absolute route`);
+      if (op.type !== 'add_page' && (typeof op.pageId !== 'string' || !op.pageId.trim())) {
+        throw new Error(`[${context}] ${op.type} requires pageId`);
+      }
+      if (op.type === 'rename_page' && op.newRoute !== undefined && !/^\/[A-Za-z0-9/_-]*$/.test(op.newRoute)) {
+        throw new Error(`[${context}] rename_page.newRoute must be an absolute route`);
+      }
     }
   }
 }

@@ -12,6 +12,7 @@ export const AI_COMPOSER_MODES: Record<AIComposerTask, string> = {
 };
 
 const PROTECTED = [
+  /^\/src\/App\.tsx$/,
   /^\/src\/main\.tsx$/,
   /^\/src\/index\.css$/,
   /^\/package\.json$/,
@@ -48,9 +49,37 @@ export const aiComposerFileOpSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('delete'), path: pathSchema }).strict(),
 ]);
 
+const pageIdSchema = z.string().min(1).max(80).regex(/^[A-Za-z0-9_-]+$/);
+const routeSchema = z.string().max(200).regex(/^\/[A-Za-z0-9/_-]*$/);
+const pageTypeSchema = z.enum([
+  'landing', 'home', 'about', 'contact', 'shop', 'product', 'checkout', 'cart',
+  'thankyou', 'booking', 'gallery', 'blog', 'faq', 'pricing', 'immersive', 'legal', 'custom',
+]);
+
+export const aiComposerRouteOpSchema = z.discriminatedUnion('type', [
+  z.object({
+    type: z.literal('add_page'), pageId: pageIdSchema, title: z.string().min(1).max(120),
+    route: routeSchema, pageType: pageTypeSchema.optional(), showInNav: z.boolean().optional(),
+    navOrder: z.number().int().nonnegative().optional(),
+  }).strict(),
+  z.object({ type: z.literal('remove_page'), pageId: pageIdSchema }).strict(),
+  z.object({
+    type: z.literal('rename_page'), pageId: pageIdSchema,
+    newTitle: z.string().min(1).max(120).optional(), newRoute: routeSchema.optional(),
+  }).strict(),
+  z.object({ type: z.literal('set_home'), pageId: pageIdSchema }).strict(),
+  z.object({ type: z.literal('toggle_nav'), pageId: pageIdSchema, showInNav: z.boolean() }).strict(),
+  z.object({ type: z.literal('reorder'), pageId: pageIdSchema, navOrder: z.number().int().nonnegative() }).strict(),
+]).superRefine((op, ctx) => {
+  if (op.type === 'rename_page' && op.newTitle === undefined && op.newRoute === undefined) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'rename_page requires newTitle or newRoute' });
+  }
+});
+
 export const aiComposerResponseSchema = z.object({
   summary: z.string().max(2000),
   fileOps: z.array(aiComposerFileOpSchema).min(1).max(48),
+  routeOps: z.array(aiComposerRouteOpSchema).max(12).optional(),
   requestedDependencies: z.array(z.string().max(80)).max(8).optional(),
   componentDecisions: z.array(z.object({
     family: z.string().max(60).optional(),

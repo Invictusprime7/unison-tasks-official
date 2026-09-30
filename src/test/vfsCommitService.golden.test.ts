@@ -212,6 +212,7 @@ vi.mock('@/integrations/supabase/client', () => {
 import {
   CommitRejectedError,
   commitMutation,
+  loadRevision,
   loadLatestRevisionForProject,
   loadLatestPublishReadyRevisionForProject,
   hashVfsFiles,
@@ -365,7 +366,69 @@ describe('Golden E2E — salon launcher → AI edits → publish gate', () => {
     await expect(commitMutation({ source: 'ai-builder', identity: IDENTITY,
       current: { vfsFiles: before, siteBundleSnapshot: snapshot as never },
       patch: legacyFilesToPatchPlan({ [routerPath]: 'export default function App(){return <main>Unauthorized router</main>}' }),
-    })).rejects.toThrow('Canonical router and metadata files are compiler-owned');
+    })).rejects.toThrow('Canonical App.tsx is compiler-owned');
+  });
+
+  it('atomically adds page source, registry topology and the compiler-owned route', async () => {
+    const homePath = '/src/pages/Home.tsx';
+    const pricingPath = '/src/pages/Pricing.tsx';
+    const homePage = {
+      pageId: 'home', title: 'Home', path: '/', filePath: homePath, pageType: 'home',
+      source: {}, output: {}, showInNav: true, navOrder: 0, isHome: true,
+      createdAt: '2026-09-29T00:00:00.000Z', updatedAt: '2026-09-29T00:00:00.000Z', createdBy: 'ai',
+    };
+    const registry = { version: 1, pages: { home: homePage }, funnels: {}, homePageId: 'home' };
+    const before = {
+      '/src/App.tsx': 'export default function App(){return null}',
+      [homePath]: 'export default function Home(){return <main>Home</main>}',
+    };
+    const playground = { pageRegistry: registry, creatorData: {}, bindings: {}, calendars: {}, popups: {} } as never;
+    const snapshot = {
+      businessName: 'Topology Co', pageRegistry: registry, vfsFiles: before,
+      routerFile: { path: '/src/App.tsx', content: before['/src/App.tsx'] }, meta: {},
+    };
+    const pricingSource = 'export default function Pricing(){return <main>Pricing</main>}';
+    vi.mocked(commitToPipeline).mockImplementationOnce((canonicalInput) => {
+      const files = canonicalInput.existingVfsFiles!;
+      return {
+        source: 'ai-builder', committedAt: new Date().toISOString(),
+        siteBundleSnapshot: {
+          ...snapshot,
+          pageRegistry: canonicalInput.playground!.pageRegistry,
+          vfsFiles: files,
+          routerFile: { path: '/src/App.tsx', content: files['/src/App.tsx'] },
+        },
+        runtimeManifest: { version: 1 }, playground: canonicalInput.playground,
+        capabilities: [],
+        gate: { previewReady: true, publishReady: true, preview: { ok: true, reasons: [] }, publish: { ok: true, reasons: [] } },
+      } as never;
+    });
+    vi.mocked(runFullPreflight).mockImplementation((files) => ({
+      files, stages: { earlyRepair: 'ok', finalRepair: 'ok' },
+    }) as never);
+    mockIntents();
+
+    const patch = legacyFilesToPatchPlan({ [pricingPath]: pricingSource }, 'add pricing route');
+    patch.routeOps = [{
+      type: 'add_page', pageId: 'pricing', title: 'Pricing', route: '/pricing',
+      pageType: 'pricing', createdBy: 'ai', showInNav: true,
+    }];
+    const committed = await commitMutation({
+      source: 'ai-builder', identity: IDENTITY,
+      current: { vfsFiles: before, siteBundleSnapshot: snapshot, playground },
+      patch,
+    });
+
+    expect(committed.vfsFiles[pricingPath]).toBe(pricingSource);
+    expect(committed.vfsFiles['/src/App.tsx']).toContain('<Route path="/pricing"');
+    expect(committed.siteBundleSnapshot?.pageRegistry.pages.pricing).toMatchObject({
+      pageId: 'pricing', path: '/pricing', filePath: pricingPath,
+    });
+    expect(committed.fileProvenance['/src/App.tsx'].ownership).toBe('compiler');
+    const reopened = await loadRevision(committed.persistedRevisionId!);
+    expect((reopened?.siteBundleSnapshot as { pageRegistry?: { pages?: Record<string, unknown> } })
+      .pageRegistry?.pages?.pricing).toBeTruthy();
+    expect(reopened?.vfsFiles['/src/App.tsx']).toContain('<Route path="/pricing"');
   });
   it.each(['canonical projection', 'preflight'] as const)(
     'rejects an undeclared ordinary AI source rewrite from %s before persistence', async (stage) => {

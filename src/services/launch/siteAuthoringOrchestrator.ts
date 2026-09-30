@@ -236,6 +236,7 @@ export async function authorSitePages(input: SiteAuthoringInput): Promise<SiteAu
           resolveDependencies: false,
           origin: 'wizard',
           intent: `author:${page.role}`,
+          routeOps: prepared.build.changeSet.routeOps,
         }).changeSet;
         const committed = await input.commitPage(nextFiles, page, files, finalCandidate);
         files = committed.files;

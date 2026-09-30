@@ -19,6 +19,7 @@ import { prepareAICandidate, type PreparedCandidate } from './aiCandidateGates';
 import { selectSourceKnowledge } from './sourceKnowledgeContext';
 import { appendDesignKnowledge } from '@/services/knowledge/designKnowledge';
 import type { HomepageVisualLanguage } from '@/services/launch/homepageFirstContract';
+import type { TopologyChange } from '@/services/pageTopologyOrchestrator';
 
 export type ComposerInvoke = typeof runBuilderTurn;
 
@@ -56,6 +57,7 @@ export interface ComposerLoopInput {
   };
   candidateOrigin?: 'builder' | 'wizard' | 'repair';
   candidateIntent?: string;
+  initialRouteOps?: readonly TopologyChange[];
 }
 
 function classifyError(error: unknown): ComposerStopReason {
@@ -88,6 +90,8 @@ export async function runComposerRepairLoop(input: ComposerLoopInput): Promise<C
   let lastPrepared: PreparedCandidate | undefined;
   const accumulatedFiles: Record<string, string> = {};
   const accumulatedDeletes = new Set<string>();
+  const accumulatedRouteOps = new Map<string, TopologyChange>();
+  for (const op of input.initialRouteOps ?? []) accumulatedRouteOps.set(`${op.type}:${op.pageId ?? ''}`, { ...op });
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     if (input.signal?.aborted) return { ok: false, reason: 'aborted', attempts: attempt - 1, errors: ['Cancelled.'] };
@@ -119,6 +123,10 @@ export async function runComposerRepairLoop(input: ComposerLoopInput): Promise<C
       continue;
     }
 
+    for (const op of response.routeOps ?? []) {
+      accumulatedRouteOps.set(`${op.type}:${op.pageId ?? ''}`, { ...op });
+    }
+
     const aiFiles: Record<string, string> = {};
     const deletions: string[] = [];
     for (const op of response.fileOps) {
@@ -140,6 +148,7 @@ export async function runComposerRepairLoop(input: ComposerLoopInput): Promise<C
       targetPages: [request.page.role],
       origin: input.candidateOrigin ?? 'builder',
       intent: input.candidateIntent ?? request.task,
+      routeOps: [...accumulatedRouteOps.values()],
       preflight: input.preflight,
       affinity: input.affinity,
     });
@@ -162,6 +171,7 @@ export async function runComposerRepairLoop(input: ComposerLoopInput): Promise<C
       previousResponse: JSON.stringify({
         ...response,
         fileOps: response.fileOps.filter((op) => failingPaths.has(op.path) || failingPaths.size === 0),
+        routeOps: [...accumulatedRouteOps.values()],
       }).slice(0, 60000),
     };
   }
@@ -182,6 +192,7 @@ export async function repairBuilderCandidate(input: {
   activeFilePath?: string;
   preflight?: (changed: Record<string, string>) => Record<string, string>;
   invoke?: ComposerInvoke;
+  routeOps?: readonly TopologyChange[];
 }): Promise<ComposerLoopResult> {
   const target = input.activeFilePath && input.baseFiles[input.activeFilePath]
     ? input.activeFilePath
@@ -207,6 +218,7 @@ export async function repairBuilderCandidate(input: {
     baseRevisionId: input.baseRevisionId,
     candidateOrigin: 'repair',
     candidateIntent: input.prompt?.slice(0, 240) ?? 'builder-repair',
+    initialRouteOps: input.routeOps,
     preflight: input.preflight,
     maxAttempts: 3,
     invoke: input.invoke,

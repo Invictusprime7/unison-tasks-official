@@ -34,6 +34,27 @@ describe('AICandidateChangeSet', () => {
     expect(r.changeSet.fileOps).toHaveLength(0);
   });
 
+  it('includes typed route operations in candidate identity', () => {
+    const common = {
+      aiFiles: { '/src/pages/Pricing.tsx': 'export default function Pricing(){return <main>Pricing</main>}' },
+      baseFiles: base,
+      resolveDependencies: false,
+    };
+    const first = buildAICandidateChangeSet({
+      ...common,
+      routeOps: [{ type: 'add_page', pageId: 'pricing', title: 'Pricing', route: '/pricing' }],
+    });
+    const second = buildAICandidateChangeSet({
+      ...common,
+      routeOps: [{ type: 'add_page', pageId: 'plans', title: 'Plans', route: '/plans' }],
+    });
+
+    expect(first.changeSet.routeOps).toEqual([
+      { type: 'add_page', pageId: 'pricing', title: 'Pricing', route: '/pricing' },
+    ]);
+    expect(first.changeSet.id).not.toBe(second.changeSet.id);
+  });
+
   it('keeps freeform navigation and slotted interaction rewrites in the candidate', () => {
     const source = '<a data-ut-slot="navbar.primary" data-ut-intent="nav.goto" href="#/about">About</a>';
     const r = buildAICandidateChangeSet({

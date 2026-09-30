@@ -7281,6 +7281,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                   const firstCandidate = await prepareAICandidate({
                     aiFiles: rawFiles,
                     deletions: applyMeta?.deletions,
+                    routeOps: applyMeta?.routeOps,
                     baseFiles: beforeFiles,
                     baseRevisionId: currentRevisionId ?? undefined,
                     origin: 'builder',
@@ -7297,6 +7298,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                       rawFiles, failed: firstCandidate, baseFiles: beforeFiles,
                       baseRevisionId: currentRevisionId ?? undefined,
                       prompt: applyMeta?.prompt,
+                      routeOps: applyMeta?.routeOps,
                       preflight: (changed) => runFullPreflight(changed, { siteBundleSnapshot: snapshotForPreflight, industry: snapshotForPreflight?.industry }).files,
                     });
                     if (repaired.ok && repaired.prepared) candidate = repaired.prepared;
@@ -7826,6 +7828,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                 const firstCandidate = await prepareAICandidate({
                   aiFiles: rawFiles,
                   deletions: applyMeta?.deletions,
+                  routeOps: applyMeta?.routeOps,
                   baseFiles: beforeFiles,
                   baseRevisionId: currentRevisionId ?? undefined,
                   origin: 'builder',
@@ -7842,6 +7845,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                     rawFiles, failed: firstCandidate, baseFiles: beforeFiles,
                     baseRevisionId: currentRevisionId ?? undefined,
                     prompt: applyMeta?.prompt,
+                    routeOps: applyMeta?.routeOps,
                     preflight: (changed) => runFullPreflight(changed, { siteBundleSnapshot: snapshotForPreflight, industry: snapshotForPreflight?.industry }).files,
                   });
                   if (repaired.ok && repaired.prepared) candidate = repaired.prepared;

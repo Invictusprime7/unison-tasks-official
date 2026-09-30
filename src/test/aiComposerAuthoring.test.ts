@@ -73,6 +73,44 @@ describe('AI composer repair loop', () => {
     expect(repairRequest.files['/src/project-components/Card.tsx']).toContain('<article>Card</article>');
   }, 20000);
 
+  it('retains typed route intent while repairing page source', async () => {
+    const first = {
+      data: {
+        content: JSON.stringify({
+          summary: 'Add pricing page',
+          fileOps: [{
+            type: 'create', path: '/src/pages/Pricing.tsx',
+            content: "import Missing from './Missing'; export default function Pricing(){return <Missing/>}",
+          }],
+          routeOps: [{ type: 'add_page', pageId: 'pricing', title: 'Pricing', route: '/pricing', pageType: 'pricing' }],
+        }),
+      },
+      error: null,
+    };
+    const second = {
+      data: {
+        content: JSON.stringify({
+          summary: 'Repair pricing source',
+          fileOps: [{
+            type: 'create', path: '/src/pages/Pricing.tsx',
+            content: 'export default function Pricing(){return <main>Pricing</main>}',
+          }],
+        }),
+      },
+      error: null,
+    };
+    const invoke = vi.fn().mockResolvedValueOnce(first).mockResolvedValueOnce(second);
+
+    const result = await runComposerRepairLoop({ request, baseFiles: base, invoke: invoke as never });
+
+    expect(result.ok).toBe(true);
+    expect(result.prepared!.build.changeSet.routeOps).toEqual([
+      { type: 'add_page', pageId: 'pricing', title: 'Pricing', route: '/pricing', pageType: 'pricing' },
+    ]);
+    const repairRequest = JSON.parse(invoke.mock.calls[1][0].messages[0].content);
+    expect(JSON.parse(repairRequest.previousResponse).routeOps).toEqual(result.prepared!.build.changeSet.routeOps);
+  }, 20000);
+
   it('gives up after 3 attempts', async () => {
     const invoke = vi.fn().mockResolvedValue(bad('/src/pages/Home.tsx'));
     const r = await runComposerRepairLoop({ request, baseFiles: base, invoke: invoke as never });

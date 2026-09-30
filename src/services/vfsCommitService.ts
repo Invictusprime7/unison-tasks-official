@@ -91,6 +91,8 @@ import {
   type FileProvenanceMap,
 } from '@/services/fileProvenance';
 import { generateUUID } from '@/utils/uuid';
+import { applyTopologyChange, syncTopologyAndRouter } from '@/services/pageTopologyOrchestrator';
+import { deriveFilePath } from '@/services/routeNavigationService';
 
 
 
@@ -263,9 +265,6 @@ function isProtectedPath(path: string, protectedPaths: Set<string>): boolean {
  */
 function isGovernedAiSourceRewrite(path: string, op: PatchPlan['fileOps'][number]): boolean {
   if (op.type === 'delete') return false;
-  if (path === '/src/App.tsx') {
-    return /(?:HashRouter|BrowserRouter|MemoryRouter|createHashRouter|<Routes\b)/.test(op.contents);
-  }
   return /^\/src\/(?:pages\/[^/]+|components\/[^/]+)\.(?:tsx|jsx|ts|js)$/.test(path)
     && !path.startsWith('/src/unison/ui/');
 }
@@ -398,13 +397,14 @@ export async function commitMutation(
       || candidate.vfsHash !== await hashVfsFiles(candidate.vfsFiles)
       || input.patch.backendOps.length > 0 || input.patch.fileOps.length > 0
       || input.patch.presentationOps.length > 0 || input.patch.playgroundOps.length > 0
-      || input.patch.bindingOps.length > 0 || input.patch.businessSystem) {
+      || input.patch.bindingOps.length > 0 || input.patch.routeOps?.length || input.patch.businessSystem) {
       throw new Error('[VFSCommitService] Composition review is stale or does not belong to this project. Generate a fresh preview.');
     }
   }
 
   const customizerPagePath = input.options?.customizerPagePath;
   if (customizerPagePath && (input.source !== 'playground-edit'
+    || input.patch.routeOps?.length
     || !Object.values((input.current.siteBundleSnapshot as SiteBundleSnapshot | undefined)?.pageRegistry.pages ?? {}).some(page => page.filePath === customizerPagePath)
     || !input.patch.fileOps.some(op => op.type !== 'delete' && op.path === customizerPagePath && isCustomizerPageEdit(input.current.vfsFiles[op.path] ?? '', op.contents, op.path))
     || input.patch.fileOps.some(op => op.type === 'delete' || ![customizerPagePath, customizerPagePath.replace(/\.[^.]+$/, '.customizer.css')].includes(op.path)))) {
@@ -421,6 +421,11 @@ export async function commitMutation(
     const compilerOwnedPaths = compilerOwnedGeneratedPaths(input.current.vfsFiles);
     for (const op of patch.fileOps) {
       const path = op.path.startsWith('/') ? op.path : `/${op.path}`;
+      if (path === '/src/App.tsx'
+        && Object.keys((input.current.siteBundleSnapshot as SiteBundleSnapshot | undefined)?.pageRegistry?.pages ?? {}).length > 0
+        && (op.type === 'delete' || op.contents !== input.current.vfsFiles[op.path])) {
+        throw new Error('[VFSCommitService] Canonical App.tsx is compiler-owned. Use a typed route operation.');
+      }
       if (op.path.startsWith(`${RESOLVED_COMPOSITION_ROOT}/`)
         && (op.type === 'delete' || op.contents !== input.current.vfsFiles[op.path])) {
         throw new Error('[VFSCommitService] Resolved composition metadata is compiler-owned. Use a presentation operation or reviewed upgrade.');
@@ -462,9 +467,54 @@ export async function commitMutation(
     }
   }
 
+  let workingPlayground = input.current.playground;
+  let workingSnapshot = input.current.siteBundleSnapshot as SiteBundleSnapshot | null | undefined;
+  if (patch.routeOps?.length) {
+    if (!workingPlayground?.pageRegistry || !workingSnapshot?.pageRegistry) {
+      throw new Error('[VFSCommitService] Typed route operations require canonical Playground and snapshot topology.');
+    }
+    let registry = workingPlayground.pageRegistry;
+    for (const routeOp of patch.routeOps) {
+      const result = applyTopologyChange(
+        routeOp,
+        registry,
+        workingFiles,
+        input.options?.businessName ?? workingSnapshot.businessName,
+      );
+      for (const path of result.filesToDelete) delete workingFiles[path];
+      Object.assign(workingFiles, result.filesToImport);
+      registry = result.updatedRegistry;
+    }
+    const missingPages = Object.values(registry.pages)
+      .map((page) => ({ page, filePath: page.filePath || deriveFilePath(page) }))
+      .filter(({ filePath }) => !workingFiles[filePath]);
+    if (missingPages.length > 0) {
+      throw new Error(
+        `[VFSCommitService] Typed route operation is missing page source: ${missingPages.map(({ filePath }) => filePath).join(', ')}.`,
+      );
+    }
+    const finalTopology = syncTopologyAndRouter(
+      registry,
+      workingFiles,
+      input.options?.businessName ?? workingSnapshot.businessName,
+    );
+    Object.assign(workingFiles, finalTopology.filesToImport);
+    if (finalTopology.validation.errors.length > 0
+      || finalTopology.validation.issues.some((issue) => issue.code === 'MISSING_ROUTER_ENTRY')) {
+      throw new Error(
+        `[VFSCommitService] Typed route operation failed topology closure: ${finalTopology.validation.issues.map((issue) => issue.message).join(' | ')}`,
+      );
+    }
+    workingPlayground = { ...workingPlayground, pageRegistry: registry };
+    workingSnapshot = { ...workingSnapshot, pageRegistry: registry };
+    log('routeOps', 'info', `applied ${patch.routeOps.length} typed route operation(s)`, {
+      routes: Object.values(registry.pages).map((page) => ({ pageId: page.pageId, path: page.path, filePath: page.filePath })),
+    });
+  }
+
   if (input.options?.compositionUpgrade) {
     if (input.source !== 'playground-edit' || !input.options.dryRun || patch.fileOps.length || patch.backendOps.length
-      || patch.presentationOps.length || patch.playgroundOps.length || patch.bindingOps.length) {
+      || patch.presentationOps.length || patch.playgroundOps.length || patch.bindingOps.length || patch.routeOps?.length) {
       throw new Error('[VFSCommitService] Composition upgrades must be isolated compiler-owned dry runs.');
     }
     const { planCompositionUpgrade } = await import('./compositionUpgrade');
@@ -475,10 +525,10 @@ export async function commitMutation(
   log('fileOps', 'info', `applied ${patch.fileOps.length} file op(s)`);
 
   // 4. Apply snapshot-owned presentation operations -------------------------
-  if (patch.themeEdit && (input.source !== 'theme-change' || patch.fileOps.length || patch.playgroundOps.length || patch.presentationOps.length || patch.bindingOps.length || patch.backendOps.length || patch.businessSystem || input.options?.restoreRevisionId || input.options?.reviewedArtifact || reviewedComposition)) {
+  if (patch.themeEdit && (input.source !== 'theme-change' || patch.fileOps.length || patch.playgroundOps.length || patch.presentationOps.length || patch.bindingOps.length || patch.routeOps?.length || patch.backendOps.length || patch.businessSystem || input.options?.restoreRevisionId || input.options?.reviewedArtifact || reviewedComposition)) {
     throw new Error('Theme edits must be isolated from content, composition and backend changes.');
   }
-  let themeSnapshot = input.current.siteBundleSnapshot as SiteBundleSnapshot | null | undefined;
+  let themeSnapshot = workingSnapshot;
   if (themeSnapshot && !patch.themeEdit?.presetId && !restoredRevision && !reviewedComposition && !input.options?.reviewedArtifact && input.source !== 'wizard-launch') {
     const corrected = prepareThemeCorrection(workingFiles, themeSnapshot, input.identity.revisionId || null);
     Object.assign(workingFiles, corrected.files);
@@ -539,7 +589,7 @@ export async function commitMutation(
   } else {
     try {
       canonicalResult = input.options?.compositionUpgrade ? null : commitToPipeline(
-        buildCanonicalInput(input, workingFiles, presentationSnapshot, preservePageSources),
+        buildCanonicalInput(input, workingFiles, presentationSnapshot, preservePageSources, workingPlayground),
         toCanonicalSource(input.source),
       );
       if (input.source !== 'wizard-launch') {
@@ -1138,12 +1188,13 @@ function buildCanonicalInput(
   workingFiles: Record<string, string>,
   snapshotOverride?: SiteBundleSnapshot | null,
   preservePageSources = input.source === 'theme-change',
+  playgroundOverride = input.current.playground,
 ): CanonicalCommitInput {
   const snapshot = snapshotOverride ?? input.current.siteBundleSnapshot as SiteBundleSnapshot | null | undefined;
   return {
     preservePageSources,
     selections: input.options?.selections,
-    playground: input.current.playground,
+    playground: playgroundOverride,
     existingVfsFiles: workingFiles,
     businessName: input.options?.businessName ?? snapshot?.businessName,
     industry: input.options?.industry ?? snapshot?.industry,
@@ -1471,6 +1522,7 @@ async function finalize(args: {
       '/.unison/**',
       '/src/unison/**',
       '/src/integrations/**',
+      '/src/App.tsx',
       ...[...compilerOwnedGeneratedPaths({ ...input.current.vfsFiles, ...vfsFiles })]
         .filter((path) => !explicitlyAuthoredPaths.has(normalizeAuthoredPath(path))),
     ],

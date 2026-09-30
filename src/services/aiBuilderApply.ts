@@ -1,3 +1,5 @@
+import type { TopologyChange } from '@/services/pageTopologyOrchestrator';
+
 export interface AIBuilderApplyMeta {
   prompt?: string;
   model?: string;
@@ -6,6 +8,8 @@ export interface AIBuilderApplyMeta {
   origin?: string;
   /** Explicit file removals, executed by the same candidate + VFS transaction. */
   deletions?: string[];
+  /** Typed registry/route intent; the canonical compiler owns App.tsx. */
+  routeOps?: TopologyChange[];
   requiresApproval?: boolean;
   warnings?: Array<{ severity?: string; message?: string }>;
 }

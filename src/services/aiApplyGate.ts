@@ -63,6 +63,9 @@ export function buildAiCandidatePatch(ctx: AiCommitContext): PatchPlan {
     fileOps: candidate.fileOps.map((operation) => operation.type === 'delete'
       ? { type: 'delete' as const, path: operation.path }
       : { type: operation.type, path: operation.path, contents: operation.content }),
+    routeOps: candidate.routeOps.map((operation) => operation.type === 'add_page'
+      ? { ...operation, createdBy: 'ai' as const }
+      : { ...operation }),
     playgroundOps: [],
     bindingOps: [],
     backendOps: [],

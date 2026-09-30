@@ -43,6 +43,8 @@ export interface TopologyChange {
   showInNav?: boolean;
   /** For reorder */
   navOrder?: number;
+  /** Authorship recorded for newly registered pages. */
+  createdBy?: BuilderPage['createdBy'];
 }
 
 export interface TopologyChangeResult {
@@ -75,7 +77,7 @@ export function applyTopologyChange(
   // Clone registry to avoid mutation
   const updated: PageRegistry = {
     ...registry,
-    pages: { ...registry.pages },
+    pages: Object.fromEntries(Object.entries(registry.pages).map(([id, page]) => [id, { ...page }])),
     funnels: { ...registry.funnels },
     version: registry.version + 1,
   };
@@ -105,15 +107,16 @@ export function applyTopologyChange(
 
   switch (change.type) {
     case 'add_page': {
-      const pageId = `page_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+      const pageId = change.pageId || `page_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+      if (updated.pages[pageId]) throw new Error(`Page ID already exists: ${pageId}`);
       const title = change.title || 'New Page';
       const route = change.route || `/${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
       const pageType = change.pageType || 'custom';
 
       const page = createBuilderPage(pageId, title, route, pageType, {
-        showInNav: true,
-        navOrder: Object.keys(updated.pages).length,
-        createdBy: 'manual',
+        showInNav: change.showInNav ?? true,
+        navOrder: change.navOrder ?? Object.keys(updated.pages).length,
+        createdBy: change.createdBy ?? 'manual',
       });
 
       // Set canonical filePath

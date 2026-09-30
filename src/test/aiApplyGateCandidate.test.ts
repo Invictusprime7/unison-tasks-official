@@ -16,6 +16,7 @@ function context(): AiCommitContext {
       provenance: { origin: 'builder', intent: 'navigation', knowledgeVersion: '2026-09-29.2' },
       targetPages: ['/src/App.tsx'],
       attempt: 1,
+      routeOps: [{ type: 'remove_page', pageId: 'removed' }],
       fileOps: [
         { type: 'replace', path: '/src/App.tsx', content: 'new' },
         { type: 'delete', path: '/src/pages/Removed.tsx' },
@@ -36,6 +37,7 @@ describe('AI candidate commit protocol', () => {
         { type: 'replace', path: '/src/App.tsx', contents: 'new' },
         { type: 'delete', path: '/src/pages/Removed.tsx' },
       ],
+      routeOps: [{ type: 'remove_page', pageId: 'removed' }],
     });
   });
 

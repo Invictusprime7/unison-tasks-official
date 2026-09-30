@@ -17,10 +17,10 @@ describe('AI Composer canonical compatibility scope', () => {
       { type: 'create', path: '/src/hooks/useNavigation.ts' },
     ])).toEqual([]);
   });
-  it('allows App.tsx when the AI needs to author a HashRouter route graph', () => {
+  it('keeps App.tsx compiler-owned so AI uses typed route operations', () => {
     expect(composerScopeViolations('site_page_author', page, [
       { type: 'replace', path: '/src/App.tsx' },
-    ])).toEqual([]);
+    ]).join()).toContain('canonical runtime file');
   });
   it('keeps runtime metadata and bootstrap files protected', () => {
     expect(composerScopeViolations('site_page_author', page, [
