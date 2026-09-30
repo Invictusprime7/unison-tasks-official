@@ -286,7 +286,7 @@ describe('Golden E2E — salon launcher → AI edits → publish gate', () => {
     })).rejects.toThrow('compiler-owned');
     expect(revisionStore).toHaveLength(0);
   });
-  it('rejects legacy replacements of compiler-owned portable recipes', async () => {
+  it('allows Builder-authored replacement of generated presentation recipes after handoff', async () => {
     const path = '/src/components/recipes/Features.ts';
     const pagePath = '/src/pages/Home.tsx';
     const source = 'export const REGISTERED_VARIANTS = {};';
@@ -298,11 +298,22 @@ describe('Golden E2E — salon launcher → AI edits → publish gate', () => {
       sections: [],
       compilerOwnership: { [path]: compilerOwnershipHash(source) },
     });
-    await expect(commitMutation({ source: 'ai-builder', identity: IDENTITY,
-      current: { vfsFiles: { [path]: source, [descriptorPath]: descriptor } },
-      patch: legacyFilesToPatchPlan({ [path]: 'export const REGISTERED_VARIANTS = { legacy: true };' }),
-    })).rejects.toThrow('compiler-owned');
-    expect(revisionStore).toHaveLength(0);
+    const after = 'export const REGISTERED_VARIANTS = { authored: true };';
+    const files = { [path]: after, [descriptorPath]: descriptor };
+    mockPipeline(files); mockPreflight(files); mockIntents();
+    const result = await commitMutation({ source: 'playground-edit', identity: IDENTITY,
+      current: {
+        vfsFiles: { [path]: source, [descriptorPath]: descriptor },
+        siteBundleSnapshot: { meta: { authorshipAuthority: {
+          phase: 'builder-authoring', creativeAuthority: 'builder', commitAuthority: 'vfs-commit-service',
+          launchRevisionId: IDENTITY.revisionId,
+        } } } as never,
+      },
+      patch: legacyFilesToPatchPlan({ [path]: after }),
+      options: { requireReadinessPass: false },
+    });
+    expect(result.vfsFiles[path]).toBe(after);
+    expect(revisionStore).toHaveLength(1);
   });
   it('does not infer compiler ownership from conventional component filenames', async () => {
     const path = '/src/components/Hero.tsx';
@@ -319,6 +330,45 @@ describe('Golden E2E — salon launcher → AI edits → publish gate', () => {
     });
 
     expect(result.vfsFiles[path]).toContain('Authored');
+  });
+  it('allows post-launch Builder authorship of presentation CSS sealed by the Wizard', async () => {
+    const path = '/src/index.css';
+    const before = { [path]: ':root { --accent: 1 2% 3%; }' };
+    const after = { [path]: ':root { --accent: 220 80% 55%; }\n.hero { min-height: 80vh; }' };
+    const snapshot = {
+      vfsFiles: before,
+      routerFile: { path: '/src/App.tsx', content: '' },
+      pageRegistry: { pages: {} },
+      meta: {
+        authorshipAuthority: {
+          phase: 'builder-authoring', creativeAuthority: 'builder',
+          commitAuthority: 'vfs-commit-service', launchRevisionId: IDENTITY.revisionId,
+        },
+        seal: {
+          registeredPageBodyAuthority: 'canonical-compiler',
+          protectedFilePatterns: ['/src/index.css'],
+        },
+      },
+    };
+    mockPipeline(after); mockPreflight(after); mockIntents();
+
+    const result = await commitMutation({
+      source: 'playground-edit', identity: IDENTITY,
+      current: { vfsFiles: before, siteBundleSnapshot: snapshot as never },
+      patch: legacyFilesToPatchPlan(after),
+      options: { requireReadinessPass: false },
+    });
+
+    expect(result.vfsFiles[path]).toBe(after[path]);
+  });
+  it('keeps capability-sensitive integration adapters behind typed operations', async () => {
+    const path = '/src/integrations/supabase/client.ts';
+    await expect(commitMutation({
+      source: 'ai-builder', identity: IDENTITY,
+      current: { vfsFiles: { [path]: 'export const client = {};' } },
+      patch: legacyFilesToPatchPlan({ [path]: 'export const client = { bypass: true };' }),
+    })).rejects.toThrow('capability-sensitive');
+    expect(revisionStore).toHaveLength(0);
   });
   it('allows authenticated AI rewrites of sealed page source while retaining the canonical router boundary', async () => {
     const routerPath = '/src/App.tsx';

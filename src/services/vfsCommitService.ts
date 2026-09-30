@@ -99,6 +99,7 @@ import {
   deriveAuthorshipAuthority,
   stampSnapshotAuthority,
 } from '@/services/authorshipAuthority';
+import { canDirectlyAuthorVfsPath, classifyVfsProtection } from '@/services/vfsProtectionMatrix';
 
 
 
@@ -265,18 +266,6 @@ function isProtectedPath(path: string, protectedPaths: Set<string>): boolean {
   return false;
 }
 
-/**
- * A governed AI rewrite starts from an authenticated canonical revision and is
- * still validated by preflight/readiness below. The immutable boundary is the
- * registry/router/metadata contract, not the byte identity of page bodies or
- * generated section modules after launch.
- */
-function isGovernedAiSourceRewrite(path: string, op: PatchPlan['fileOps'][number]): boolean {
-  if (op.type === 'delete') return false;
-  return /^\/src\/(?:pages\/[^/]+|components\/[^/]+)\.(?:tsx|jsx|ts|js)$/.test(path)
-    && !path.startsWith('/src/unison/ui/');
-}
-
 function sourceOperationsBetween(
   accepted: Record<string, string>,
   candidate: Record<string, string>,
@@ -436,8 +425,22 @@ export async function commitMutation(
       ? new Set<string>()
       : sealedCompilerOwnedPaths(input.current.siteBundleSnapshot as SiteBundleSnapshot | null | undefined);
     const compilerOwnedPaths = compilerOwnedGeneratedPaths(input.current.vfsFiles);
+    const registeredPagePaths = Object.values(
+      (input.current.siteBundleSnapshot as SiteBundleSnapshot | undefined)?.pageRegistry?.pages ?? {},
+    ).map((page) => page.filePath).filter((path): path is string => Boolean(path));
     for (const op of patch.fileOps) {
       const path = op.path.startsWith('/') ? op.path : `/${op.path}`;
+      const protection = classifyVfsProtection({
+        path,
+        registeredPagePaths,
+        compilerGeneratedPaths: [...compilerOwnedPaths],
+        canonicalRouterActive: registeredPagePaths.length > 0,
+      });
+      const builderAuthorable = canDirectlyAuthorVfsPath(
+        protection,
+        input.source,
+        currentAuthority.phase === 'builder-authoring',
+      );
       if (path === '/src/App.tsx'
         && Object.keys((input.current.siteBundleSnapshot as SiteBundleSnapshot | undefined)?.pageRegistry?.pages ?? {}).length > 0
         && (op.type === 'delete' || op.contents !== input.current.vfsFiles[op.path])) {
@@ -447,13 +450,19 @@ export async function commitMutation(
         && (op.type === 'delete' || op.contents !== input.current.vfsFiles[op.path])) {
         throw new Error('[VFSCommitService] Resolved composition metadata is compiler-owned. Use a presentation operation or reviewed upgrade.');
       }
+      if (protection.directMutation === 'denied'
+        && (op.type === 'delete' || op.contents !== input.current.vfsFiles[op.path])) {
+        throw new Error(
+          `[VFSCommitService] ${protection.classification} path cannot be edited directly. ${protection.rationale}`,
+        );
+      }
       if (compilerOwnedPaths.has(path)
-        && !(input.source === 'ai-builder' && isGovernedAiSourceRewrite(path, op))
+        && !builderAuthorable
         && (op.type === 'delete' || op.contents !== input.current.vfsFiles[op.path])) {
         throw new Error('[VFSCommitService] Generated section and recipe modules are compiler-owned. Use a presentation operation or a canonical composition upgrade.');
       }
       if (path !== customizerPagePath && isProtectedPath(path, sealedPaths)
-        && !(input.source === 'ai-builder' && isGovernedAiSourceRewrite(path, op))
+        && !builderAuthorable
         && (op.type === 'delete' || op.contents !== input.current.vfsFiles[op.path])) {
         throw new Error('[VFSCommitService] Canonical router and metadata files are compiler-owned. Edit page or section source instead.');
       }
