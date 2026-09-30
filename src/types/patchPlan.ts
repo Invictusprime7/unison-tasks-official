@@ -103,6 +103,7 @@ export interface PatchPlan {
     origin: 'builder' | 'wizard' | 'repair';
     intent?: string;
     knowledgeVersion: string;
+    evidence?: import('@/services/builder/canonicalAuthoringRequest').CanonicalAuthorshipEvidence;
     targetPages: string[];
     requestedDependencies?: string[];
     attempt: number;

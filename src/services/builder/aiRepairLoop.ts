@@ -16,10 +16,9 @@ import {
   type AIComposerResponse,
 } from '@/contracts/aiComposerContract';
 import { prepareAICandidate, type PreparedCandidate } from './aiCandidateGates';
-import { selectSourceKnowledge } from './sourceKnowledgeContext';
-import { appendDesignKnowledge } from '@/services/knowledge/designKnowledge';
 import type { HomepageVisualLanguage } from '@/services/launch/homepageFirstContract';
 import type { TopologyChange } from '@/services/pageTopologyOrchestrator';
+import { assembleCanonicalAuthoringRequest } from './canonicalAuthoringRequest';
 
 export type ComposerInvoke = typeof runBuilderTurn;
 
@@ -149,6 +148,7 @@ export async function runComposerRepairLoop(input: ComposerLoopInput): Promise<C
       origin: input.candidateOrigin ?? 'builder',
       intent: input.candidateIntent ?? request.task,
       routeOps: [...accumulatedRouteOps.values()],
+      evidence: request.evidence,
       preflight: input.preflight,
       affinity: input.affinity,
     });
@@ -197,23 +197,21 @@ export async function repairBuilderCandidate(input: {
   const target = input.activeFilePath && input.baseFiles[input.activeFilePath]
     ? input.activeFilePath
     : Object.keys(input.rawFiles).find((p) => /^\/src\/.+\.tsx$/.test(p)) ?? '/src/pages/Home.tsx';
-  const files = selectSourceKnowledge(
-    { ...input.baseFiles, ...input.rawFiles },
-    [target, ...Object.keys(input.rawFiles)],
-  );
+  const candidateFiles = { ...input.baseFiles, ...input.rawFiles };
+  const assembled = await assembleCanonicalAuthoringRequest({
+    task: 'builder_source_edit',
+    page: { role: 'page', title: target.split('/').pop() ?? target, route: '/', filePath: target },
+    brief: 'Builder edit. Keep the existing design direction, art direction and all intents.',
+    knowledgeQuery: `${input.prompt ?? ''} ${target}`,
+    instruction: input.prompt?.slice(0, 4000),
+    baseFiles: candidateFiles,
+    baseRevisionId: input.baseRevisionId,
+    sourceTargets: [target, ...Object.keys(input.rawFiles)],
+    routes: [],
+    diagnostics: input.failed.errors.slice(0, 30),
+  });
   return runComposerRepairLoop({
-    request: {
-      task: 'builder_source_edit',
-      page: { role: 'page', title: target.split('/').pop() ?? target, route: '/', filePath: target },
-      brief: appendDesignKnowledge(
-        'Builder edit. Keep the existing design direction, art direction and all intents.',
-        `${input.prompt ?? ''} ${target}`,
-      ),
-      instruction: input.prompt?.slice(0, 4000),
-      files,
-      routes: [],
-      diagnostics: input.failed.errors.slice(0, 30),
-    },
+    request: assembled.request,
     baseFiles: input.baseFiles,
     baseRevisionId: input.baseRevisionId,
     candidateOrigin: 'repair',

@@ -101,5 +101,21 @@ export const aiComposerRequestSchema = z.object({
   priorPages: z.array(z.object({ role: z.string().max(60), summary: z.string().max(2000) })).max(20).optional(),
   diagnostics: z.array(z.string().max(1000)).max(30).optional(),
   previousResponse: z.string().max(60000).optional(),
+  registryContext: z.string().max(30000).optional(),
+  runtimeContext: z.string().max(12000).optional(),
+  evidence: z.object({
+    protocolVersion: z.literal('1.0'),
+    baseRevisionId: z.string().nullable(),
+    sourceContextHash: z.string().max(100),
+    sourcePaths: z.array(z.string().min(1).max(240).regex(/^\//)).max(80),
+    sourceContextComplete: z.boolean(),
+    omittedSourcePaths: z.array(z.string().max(240)).max(80),
+    unresolvedImports: z.array(z.string().max(500)).max(80),
+    registryContextHash: z.string().max(100).nullable(),
+    knowledgeContextHash: z.string().max(100),
+    knowledgePackageVersion: z.string().max(80),
+    knowledgeEntryIds: z.array(z.string().max(160)).max(40),
+    availableOperations: z.array(z.string().max(80)).max(30),
+  }).optional(),
 });
 export type AIComposerRequest = z.infer<typeof aiComposerRequestSchema>;

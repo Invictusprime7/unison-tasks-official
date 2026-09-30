@@ -76,6 +76,7 @@ export function buildAiCandidatePatch(ctx: AiCommitContext): PatchPlan {
       origin: candidate.provenance.origin,
       intent: candidate.provenance.intent,
       knowledgeVersion: candidate.provenance.knowledgeVersion,
+      evidence: candidate.provenance.evidence,
       targetPages: candidate.targetPages,
       requestedDependencies: candidate.requestedDependencies,
       attempt: candidate.attempt,

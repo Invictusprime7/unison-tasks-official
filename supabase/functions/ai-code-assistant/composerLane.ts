@@ -94,6 +94,9 @@ function renderUser(req: AIComposerRequest): string {
       ? `THE PREVIOUS CANDIDATE FAILED VALIDATION:\n${req.diagnostics.join('\n')}\nRepair ONLY the failing files. Preserve the page narrative, art direction, layout concept and all valid files.`
       : '',
     req.previousResponse ? `PREVIOUS CANDIDATE:\n${req.previousResponse}` : '',
+    req.registryContext ? `REGISTRY EVIDENCE (vocabulary only; imports must still exist in FILES):\n${req.registryContext}` : '',
+    req.runtimeContext ? `RUNTIME / CAPABILITY CONSTRAINTS:\n${req.runtimeContext}` : '',
+    req.evidence ? `AUTHORSHIP EVIDENCE:\n${JSON.stringify(req.evidence)}` : '',
     `FILES:\n${files}`,
   ];
   return parts.filter(Boolean).join('\n\n');

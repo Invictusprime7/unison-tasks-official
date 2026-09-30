@@ -159,6 +159,7 @@ export async function prepareAICandidate(input: {
   origin?: import('./aiCandidateChangeSet').AICandidateChangeSet['provenance']['origin'];
   intent?: string;
   routeOps?: readonly import('@/services/pageTopologyOrchestrator').TopologyChange[];
+  evidence?: import('./canonicalAuthoringRequest').CanonicalAuthorshipEvidence;
   preflight?: (changed: Record<string, string>) => Record<string, string>;
   affinity?: {
     language?: HomepageVisualLanguage;
@@ -174,6 +175,7 @@ export async function prepareAICandidate(input: {
     origin: input.origin,
     intent: input.intent,
     routeOps: input.routeOps,
+    evidence: input.evidence,
   });
   if (input.preflight && build.changeSet.fileOps.length) {
     const changed = Object.fromEntries(
@@ -190,6 +192,7 @@ export async function prepareAICandidate(input: {
       origin: input.origin,
       intent: input.intent,
       routeOps: input.routeOps,
+      evidence: input.evidence,
     });
   }
   const gates = await runCandidateGates(build, input.affinity);

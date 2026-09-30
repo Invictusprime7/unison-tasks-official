@@ -19,6 +19,7 @@ import {
 } from '@/services/aiVFSOrchestrator';
 import { getDependenciesForSandpack } from '@/utils/dependencyExtractor';
 import type { TopologyChange } from '@/services/pageTopologyOrchestrator';
+import type { CanonicalAuthorshipEvidence } from './canonicalAuthoringRequest';
 
 export type CandidateFileOp =
   | { type: 'create'; path: string; content: string }
@@ -32,6 +33,7 @@ export interface AICandidateChangeSet {
     origin: 'builder' | 'wizard' | 'repair';
     intent?: string;
     knowledgeVersion: string;
+    evidence?: CanonicalAuthorshipEvidence;
   };
   fileOps: CandidateFileOp[];
   routeOps: TopologyChange[];
@@ -53,6 +55,7 @@ export interface BuildCandidateInput {
   origin?: AICandidateChangeSet['provenance']['origin'];
   intent?: string;
   routeOps?: readonly TopologyChange[];
+  evidence?: CanonicalAuthorshipEvidence;
   /** Resolve deps and regenerate package.json in the candidate (default true). */
   resolveDependencies?: boolean;
 }
@@ -111,7 +114,7 @@ export function buildAICandidateChangeSet(input: BuildCandidateInput): Candidate
 
   const attempt = input.attempt ?? 1;
   const routeOps = (input.routeOps ?? []).map((op) => ({ ...op }));
-  const id = `cand_${fnv1a(`${input.baseRevisionId ?? ''}|${attempt}|${JSON.stringify({ fileOps, routeOps })}`)}`;
+  const id = `cand_${fnv1a(`${input.baseRevisionId ?? ''}|${attempt}|${JSON.stringify({ fileOps, routeOps, evidence: input.evidence })}`)}`;
   return {
     changeSet: {
       id,
@@ -121,6 +124,7 @@ export function buildAICandidateChangeSet(input: BuildCandidateInput): Candidate
         intent: input.intent?.slice(0, 240),
         // Kept in the durable patch record without storing prompt text.
         knowledgeVersion: '2026-09-29.2',
+        evidence: input.evidence ? { ...input.evidence } : undefined,
       },
       fileOps,
       routeOps,

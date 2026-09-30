@@ -17,10 +17,10 @@ import { AI_AUTHORED_MARKER } from '@/contracts/aiComposerContract';
 import type { ResolvedSiteDesignContext } from '@/services/launch/resolvedSiteDesignContext';
 import { projectSiteDesignContract } from '@/services/launch/siteDesignContract';
 import type { AIComposerRequest } from '@/contracts/aiComposerContract';
-import { selectSourceKnowledge } from '@/services/builder/sourceKnowledgeContext';
-import { appendDesignKnowledge } from '@/services/knowledge/designKnowledge';
 import { runComposerRepairLoop, type ComposerInvoke, type ComposerStopReason } from '@/services/builder/aiRepairLoop';
 import { buildAICandidateChangeSet, type AICandidateChangeSet } from '@/services/builder/aiCandidateChangeSet';
+import { assembleCanonicalAuthoringRequest } from '@/services/builder/canonicalAuthoringRequest';
+import { selectSourceKnowledge } from '@/services/builder/sourceKnowledgeContext';
 import {
   extractHomepageVisualLanguage,
   renderHomepageInheritanceContract,
@@ -171,17 +171,23 @@ export async function authorSitePages(input: SiteAuthoringInput): Promise<SiteAu
     input.onProgress?.({ page, index, total: ordered.length, phase: 'authoring' });
     const baseFiles = files;
     const planned = compositionPlan.pages.find((p) => p.pageId === page.pageId);
-    const buildRequest = (redundancy: RedundancyIssue | null): AIComposerRequest => ({
+    const buildRequest = async (redundancy: RedundancyIssue | null): Promise<AIComposerRequest> => (await assembleCanonicalAuthoringRequest({
       task: 'site_page_author',
       page: { role: page.role, title: page.title, route: page.route, filePath: page.filePath },
-      brief: appendDesignKnowledge([
+      brief: [
         renderPageBrief(input.designContext, page, input.businessName, establishedLanguage),
         renderCompositionBrief(planned, visualMemory.entries(), redundancy),
-      ].filter(Boolean).join('\n').slice(0, 6500), `${input.businessName} ${page.role} ${page.title} ${page.route}`),
-      files: selectPageContextFiles(baseFiles, page),
+      ].filter(Boolean).join('\n').slice(0, 6500),
+      knowledgeQuery: `${input.businessName} ${page.role} ${page.title} ${page.route}`,
+      baseFiles,
+      baseRevisionId: revisionId,
+      sourceTargets: [page.filePath],
       routes,
       priorPages: priorPages.slice(-20),
-    });
+      runtimeContext: input.designContext
+        ? `Industry ${input.designContext.contract.industry}; experience ${input.designContext.contract.experience}; forbidden implementations ${JSON.stringify(input.designContext.hardLegality.forbiddenImplementations)}.`
+        : undefined,
+    })).request;
     const runLoop = (request: AIComposerRequest) => runComposerRepairLoop({
       request,
       baseFiles,
@@ -197,12 +203,12 @@ export async function authorSitePages(input: SiteAuthoringInput): Promise<SiteAu
       candidateOrigin: 'wizard',
       candidateIntent: `author:${page.role}`,
     });
-    let loop = await runLoop(buildRequest(null));
+    let loop = await runLoop(await buildRequest(null));
     // Redundancy check: one targeted recomposition when this page repeats another page's topology.
     if (loop.ok && loop.prepared && now() < deadline) {
       const issue = findRedundancy(page.pageId, extractCompositionSignature(loop.prepared.nextFiles[page.filePath]), visualMemory.entries());
       if (issue) {
-        const retry = await runLoop(buildRequest(issue));
+        const retry = await runLoop(await buildRequest(issue));
         if (retry.ok && retry.prepared) loop = retry;
       }
     }
@@ -237,6 +243,7 @@ export async function authorSitePages(input: SiteAuthoringInput): Promise<SiteAu
           origin: 'wizard',
           intent: `author:${page.role}`,
           routeOps: prepared.build.changeSet.routeOps,
+          evidence: prepared.build.changeSet.provenance.evidence,
         }).changeSet;
         const committed = await input.commitPage(nextFiles, page, files, finalCandidate);
         files = committed.files;
