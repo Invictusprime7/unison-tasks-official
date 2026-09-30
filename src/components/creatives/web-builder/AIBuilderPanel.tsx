@@ -105,6 +105,14 @@ import {
   transactionVerdictLine,
 } from '@/services/builder/builderTransactionState';
 import { awaitPreviewVerification, markPreviewPending } from '@/services/builder/previewVerification';
+import { runComposerRepairLoop } from '@/services/builder/aiRepairLoop';
+import {
+  assembleCanonicalAuthoringRequest,
+  resolveCanonicalAuthoringPage,
+  shouldUseCanonicalComposer,
+} from '@/services/builder/canonicalAuthoringRequest';
+import type { TopologyChange } from '@/services/pageTopologyOrchestrator';
+import type { AICandidateChangeSet } from '@/services/builder/aiCandidateChangeSet';
 
 import {
   planBusinessCapabilities,
@@ -482,6 +490,8 @@ interface AIBuilderPanelProps {
   previewRef?: React.RefObject<{ getIframe?: () => HTMLIFrameElement | null } | null>;
   /** Active project id — used to scope persisted prompt + edit history. */
   projectId?: string | null;
+  /** Currently accepted durable revision used as the Composer candidate base. */
+  revisionId?: string | null;
   /** Active business id — required for GHL fast-path bindings. */
   businessId?: string | null;
   /** Executes an explicitly approved, fully resolved business capability plan. */
@@ -571,6 +581,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
   onThemeEdit,
   previewRef,
   projectId,
+  revisionId,
   businessId,
   onApproveCapabilityPlan,
   layoutOps,
@@ -597,7 +608,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
   const [activeTab, setActiveTab] = useState<'code' | 'debug' | 'backend'>('code');
   // Files the auto-apply guard held back. Without this the AI "resolved" a
   // rewrite that never materialized anywhere — now the user can still apply it.
-  const [heldFiles, setHeldFiles] = useState<{ files: Record<string, string>; deletions?: string[]; reason: string } | null>(null);
+  const [heldFiles, setHeldFiles] = useState<{ files: Record<string, string>; deletions?: string[]; routeOps?: TopologyChange[]; candidate?: AICandidateChangeSet; reason: string } | null>(null);
   const [droppedFiles, setDroppedFiles] = useState<DroppedFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [gatewayConfig, setGatewayConfig] = useState<GatewayConfig | undefined>(undefined);
@@ -1418,6 +1429,8 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
       const MAX_RETRIES = 1;
       let response = null;
       let lastError = null;
+      let canonicalRouteOps: TopologyChange[] = [];
+      let canonicalCandidate: AICandidateChangeSet | undefined;
       
       // Global timeout: abort the entire request after 150s. Aligned with
       // server-side TOTAL_BUDGET_MS (135s) + buffer for network/packaging.
@@ -1542,7 +1555,69 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
             projectId: projectId ?? null,
           });
 
-          response = await runBuilderTurn<any>({
+          const useCanonicalComposer = shouldUseCanonicalComposer({
+            isReactProject,
+            isLaunchPlanningRequest,
+            isCatalogMutationRequest: isCatalogMutationRequest(_userContent),
+            hasAttachments: _attachments.length > 0,
+            hasVfs: !!vfsFiles,
+          });
+          if (useCanonicalComposer) {
+            const page = resolveCanonicalAuthoringPage(vfsFiles!, resolvedTargetFile || defaultTargetFile);
+            const assembled = await assembleCanonicalAuthoringRequest({
+              task: 'builder_source_edit',
+              page,
+              brief: [
+                'Edit the accepted React project without changing unrelated source.',
+                themeContextBlock,
+                pageStructureContext ? `Page structure: ${pageStructureContext}` : '',
+                siteAnalysisContext ? `Component structure: ${siteAnalysisContext}` : '',
+              ].filter(Boolean).join('\n').slice(0, 6500),
+              knowledgeQuery: `${_userContent} ${page.role} ${systemType ?? ''}`,
+              instruction: _userContent.slice(0, 4000),
+              baseFiles: vfsFiles!,
+              baseRevisionId: revisionId,
+              sourceTargets: [page.filePath],
+              routes: [],
+              registryContext: builderRegistryContext ?? undefined,
+              runtimeContext: [backendStateContext, behaviorContext, unisonContext]
+                .filter(Boolean).map((value) => typeof value === 'string' ? value : JSON.stringify(value)).join('\n').slice(0, 12000),
+            });
+            const composer = await runComposerRepairLoop({
+              request: assembled.request,
+              baseFiles: vfsFiles!,
+              baseRevisionId: revisionId ?? undefined,
+              maxAttempts: 3,
+              signal: globalAbort.signal,
+              timeoutMs: gatewayConfig?.timeoutMs,
+              candidateOrigin: 'builder',
+              candidateIntent: _userContent.slice(0, 240),
+            });
+            if (!composer.ok || !composer.prepared) {
+              throw new Error(composer.errors[0] ?? `Canonical Composer stopped: ${composer.reason}`);
+            }
+            const candidate = composer.prepared.build.changeSet;
+            canonicalCandidate = candidate;
+            canonicalRouteOps = candidate.routeOps;
+            const files = Object.fromEntries(candidate.fileOps
+              .filter((operation) => operation.type !== 'delete')
+              .map((operation) => [operation.path, operation.content]));
+            const deletions = candidate.fileOps
+              .filter((operation) => operation.type === 'delete')
+              .map((operation) => operation.path);
+            response = {
+              data: {
+                content: JSON.stringify({
+                  files,
+                  deletions,
+                  explanation: composer.response?.summary ?? 'Canonical Composer prepared this source candidate.',
+                }),
+                actionType: 'canonical-source-edit',
+                filesDetected: Object.keys(files),
+              },
+              error: null,
+            };
+          } else response = await runBuilderTurn<any>({
             messages: conversationHistory,
             registryContext: builderRegistryContext ?? undefined,
             // Milestone 4: durable envelope + verdict log, scoped to this draft.
@@ -1554,10 +1629,9 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
             },
             requestEnvelope: capabilityInterpretation.envelope,
             unisonContext,
-            // Always use template-react for React projects (even surgical edits)
-            // to ensure the AI generates React/TSX output, not raw HTML.
-            // The surgicalEdit flag tells the edge function to apply surgical constraints.
-            // Only fall back to 'code' mode for non-React (HTML template) surgical edits.
+            // Specialized non-source lanes and multimodal attachment turns keep
+            // their established transport. Ordinary React source authorship is
+            // handled above by the canonical Composer protocol.
             mode: isLaunchPlanningRequest ? 'launch-desk' : (isSurgicalEdit && !isReactProject ? 'code' : 'template-react'),
             currentCode: isLaunchPlanningRequest ? undefined : truncatedCode,
             editMode: isLaunchPlanningRequest ? false : !!currentCode,
@@ -1976,7 +2050,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
 
         if (scopeBlockReason) {
           console.warn('[AIBuilderPanel] SCOPE BLOCK:', scopeBlockReason);
-          setHeldFiles({ files: normalizedFiles, deletions: multiFileDeletions, reason: `Edit held back: ${scopeBlockReason}` });
+          setHeldFiles({ files: normalizedFiles, deletions: multiFileDeletions, routeOps: canonicalRouteOps, candidate: canonicalCandidate, reason: `Edit held back: ${scopeBlockReason}` });
           toast.warning(`⚠️ Edit held for review: ${scopeBlockReason}`);
           transactionVerdict = transactionVerdictLine('held-for-review', scopeBlockReason);
         } else if (shouldBlock) {
@@ -1984,7 +2058,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
           console.warn('[AIBuilderPanel] Patch requires approval — NOT auto-applying');
           const heldReason = responseMeta?.warnings?.map((warning) => warning.message).filter(Boolean).join('; ')
             || 'The reviewer flagged this patch. Review the warnings, then apply.';
-          setHeldFiles({ files: normalizedFiles, deletions: multiFileDeletions, reason: heldReason });
+          setHeldFiles({ files: normalizedFiles, deletions: multiFileDeletions, routeOps: canonicalRouteOps, candidate: canonicalCandidate, reason: heldReason });
           toast.warning('⚠️ AI patch flagged for review — apply it from the review card when ready');
           transactionVerdict = transactionVerdictLine('held-for-review', heldReason);
         } else {
@@ -2000,6 +2074,8 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
               actionType: responseMeta?.actionType,
               origin: 'multi-file',
               deletions: multiFileDeletions,
+              routeOps: canonicalRouteOps,
+              candidate: canonicalCandidate,
               requiresApproval: responseMeta?.requiresApproval,
               warnings: responseMeta?.warnings,
             });
@@ -2688,13 +2764,15 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
                       onClick={async () => {
                         const pending = heldFiles.files;
                         const deletions = heldFiles.deletions;
+                        const routeOps = heldFiles.routeOps;
+                        const candidate = heldFiles.candidate;
                         setHeldFiles(null);
-                        const outcome = await applyAIBuilderFiles(onApplyToVFS, pending, { origin: 'held-review', deletions });
+                        const outcome = await applyAIBuilderFiles(onApplyToVFS, pending, { origin: 'held-review', deletions, routeOps, candidate });
                         if (outcome.success) {
                           toast.success('Held changes applied to your project');
                         } else {
                           toast.error('Apply failed', { description: outcome.errors?.[0] });
-                          setHeldFiles({ files: pending, deletions, reason: outcome.errors?.[0] ?? 'Apply failed.' });
+                          setHeldFiles({ files: pending, deletions, routeOps, candidate, reason: outcome.errors?.[0] ?? 'Apply failed.' });
                         }
                       }}
                     >

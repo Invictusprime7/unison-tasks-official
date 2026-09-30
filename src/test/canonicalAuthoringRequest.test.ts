@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { aiComposerRequestSchema } from '@/contracts/aiComposerContract';
-import { assembleCanonicalAuthoringRequest } from '@/services/builder/canonicalAuthoringRequest';
+import {
+  assembleCanonicalAuthoringRequest,
+  resolveCanonicalAuthoringPage,
+  shouldUseCanonicalComposer,
+} from '@/services/builder/canonicalAuthoringRequest';
 
 const files = {
   '/src/pages/Home.tsx': "import Hero from '../project-components/Hero'; export default function Home(){return <Hero/>}",
@@ -14,6 +18,35 @@ const files = {
 };
 
 describe('canonical AI authorship request assembly', () => {
+  it('routes ordinary React source edits to Composer and leaves specialized lanes alone', () => {
+    const base = {
+      isReactProject: true, isLaunchPlanningRequest: false,
+      isCatalogMutationRequest: false, hasAttachments: false, hasVfs: true,
+    };
+    expect(shouldUseCanonicalComposer(base)).toBe(true);
+    expect(shouldUseCanonicalComposer({ ...base, isCatalogMutationRequest: true })).toBe(false);
+    expect(shouldUseCanonicalComposer({ ...base, isLaunchPlanningRequest: true })).toBe(false);
+    expect(shouldUseCanonicalComposer({ ...base, hasAttachments: true })).toBe(false);
+    expect(shouldUseCanonicalComposer({ ...base, isReactProject: false })).toBe(false);
+  });
+
+  it('resolves Builder targets from accepted page topology', () => {
+    const withTopology = {
+      ...files,
+      '/.unison/site-bundle-snapshot.json': JSON.stringify({
+        pageRegistry: { pages: {
+          home: { title: 'Home', path: '/', filePath: '/src/pages/Home.tsx', pageType: 'home' },
+          pricing: { title: 'Pricing', path: '/pricing', filePath: '/src/pages/Pricing.tsx', pageType: 'pricing' },
+        } },
+      }),
+      '/src/pages/Pricing.tsx': 'export default function Pricing(){return <main/>}',
+    };
+
+    expect(resolveCanonicalAuthoringPage(withTopology, '/src/pages/Pricing.tsx')).toEqual({
+      role: 'pricing', title: 'Pricing', route: '/pricing', filePath: '/src/pages/Pricing.tsx',
+    });
+  });
+
   it('uses complete transitive source and records hashed evidence', async () => {
     const assembled = await assembleCanonicalAuthoringRequest({
       task: 'builder_source_edit',

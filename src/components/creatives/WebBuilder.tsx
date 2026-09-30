@@ -7261,6 +7261,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                 vfsFiles={virtualFS.getSandpackFiles()}
                 previewRef={livePreviewRef}
                 projectId={currentDraftId ?? null}
+                revisionId={currentRevisionId || null}
                 businessId={businessId ?? null}
                 layoutOps={layoutOpsForAI}
                 onApproveCapabilityPlan={approveCapabilityPlanFromPanel}
@@ -7281,11 +7282,13 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                   const firstCandidate = await prepareAICandidate({
                     aiFiles: rawFiles,
                     deletions: applyMeta?.deletions,
-                    routeOps: applyMeta?.routeOps,
+                    routeOps: applyMeta?.candidate?.routeOps ?? applyMeta?.routeOps,
                     baseFiles: beforeFiles,
-                    baseRevisionId: currentRevisionId ?? undefined,
-                    origin: 'builder',
-                    intent: applyMeta?.actionType ?? 'builder-ai-edit',
+                    baseRevisionId: applyMeta?.candidate?.baseRevisionId ?? currentRevisionId ?? undefined,
+                    origin: applyMeta?.candidate?.provenance.origin ?? 'builder',
+                    intent: applyMeta?.candidate?.provenance.intent ?? applyMeta?.actionType ?? 'builder-ai-edit',
+                    evidence: applyMeta?.candidate?.provenance.evidence,
+                    attempt: applyMeta?.candidate?.attempt,
                     preflight: (changed) => runFullPreflight(changed, {
                       siteBundleSnapshot: snapshotForPreflight,
                       industry: snapshotForPreflight?.industry,
@@ -7816,6 +7819,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
               vfsFiles={virtualFS.getSandpackFiles()}
               previewRef={livePreviewRef}
               projectId={currentDraftId ?? null}
+              revisionId={currentRevisionId || null}
               businessId={businessId ?? null}
               layoutOps={layoutOpsForAI}
               onApproveCapabilityPlan={approveCapabilityPlanFromPanel}
@@ -7828,11 +7832,13 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                 const firstCandidate = await prepareAICandidate({
                   aiFiles: rawFiles,
                   deletions: applyMeta?.deletions,
-                  routeOps: applyMeta?.routeOps,
+                  routeOps: applyMeta?.candidate?.routeOps ?? applyMeta?.routeOps,
                   baseFiles: beforeFiles,
-                  baseRevisionId: currentRevisionId ?? undefined,
-                  origin: 'builder',
-                  intent: applyMeta?.actionType ?? 'builder-ai-edit',
+                  baseRevisionId: applyMeta?.candidate?.baseRevisionId ?? currentRevisionId ?? undefined,
+                  origin: applyMeta?.candidate?.provenance.origin ?? 'builder',
+                  intent: applyMeta?.candidate?.provenance.intent ?? applyMeta?.actionType ?? 'builder-ai-edit',
+                  evidence: applyMeta?.candidate?.provenance.evidence,
+                  attempt: applyMeta?.candidate?.attempt,
                   preflight: (changed) => runFullPreflight(changed, {
                     siteBundleSnapshot: snapshotForPreflight,
                     industry: snapshotForPreflight?.industry,

@@ -1,4 +1,5 @@
 import type { TopologyChange } from '@/services/pageTopologyOrchestrator';
+import type { AICandidateChangeSet } from '@/services/builder/aiCandidateChangeSet';
 
 export interface AIBuilderApplyMeta {
   prompt?: string;
@@ -10,6 +11,8 @@ export interface AIBuilderApplyMeta {
   deletions?: string[];
   /** Typed registry/route intent; the canonical compiler owns App.tsx. */
   routeOps?: TopologyChange[];
+  /** Exact Composer candidate, retained through the UI apply boundary. */
+  candidate?: AICandidateChangeSet;
   requiresApproval?: boolean;
   warnings?: Array<{ severity?: string; message?: string }>;
 }

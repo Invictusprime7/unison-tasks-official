@@ -17,6 +17,20 @@ export const CANONICAL_AUTHORING_OPERATIONS = [
   'reorder_navigation',
 ] as const;
 
+export function shouldUseCanonicalComposer(input: {
+  isReactProject: boolean;
+  isLaunchPlanningRequest: boolean;
+  isCatalogMutationRequest: boolean;
+  hasAttachments: boolean;
+  hasVfs: boolean;
+}): boolean {
+  return input.isReactProject
+    && !input.isLaunchPlanningRequest
+    && !input.isCatalogMutationRequest
+    && !input.hasAttachments
+    && input.hasVfs;
+}
+
 export interface CanonicalAuthorshipEvidence {
   protocolVersion: '1.0';
   baseRevisionId: string | null;
@@ -47,6 +61,37 @@ export interface CanonicalAuthoringRequestInput {
   registryContext?: unknown;
   runtimeContext?: string;
   sourceTargets?: string[];
+}
+
+/** Resolve a Builder target against accepted topology without authoring it. */
+export function resolveCanonicalAuthoringPage(
+  files: Record<string, string>,
+  targetFile?: string | null,
+): AIComposerRequest['page'] {
+  let pages: Array<{ pageId: string; title?: string; path?: string; filePath?: string; pageType?: string }> = [];
+  try {
+    const snapshot = JSON.parse(files['/.unison/site-bundle-snapshot.json'] ?? '{}') as {
+      pageRegistry?: { pages?: Record<string, { title?: string; path?: string; filePath?: string; pageType?: string }> };
+    };
+    pages = Object.entries(snapshot.pageRegistry?.pages ?? {}).map(([pageId, page]) => ({ pageId, ...page }));
+  } catch {
+    pages = [];
+  }
+  const normalizedTarget = targetFile ? (targetFile.startsWith('/') ? targetFile : `/${targetFile}`) : null;
+  const page = pages.find((item) => item.filePath === normalizedTarget)
+    ?? pages.find((item) => item.path === '/')
+    ?? pages[0];
+  const filePath = normalizedTarget
+    ?? page?.filePath
+    ?? Object.keys(files).find((path) => /^\/src\/pages\/[^/]+\.(?:tsx|jsx)$/.test(path))
+    ?? '/src/pages/Home.tsx';
+  const fallbackTitle = filePath.split('/').pop()?.replace(/\.[^.]+$/, '') || 'Page';
+  return {
+    role: page?.pageType ?? (page?.path === '/' ? 'home' : 'page'),
+    title: page?.title ?? fallbackTitle,
+    route: page?.path ?? '/',
+    filePath,
+  };
 }
 
 function stableJson(value: unknown): string {
