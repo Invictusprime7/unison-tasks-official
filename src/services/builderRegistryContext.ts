@@ -34,6 +34,7 @@ export interface BuilderRegistryContext {
   templateId: string;
   themePresetId: string;
   artDirectionPackId?: string;
+  artDirectionGrammar?: WizardAggregatedRegistryContext['artDirectionGrammar'];
   /** Sealed family + qualified pack — the AI Builder may never switch family. */
   artDirection?: { familyId: string; packId: string; storagePackId: string } | null;
   designSelection?: WizardDesignSelection;
@@ -126,6 +127,7 @@ export function boundRegistryContext(
     templateId: context.templateId,
     themePresetId: context.themePresetId,
     artDirectionPackId: context.artDirectionPackId,
+    artDirectionGrammar: context.artDirectionGrammar,
     designSelection: context.designSelection,
     designRegistrySignature: context.designRegistrySignature,
     sections,

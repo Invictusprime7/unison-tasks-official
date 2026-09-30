@@ -35,6 +35,7 @@ import { deriveImplementationVisualSignature, type ImplementationVisualSignature
 import { compatibleExperiencePreferences } from '@/services/designCompatibilityGraph';
 import type { WizardDesignSelection } from '@/services/wizardDesignSelection';
 import { getCompositionById } from '@/sections/templates';
+import { compileArtDirectionGrammar, type ArtDirectionGrammar } from './artDirectionGrammar';
 
 export const WIZARD_REGISTRY_CONTEXT_PATH = '/.unison/wizard-registry-context.json' as const;
 export const WIZARD_REGISTRY_CONTEXT_VERSION = '2.0' as const;
@@ -143,6 +144,7 @@ export interface WizardAggregatedRegistryContext {
   templateId: string;
   themePresetId: string;
   artDirectionPackId?: string;
+  artDirectionGrammar?: ArtDirectionGrammar;
   /** Additive persisted Wizard constraints; absent on legacy snapshots. */
   designSelection?: WizardDesignSelection;
   designRegistrySignature: string;
@@ -304,6 +306,7 @@ export function buildWizardAggregatedRegistryContext(options: {
     templateId: options.templateId,
     themePresetId: options.themePresetId,
     artDirectionPackId: pack?.id,
+    artDirectionGrammar: pack ? compileArtDirectionGrammar(pack) : undefined,
     designSelection: options.designSelection,
     designRegistrySignature: designRegistrySignature(),
     designCapabilityFingerprint: designCapabilityFingerprint({

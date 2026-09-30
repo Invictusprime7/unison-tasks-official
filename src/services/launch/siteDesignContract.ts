@@ -35,6 +35,7 @@ import type {
   WizardDesignSelectionMode,
   WizardExperiencePreference,
 } from '@/services/wizardDesignSelection';
+import { compileArtDirectionGrammar, type ArtDirectionGrammar } from './artDirectionGrammar';
 
 export const SITE_DESIGN_CONTRACT_VERSION = '1.0' as const;
 
@@ -65,6 +66,8 @@ export interface SiteDesignContract {
   mode: WizardDesignSelectionMode;
   experience: WizardExperiencePreference;
   artDirectionPackId: ArtDirectionPackId;
+  /** Executable compositional grammar projected from the sealed pack. */
+  grammar: ArtDirectionGrammar;
   /** Families the compiler owns on every page — identical site-wide. */
   chromeFamilies: readonly SectionType[];
   typography: {
@@ -194,6 +197,7 @@ export function compileSiteDesignContract(
     mode,
     experience,
     artDirectionPackId: packId,
+    grammar: compileArtDirectionGrammar(pack),
     chromeFamilies: COMPILER_OWNED_FAMILIES,
     typography: {
       displayStack: pack.signature.typography.displayStack,
