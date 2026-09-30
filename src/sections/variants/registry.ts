@@ -786,7 +786,7 @@ const VARIANT_REGISTRY: VariantRegistry = {
       thumbnail: '/variants/hero-centered.svg',
       tags: ['classic', 'clean', 'minimal'],
       isDefault: true,
-      pageRoles: ['home', 'services', 'about', 'pricing', 'contact'],
+      pageRoles: ['home', 'services', 'about', 'pricing', 'booking', 'contact'],
       renderJSX: portableRecipeOnly,
     },
     {
@@ -852,7 +852,7 @@ const VARIANT_REGISTRY: VariantRegistry = {
         adaptationVersion: '2',
       },
       thumbnail: '/variants/hero-centered.svg',
-      tags: ['compact', 'subpage'], pageRoles: ['pricing', 'faq', 'checkout', 'thank_you'],
+      tags: ['compact', 'subpage'], pageRoles: ['pricing', 'faq', 'booking', 'checkout', 'thank_you'],
       renderJSX: portableRecipeOnly,
     },
     {

@@ -16,6 +16,61 @@ export const RESTAURANT_COMPOSITIONS: TemplateComposition[] = [
     systemType: 'booking',
     description: 'Warm, image-rich layout for restaurants with table reservation CTAs.',
     tags: ['restaurant', 'dining', 'booking', 'food', 'reservation'],
+    pageCompositions: {
+      services: {
+        sections: [
+          {
+            id: 'restaurant-premium-menu-guide', type: 'services', variantId: 'services:alternating',
+            props: {
+              headline: 'A Seasonal Dining Journey',
+              subheadline: 'Explore the menu by course, with ingredients and dietary notes kept easy to scan.',
+              columns: 2,
+              layout: 'alternating',
+              items: [
+                { title: 'To Begin', description: 'Small plates, market vegetables and house-made breads designed for the table.', badge: 'Shareable' },
+                { title: 'From the Hearth', description: 'Wood-fired vegetables, responsibly sourced seafood and signature cuts.', badge: 'Seasonal' },
+                { title: 'Plant-Led Plates', description: 'Complete dishes built around peak produce, grains and slow-developed sauces.', badge: 'Vegetarian options' },
+                { title: 'Finish Sweetly', description: 'Pastry, chocolate and fruit-led desserts with after-dinner pairings.', badge: 'Dessert' },
+              ],
+            },
+          },
+          {
+            id: 'restaurant-premium-menu-faq', type: 'faq', variantId: 'faq:accordion',
+            props: {
+              headline: 'Before You Dine',
+              items: [
+                { question: 'Can you accommodate dietary needs?', answer: 'Share allergies and dietary preferences when reserving so the kitchen can explain the suitable options available that evening.' },
+                { question: 'Does the menu change?', answer: 'The menu follows the season and local availability, so individual dishes and ingredients may change.' },
+                { question: 'Are pairings available?', answer: 'Ask the dining room team about current wine and non-alcoholic pairings for your meal.' },
+              ],
+            },
+          },
+        ],
+        alternatives: [
+          { id: 'restaurant-menu-editorial', heroVariantId: 'hero:split-image', sectionIds: ['restaurant-premium-nav', 'restaurant-premium-hero', 'restaurant-premium-about', 'restaurant-premium-services', 'restaurant-premium-cta', 'restaurant-premium-footer'] },
+          { id: 'restaurant-menu-guided', heroVariantId: 'hero:centered', sectionIds: ['restaurant-premium-nav', 'restaurant-premium-hero', 'restaurant-premium-menu-guide', 'restaurant-premium-menu-faq', 'restaurant-premium-cta', 'restaurant-premium-footer'] },
+        ],
+      },
+      booking: {
+        sections: [
+          {
+            id: 'restaurant-premium-reservation-faq', type: 'faq', variantId: 'faq:accordion',
+            props: {
+              headline: 'Plan Your Visit',
+              items: [
+                { question: 'When should I arrive?', answer: 'Arrive a few minutes before your reservation so the dining room can welcome and seat your party comfortably.' },
+                { question: 'Can I update my party size?', answer: 'Contact the restaurant as early as possible. Changes depend on table availability and will be confirmed by the team.' },
+                { question: 'Do you host larger groups?', answer: 'Use the enquiry form for private dining or larger parties and include your preferred date, time and guest count.' },
+              ],
+            },
+          },
+        ],
+        alternatives: [
+          { id: 'restaurant-reservation-focused', heroVariantId: 'hero:centered', sectionIds: ['restaurant-premium-nav', 'restaurant-premium-hero', 'restaurant-premium-contact', 'restaurant-premium-footer'] },
+          { id: 'restaurant-reservation-reassured', heroVariantId: 'hero:page-title', sectionIds: ['restaurant-premium-nav', 'restaurant-premium-hero', 'restaurant-premium-contact', 'restaurant-premium-reservation-faq', 'restaurant-premium-testimonials', 'restaurant-premium-footer'] },
+        ],
+      },
+    },
     theme: {
       colors: {
         primary: '25 85% 45%',

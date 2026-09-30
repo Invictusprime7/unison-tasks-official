@@ -64,11 +64,15 @@ export interface BuilderRegistryContext {
   runtimeDependencies?: Record<string, string>;
   primitiveFamilies?: WizardAggregatedRegistryContext['primitiveFamilies'];
   capabilityRequirements?: WizardAggregatedRegistryContext['capabilityRequirements'];
+  pageCompositions?: WizardAggregatedRegistryContext['pageCompositions'];
 }
 
 const MAX_SECTIONS = 24;
 const MAX_IMPLEMENTATIONS = 80;
 const MAX_VARIANTS_PER_SECTION = 12;
+const MAX_PAGE_COMPOSITIONS = 16;
+const MAX_ALTERNATIVES_PER_PAGE = 8;
+const MAX_IMPLEMENTATIONS_PER_ALTERNATIVE = 12;
 
 /** Read the sealed projection persisted into the draft VFS by the launcher. */
 export function readPersistedRegistryContext(
@@ -129,6 +133,14 @@ export function boundRegistryContext(
     runtimeDependencies: context.runtimeDependencies,
     primitiveFamilies: context.primitiveFamilies,
     capabilityRequirements: context.capabilityRequirements,
+    pageCompositions: context.pageCompositions?.slice(0, MAX_PAGE_COMPOSITIONS).map((composition) => ({
+      role: composition.role,
+      alternatives: composition.alternatives.slice(0, MAX_ALTERNATIVES_PER_PAGE).map((alternative) => ({
+        id: alternative.id,
+        sectionTypes: alternative.sectionTypes.slice(0, MAX_IMPLEMENTATIONS_PER_ALTERNATIVE),
+        implementationIds: alternative.implementationIds.slice(0, MAX_IMPLEMENTATIONS_PER_ALTERNATIVE),
+      })),
+    })),
   };
 }
 

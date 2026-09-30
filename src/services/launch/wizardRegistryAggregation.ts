@@ -16,6 +16,7 @@
 import { getAllSections, isAppSurfaceSection } from '@/sections/registry';
 import {
   VARIANT_REGISTRY,
+  clampVariantToPack,
   getGenerationVariantsForSection,
   resolveArtDirectionPack,
 } from '@/sections/variants';
@@ -24,7 +25,7 @@ import { resolveComponentStateContract } from '@/sections/variants/componentStat
 import { listCatalogSurfaces } from '@/platform/core/catalogSurfaceRegistry';
 import { listArtifacts, resolveArtifact, getArtifact } from '@/platform/core/artifactRegistry';
 import { resolveImplementationContract } from '@/platform/core/resolvedImplementationContract';
-import { getDesignImplementation, getImplementationVocabularyRefs, designRegistrySignature, designCapabilityFingerprint } from '@/services/designImplementationRegistry';
+import { getDesignImplementation, getImplementationVocabularyRefs, designRegistrySignature, designCapabilityFingerprint, resolveImplementationId } from '@/services/designImplementationRegistry';
 import { GENERATED_MOTION_PRIMITIVES } from '@/platform/core/generatedUiFoundation';
 import { buildGeneratedUiFoundation } from '@/platform/core/generatedUiFoundation';
 import { CAPABILITY_REGISTRY, type CapabilityId } from '@/platform/core/capabilityRegistry';
@@ -33,6 +34,7 @@ import type { Asset } from '@/types/asset';
 import { deriveImplementationVisualSignature, type ImplementationVisualSignature } from '@/services/implementationVisualSignature';
 import { compatibleExperiencePreferences } from '@/services/designCompatibilityGraph';
 import type { WizardDesignSelection } from '@/services/wizardDesignSelection';
+import { getCompositionById } from '@/sections/templates';
 
 export const WIZARD_REGISTRY_CONTEXT_PATH = '/.unison/wizard-registry-context.json' as const;
 export const WIZARD_REGISTRY_CONTEXT_VERSION = '2.0' as const;
@@ -124,6 +126,15 @@ export interface WizardRegistryPrimitiveFamilySummary {
   values: string[];
 }
 
+export interface WizardRegistryPageCompositionSummary {
+  role: string;
+  alternatives: Array<{
+    id: string;
+    sectionTypes: SectionType[];
+    implementationIds: string[];
+  }>;
+}
+
 export interface WizardAggregatedRegistryContext {
   version: typeof WIZARD_REGISTRY_CONTEXT_VERSION | '1.0';
   generationPolicy?: '21st-only';
@@ -162,6 +173,8 @@ export interface WizardAggregatedRegistryContext {
   runtimeDependencies?: Record<string, string>;
   primitiveFamilies?: WizardRegistryPrimitiveFamilySummary[];
   capabilityRequirements?: WizardRegistryCapabilitySummary[];
+  /** Executable deterministic page grammars owned by the selected template. */
+  pageCompositions?: WizardRegistryPageCompositionSummary[];
 }
 
 
@@ -251,6 +264,37 @@ export function buildWizardAggregatedRegistryContext(options: {
     ...foundation.manifest.experience.runtimePackages,
     ...foundation.manifest.runtimeFacades.radixPrimitives.map(id => `@radix-ui/react-${id}`),
   ]);
+  const selectedComposition = getCompositionById(options.templateId);
+  const pageCompositions: WizardRegistryPageCompositionSummary[] = Object.entries(
+    selectedComposition?.pageCompositions ?? {},
+  ).map(([role, definition]) => {
+    const inventory = new Map(
+      [...(selectedComposition?.sections ?? []), ...(definition?.sections ?? [])]
+        .map((section) => [section.id, section]),
+    );
+    return {
+      role,
+      alternatives: (definition?.alternatives ?? []).map((alternative) => {
+        const sections = alternative.sectionIds
+          .map((sectionId) => inventory.get(sectionId))
+          .filter((section): section is NonNullable<typeof section> => Boolean(section));
+        if (sections.length !== alternative.sectionIds.length) {
+          throw new Error(`[WizardRegistryAggregation] ${alternative.id} references an unknown section.`);
+        }
+        return {
+          id: alternative.id,
+          sectionTypes: sections.map((section) => section.type),
+          implementationIds: sections.map((section) => {
+            const requested = section.type === 'hero' ? alternative.heroVariantId : section.variantId;
+            return resolveImplementationId(
+              section.type,
+              pack ? clampVariantToPack(pack, section.type, requested) : requested,
+            );
+          }),
+        };
+      }),
+    };
+  });
 
   return {
     version: WIZARD_REGISTRY_CONTEXT_VERSION,
@@ -320,5 +364,6 @@ export function buildWizardAggregatedRegistryContext(options: {
       supportedSlots: [...CAPABILITY_REGISTRY[id].frontend.supportedSlots],
       providedIntents: [...CAPABILITY_REGISTRY[id].intents.provided],
     })),
+    pageCompositions,
   };
 }

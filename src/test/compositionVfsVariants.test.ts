@@ -187,8 +187,8 @@ describe('composition VFS variants', () => {
   expect(source).toContain('"badge": "Our Offerings"');
     expect(source).not.toContain(`"headline": ${JSON.stringify(homeHero?.props.headline)}`);
     expect(source).not.toContain(JSON.stringify(homeHero?.props.backgroundImage));
-    expect(routeHero.variantId).toBe('hero:launch-showcase');
-    expect(routeHero.props.layout).toBe('launch-showcase');
+    expect(routeHero.variantId).toBe('hero:split-image');
+    expect(routeHero.props.layout).toBe('split');
   });
 
   it('keeps an explicit page hero override when the hero is cloned for a route', () => {
