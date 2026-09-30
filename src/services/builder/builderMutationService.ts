@@ -8,8 +8,8 @@
  *   • the patch was validated against one pipeline run and persisted by
  *     another, so the accepted bytes and the persisted bytes were not
  *     provably the same run;
- *   • if the mirror failed after persistence, the durable revision and the
- *     working VFS silently diverged;
+ *   • patch-style mirroring could not remove files, so a committed deletion
+ *     remained visible in the working VFS;
  *   • "applied" was reported from the mirror alone, not from a transaction.
  *
  * This service makes an AI edit ONE transaction with one terminal state.
@@ -31,7 +31,7 @@ export type BuilderMutationState =
   | 'rejected'
   /** Committed durably AND mirrored into the working VFS. */
   | 'applied'
-  /** Commit or mirror failed; working VFS restored to its pre-edit bytes. */
+  /** Commit or committed-state mirror failed. Durable details remain available. */
   | 'failed';
 
 export interface BuilderMutationOutcome {
@@ -51,21 +51,19 @@ export interface BuilderMutationOutcome {
 
 export interface BuilderMutationHooks {
   /**
-   * Mirror the committed patch into the working VFS. Receives only the paths
-   * whose committed bytes differ from the pre-edit bytes.
+   * Replace the working VFS with the complete committed file map in one state
+   * transition. Full replacement is required so accepted deletions converge.
    */
-  mirror: (patch: Record<string, string>) => { success: boolean; errors?: string[]; filesWritten?: string[] };
-  /** Restore the working VFS when the transaction does not reach `applied`. */
-  rollback?: (beforeFiles: Record<string, string>) => void;
+  mirror: (committedFiles: Record<string, string>) => { success: boolean; errors?: string[]; filesWritten?: string[] };
 }
 
-function changedEntries(
+function changedPathsBetween(
   before: Record<string, string>,
   after: Record<string, string>,
-): Record<string, string> {
-  return Object.fromEntries(
-    Object.entries(after).filter(([path, contents]) => before[path] !== contents),
-  );
+): string[] {
+  return Array.from(new Set([...Object.keys(before), ...Object.keys(after)]))
+    .filter(path => before[path] !== after[path])
+    .sort();
 }
 
 /**
@@ -107,13 +105,12 @@ export async function runBuilderAiMutation(
   }
 
   const committedFiles = commit.vfsFiles ?? {};
-  const patch = changedEntries(ctx.beforeFiles, committedFiles);
-  const mirror = hooks.mirror(patch);
+  const changedPaths = changedPathsBetween(ctx.beforeFiles, committedFiles);
+  const mirror = hooks.mirror(committedFiles);
 
   if (!mirror.success) {
-    // The durable revision exists but the working VFS could not take it.
-    // Restore the pre-edit bytes so preview never shows a half-applied edit.
-    hooks.rollback?.(ctx.beforeFiles);
+    // Supabase is already durable truth. Never pretend the previous local map
+    // rolled back the commit; the returned revision/files let reload reconcile.
     const errors = mirror.errors?.length ? mirror.errors : ['The edit could not be applied to the working files.'];
     return {
       state: 'failed',
@@ -124,7 +121,7 @@ export async function runBuilderAiMutation(
       commit,
       revisionId: commit.persistedRevisionId ?? null,
       committedFiles,
-      changedPaths: [],
+      changedPaths,
     };
   }
 
@@ -136,6 +133,6 @@ export async function runBuilderAiMutation(
     commit,
     revisionId: commit.persistedRevisionId ?? null,
     committedFiles,
-    changedPaths: mirror.filesWritten?.length ? mirror.filesWritten : Object.keys(patch),
+    changedPaths,
   };
 }

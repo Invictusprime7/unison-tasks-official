@@ -69,22 +69,21 @@ describe('builder AI mutation transaction', () => {
     expect(outcome.reason).toBe('Preview would break.');
   });
 
-  it('rolls the working files back when the mirror fails after commit', async () => {
+  it('reports the durable revision when the committed-state mirror fails', async () => {
     persistAiCommit.mockResolvedValue({
       vfsFiles: { '/src/pages/Home.tsx': 'new' },
       persistedRevisionId: 'rev-3',
     });
-    const rollback = vi.fn();
-
     const outcome = await runBuilderAiMutation(ctx, {
       mirror: () => ({ success: false, errors: ['write failed'] }),
-      rollback,
     });
 
-    expect(rollback).toHaveBeenCalledWith(ctx.beforeFiles);
     expect(outcome.state).toBe('failed');
     expect(outcome.success).toBe(false);
     expect(outcome.errors).toEqual(['write failed']);
+    expect(outcome.revisionId).toBe('rev-3');
+    expect(outcome.committedFiles).toEqual({ '/src/pages/Home.tsx': 'new' });
+    expect(outcome.changedPaths).toEqual(['/src/pages/Home.tsx']);
   });
 
   it('never reports success when the commit itself throws', async () => {
@@ -92,5 +91,26 @@ describe('builder AI mutation transaction', () => {
     const outcome = await runBuilderAiMutation(ctx, { mirror: () => ({ success: true }) });
     expect(outcome.state).toBe('failed');
     expect(outcome.success).toBe(false);
+  });
+
+  it('mirrors the complete committed map and reports deleted paths', async () => {
+    const deletionCtx = {
+      ...ctx,
+      beforeFiles: {
+        '/src/pages/Home.tsx': 'old',
+        '/src/pages/Removed.tsx': 'remove me',
+      },
+    };
+    persistAiCommit.mockResolvedValue({
+      vfsFiles: { '/src/pages/Home.tsx': 'new' },
+      persistedRevisionId: 'rev-4',
+    });
+    const mirror = vi.fn(() => ({ success: true }));
+
+    const outcome = await runBuilderAiMutation(deletionCtx, { mirror });
+
+    expect(mirror).toHaveBeenCalledWith({ '/src/pages/Home.tsx': 'new' });
+    expect(outcome.state).toBe('applied');
+    expect(outcome.changedPaths).toEqual(['/src/pages/Home.tsx', '/src/pages/Removed.tsx']);
   });
 });

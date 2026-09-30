@@ -7313,10 +7313,9 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                   }
                   const proposedFiles = candidate.nextFiles;
 
-                  // Pass 3 — VFSCommitService gate. Dry-run BEFORE mutating
-                  // the working VFS so a preview-breaking AI patch never
-                  // reaches Sandpack. Only proceed to aiVFS.applyCode when
-                  // the canonical pipeline + preview gate accept the patch.
+                  // Pass 3 — canonical validation and durable commit.
+                  // Validation and persistence happen first; the working VFS
+                  // then receives the exact committed file map.
                   const projectIdForCommit = resolvedProjectId || currentDraftId || '';
                   const commitCtx = businessId && currentDraftId
                     ? {
@@ -7345,11 +7344,14 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                   // canonical commit, mirror, then settle on one terminal state.
                   const beforeSnapshotFiles = beforeFiles;
                   const outcome = await runBuilderAiMutation(commitCtx, {
-                    mirror: (patch) => {
-                      const applied = aiVFS.applyCode(patch);
-                      return { success: applied.success, errors: applied.errors, filesWritten: applied.filesWritten };
+                    mirror: (committedFiles) => {
+                      try {
+                        vfsReplaceFiles(committedFiles);
+                        return { success: true };
+                      } catch (error) {
+                        return { success: false, errors: [error instanceof Error ? error.message : String(error)] };
+                      }
                     },
-                    rollback: (restore) => { aiVFS.applyCode(restore); },
                   });
 
                   if (outcome.state === 'rejected') {
@@ -7862,7 +7864,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                 }
                 const proposedFiles = candidate.nextFiles;
 
-                // Pass 3 — VFSCommitService gate (mobile mount).
+                // Pass 3 — exact committed-map handoff on mobile.
                 const projectIdForCommit = resolvedProjectId || currentDraftId || '';
                 const commitCtx = businessId && currentDraftId
                   ? {
@@ -7889,11 +7891,14 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                 }
                 // P0.3 — same single transaction as the desktop mount.
                 const outcome = await runBuilderAiMutation(commitCtx, {
-                  mirror: (patch) => {
-                    const applied = aiVFS.applyCode(patch);
-                    return { success: applied.success, errors: applied.errors, filesWritten: applied.filesWritten };
+                  mirror: (committedFiles) => {
+                    try {
+                      vfsReplaceFiles(committedFiles);
+                      return { success: true };
+                    } catch (error) {
+                      return { success: false, errors: [error instanceof Error ? error.message : String(error)] };
+                    }
                   },
-                  rollback: (restore) => { aiVFS.applyCode(restore); },
                 });
 
                 if (outcome.state === 'rejected') {
