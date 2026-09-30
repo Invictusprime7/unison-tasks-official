@@ -20,6 +20,7 @@ import {
   buildWizardAggregatedRegistryContext,
   WIZARD_REGISTRY_CONTEXT_PATH,
   type WizardAggregatedRegistryContext,
+  type WizardRegistryImplementationSummary,
 } from '@/services/launch/wizardRegistryAggregation';
 import { readSealedArtDirection, type SealedArtDirectionMeta } from '@/sections/variants/resolvedArtDirection';
 import type { ComponentStateContract } from '@/sections/variants/componentStates';
@@ -50,6 +51,9 @@ export interface BuilderRegistryContext {
     sectionType: string;
     name: string;
     certification: string;
+    pageRoles: readonly string[];
+    vocabularyRefs: WizardRegistryImplementationSummary['vocabularyRefs'];
+    radixPrimitives: readonly string[];
     runtimeDependencies?: readonly string[];
     componentStates?: ComponentStateContract;
     visualSignature?: ImplementationVisualSignature;
@@ -66,14 +70,41 @@ export interface BuilderRegistryContext {
   primitiveFamilies?: WizardAggregatedRegistryContext['primitiveFamilies'];
   capabilityRequirements?: WizardAggregatedRegistryContext['capabilityRequirements'];
   pageCompositions?: WizardAggregatedRegistryContext['pageCompositions'];
+  artifacts?: WizardAggregatedRegistryContext['artifacts'];
+  catalogSurfaces?: WizardAggregatedRegistryContext['catalogSurfaces'];
+  motionPrimitives?: string[];
+  motionProfile?: string;
+  interactionProfile?: string;
+  assets?: WizardAggregatedRegistryContext['assets'];
+  /** Existing project modules the Composer may import without inventing paths. */
+  validImportPaths?: string[];
+  /** Certified recipes made explicit for reuse/adaptation decisions. */
+  portableRecipeIds?: string[];
 }
 
 const MAX_SECTIONS = 24;
-const MAX_IMPLEMENTATIONS = 80;
+const MAX_IMPLEMENTATIONS = 18;
 const MAX_VARIANTS_PER_SECTION = 12;
 const MAX_PAGE_COMPOSITIONS = 16;
 const MAX_ALTERNATIVES_PER_PAGE = 8;
 const MAX_IMPLEMENTATIONS_PER_ALTERNATIVE = 12;
+const MAX_ARTIFACTS = 16;
+const MAX_CATALOG_SURFACES = 12;
+const MAX_ASSETS = 12;
+const MAX_IMPORT_PATHS = 100;
+
+export function collectValidImportPaths(files?: Record<string, string> | null): string[] {
+  return Object.keys(files ?? {})
+    .filter(path => /^\/src\/.+\.(?:tsx?|jsx?)$/.test(path))
+    .flatMap(path => {
+      const withoutExtension = path.replace(/\.(?:tsx?|jsx?)$/, '');
+      const alias = withoutExtension.replace(/^\/src\//, '@/').replace(/\/index$/, '');
+      return [path, alias];
+    })
+    .filter((path, index, all) => all.indexOf(path) === index)
+    .sort()
+    .slice(0, MAX_IMPORT_PATHS);
+}
 
 /** Read the sealed projection persisted into the draft VFS by the launcher. */
 export function readPersistedRegistryContext(
@@ -92,7 +123,7 @@ export function readPersistedRegistryContext(
 /** Narrow a full canonical context down to the bounded AI payload. */
 export function boundRegistryContext(
   context: WizardAggregatedRegistryContext,
-  options?: { sectionTypes?: readonly string[] },
+  options?: { sectionTypes?: readonly string[]; pageRole?: string },
 ): BuilderRegistryContext {
   const focus = options?.sectionTypes?.length ? new Set(options.sectionTypes) : null;
   const sections = context.sections
@@ -107,19 +138,25 @@ export function boundRegistryContext(
   const allowed = new Set(sections.map((section) => section.type));
   const implementations = (context.implementations ?? [])
     .filter((implementation) => allowed.has(implementation.sectionType))
+    .sort((a, b) => {
+      if (!options?.pageRole) return 0;
+      return Number(b.pageRoles.includes(options.pageRole)) - Number(a.pageRoles.includes(options.pageRole));
+    })
     .slice(0, MAX_IMPLEMENTATIONS)
     .map((implementation) => ({
       id: implementation.id,
       sectionType: implementation.sectionType,
       name: implementation.name,
       certification: implementation.certification,
+      pageRoles: implementation.pageRoles,
+      vocabularyRefs: implementation.vocabularyRefs,
+      radixPrimitives: implementation.radixPrimitives,
       runtimeDependencies: implementation.runtimeDependencies,
       componentStates: implementation.componentStates,
       visualSignature: implementation.visualSignature,
       compatibleExperiencePreferences: implementation.compatibleExperiencePreferences,
       artifactContract: implementation.artifactContract,
     })) as BuilderRegistryContext['implementations'];
-
   return {
     version: context.version,
     generationPolicy: context.generationPolicy,
@@ -135,6 +172,15 @@ export function boundRegistryContext(
     runtimeDependencies: context.runtimeDependencies,
     primitiveFamilies: context.primitiveFamilies,
     capabilityRequirements: context.capabilityRequirements,
+    artifacts: context.artifacts
+      .filter(artifact => allowed.has(artifact.sectionType))
+      .slice(0, MAX_ARTIFACTS),
+    catalogSurfaces: context.catalogSurfaces.slice(0, MAX_CATALOG_SURFACES),
+    motionPrimitives: context.motionPrimitives.slice(0, 20),
+    motionProfile: context.motionProfile,
+    interactionProfile: context.interactionProfile,
+    assets: context.assets?.slice(0, MAX_ASSETS),
+    portableRecipeIds: implementations.map(implementation => implementation.id),
     pageCompositions: context.pageCompositions?.slice(0, MAX_PAGE_COMPOSITIONS).map((composition) => ({
       role: composition.role,
       alternatives: composition.alternatives.slice(0, MAX_ALTERNATIVES_PER_PAGE).map((alternative) => ({
@@ -159,15 +205,17 @@ export function resolveBuilderRegistryContext(input: {
   businessId?: string | null;
   projectId?: string | null;
   sectionTypes?: readonly string[];
+  pageRole?: string | null;
 }): BuilderRegistryContext | null {
   try {
     const withArt = (ctx: BuilderRegistryContext): BuilderRegistryContext => {
       const art = readSnapshotArtDirection(input.vfsFiles);
-      if (!art) return ctx;
-      return { ...ctx, artDirectionPackId: art.storagePackId, artDirection: { familyId: art.familyId, packId: art.packId, storagePackId: art.storagePackId } };
+      const withImports = { ...ctx, validImportPaths: collectValidImportPaths(input.vfsFiles) };
+      if (!art) return withImports;
+      return { ...withImports, artDirectionPackId: art.storagePackId, artDirection: { familyId: art.familyId, packId: art.packId, storagePackId: art.storagePackId } };
     };
     const persisted = readPersistedRegistryContext(input.vfsFiles);
-    if (persisted) return withArt(boundRegistryContext(persisted, { sectionTypes: input.sectionTypes }));
+    if (persisted) return withArt(boundRegistryContext(persisted, { sectionTypes: input.sectionTypes, pageRole: input.pageRole ?? undefined }));
     if (!input.industry && !input.templateId && !input.themePresetId) return null;
     const rebuilt = buildWizardAggregatedRegistryContext({
       industry: input.industry || 'general',
@@ -177,7 +225,7 @@ export function resolveBuilderRegistryContext(input: {
       businessId: input.businessId ?? undefined,
       projectId: input.projectId ?? undefined,
     });
-    return withArt(boundRegistryContext(rebuilt, { sectionTypes: input.sectionTypes }));
+    return withArt(boundRegistryContext(rebuilt, { sectionTypes: input.sectionTypes, pageRole: input.pageRole ?? undefined }));
   } catch {
     return null;
   }

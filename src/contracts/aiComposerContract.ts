@@ -101,7 +101,7 @@ export const aiComposerRequestSchema = z.object({
   priorPages: z.array(z.object({ role: z.string().max(60), summary: z.string().max(2000) })).max(20).optional(),
   diagnostics: z.array(z.string().max(1000)).max(30).optional(),
   previousResponse: z.string().max(60000).optional(),
-  registryContext: z.string().max(30000).optional(),
+  registryContext: z.string().max(60000).optional(),
   runtimeContext: z.string().max(12000).optional(),
   evidence: z.object({
     protocolVersion: z.literal('1.0'),

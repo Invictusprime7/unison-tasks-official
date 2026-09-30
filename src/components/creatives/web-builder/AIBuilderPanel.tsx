@@ -1546,6 +1546,9 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
 
           // V4 M8: the in-Builder lane receives the SAME bounded canonical
           // registry projection the Wizard composer and Lane B already get.
+          const canonicalPageContext = isReactProject && vfsFiles
+            ? resolveCanonicalAuthoringPage(vfsFiles, resolvedTargetFile || defaultTargetFile)
+            : null;
           const builderRegistryContext = resolveBuilderRegistryContext({
             vfsFiles: vfsFiles ?? undefined,
             industry: systemType ?? null,
@@ -1553,6 +1556,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
             themePresetId: (wizardSeed as { themePresetId?: string } | null)?.themePresetId ?? null,
             businessId: businessId ?? null,
             projectId: projectId ?? null,
+            pageRole: canonicalPageContext?.role ?? null,
           });
 
           const useCanonicalComposer = shouldUseCanonicalComposer({
@@ -1563,7 +1567,15 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
             hasVfs: !!vfsFiles,
           });
           if (useCanonicalComposer) {
-            const page = resolveCanonicalAuthoringPage(vfsFiles!, resolvedTargetFile || defaultTargetFile);
+            const page = canonicalPageContext!;
+            const selectionContext = layoutOps?.selectionSelector
+              ? JSON.stringify({
+                  selector: layoutOps.selectionSelector,
+                  section: layoutOps.selectionSection ?? null,
+                  sourceFile: page.filePath,
+                  route: page.route,
+                })
+              : '';
             const assembled = await assembleCanonicalAuthoringRequest({
               task: 'builder_source_edit',
               page,
@@ -1580,7 +1592,14 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
               sourceTargets: [page.filePath],
               routes: [],
               registryContext: builderRegistryContext ?? undefined,
-              runtimeContext: [backendStateContext, behaviorContext, unisonContext]
+              runtimeContext: [
+                selectionContext ? `Selected rendered element: ${selectionContext}` : '',
+                previewSnapshot,
+                businessDataContext ? `Business data: ${businessDataContext}` : '',
+                backendStateContext,
+                behaviorContext,
+                unisonContext,
+              ]
                 .filter(Boolean).map((value) => typeof value === 'string' ? value : JSON.stringify(value)).join('\n').slice(0, 12000),
             });
             const composer = await runComposerRepairLoop({

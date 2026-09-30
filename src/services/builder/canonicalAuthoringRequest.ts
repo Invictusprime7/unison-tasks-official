@@ -4,6 +4,11 @@ import {
   selectDesignKnowledge,
 } from '@/services/knowledge/designKnowledge';
 import { selectSourceKnowledgeWithReport } from './sourceKnowledgeContext';
+import {
+  boundRegistryContext,
+  collectValidImportPaths,
+} from '@/services/builderRegistryContext';
+import type { WizardAggregatedRegistryContext } from '@/services/launch/wizardRegistryAggregation';
 
 export const CANONICAL_AUTHORING_OPERATIONS = [
   'create_source',
@@ -137,10 +142,30 @@ export async function assembleCanonicalAuthoringRequest(
   const knowledgeBudget = Math.min(5000, Math.max(0, 12000 - input.brief.length - 90));
   const knowledge = selectDesignKnowledge(input.knowledgeQuery, knowledgeBudget);
   const knowledgeManifest = await designKnowledgeManifest(knowledge);
-  const registryJson = input.registryContext === undefined
+  const rawRegistry = input.registryContext === undefined
     ? input.baseFiles['/.unison/wizard-registry-context.json']
-    : stableJson(input.registryContext);
-  const boundedRegistry = registryJson?.slice(0, 30000);
+    : input.registryContext;
+  let registryValue: unknown = rawRegistry;
+  if (typeof registryValue === 'string') {
+    try { registryValue = JSON.parse(registryValue); } catch { registryValue = undefined; }
+  }
+  if (registryValue && typeof registryValue === 'object'
+    && Array.isArray((registryValue as { sections?: unknown }).sections)
+    && 'generatedAt' in registryValue) {
+    registryValue = boundRegistryContext(registryValue as WizardAggregatedRegistryContext, {
+      pageRole: input.page.role,
+    });
+  }
+  if (registryValue && typeof registryValue === 'object') {
+    registryValue = {
+      ...(registryValue as Record<string, unknown>),
+      validImportPaths: collectValidImportPaths(input.baseFiles),
+    };
+  }
+  const boundedRegistry = registryValue === undefined ? undefined : stableJson(registryValue);
+  if (boundedRegistry && boundedRegistry.length > 60000) {
+    throw new Error('[CanonicalAuthoringRequest] bounded registry context exceeds 60000 characters.');
+  }
   const evidence: CanonicalAuthorshipEvidence = {
     protocolVersion: '1.0',
     baseRevisionId: input.baseRevisionId ?? null,

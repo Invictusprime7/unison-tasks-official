@@ -5,6 +5,7 @@ import {
   resolveCanonicalAuthoringPage,
   shouldUseCanonicalComposer,
 } from '@/services/builder/canonicalAuthoringRequest';
+import { buildWizardAggregatedRegistryContext } from '@/services/launch/wizardRegistryAggregation';
 
 const files = {
   '/src/pages/Home.tsx': "import Hero from '../project-components/Hero'; export default function Home(){return <Hero/>}",
@@ -85,5 +86,32 @@ describe('canonical AI authorship request assembly', () => {
     });
 
     expect(first.evidence.sourceContextHash).not.toBe(second.evidence.sourceContextHash);
+  });
+
+  it('serializes one complete bounded registry projection with valid project imports', async () => {
+    const assembled = await assembleCanonicalAuthoringRequest({
+      task: 'builder_source_edit',
+      page: { role: 'home', title: 'Home', route: '/', filePath: '/src/pages/Home.tsx' },
+      brief: 'Redesign the hero.',
+      knowledgeQuery: 'editorial hero',
+      baseFiles: files,
+      routes: [],
+      registryContext: buildWizardAggregatedRegistryContext({
+        industry: 'store',
+        templateId: 'store-premium',
+        themePresetId: 'commerce-editorial',
+      }),
+    });
+
+    const registry = JSON.parse(assembled.request.registryContext!) as Record<string, unknown>;
+    expect(assembled.request.registryContext!.length).toBeLessThanOrEqual(60000);
+    expect(registry).toMatchObject({
+      industry: 'store',
+      portableRecipeIds: expect.any(Array),
+      validImportPaths: expect.arrayContaining(['@/pages/Home', '@/project-components/Hero']),
+    });
+    expect(registry).toHaveProperty('artDirectionGrammar');
+    expect(registry).toHaveProperty('primitiveFamilies');
+    expect(registry).toHaveProperty('capabilityRequirements');
   });
 });

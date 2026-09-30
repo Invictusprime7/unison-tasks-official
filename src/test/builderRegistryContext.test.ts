@@ -30,7 +30,8 @@ describe('V4 M8 — both AI layers share one canonical registry projection', () 
     const serialized = JSON.stringify(bounded);
     expect(bounded.sections.length).toBeGreaterThan(0);
     expect(bounded.sections.every(section => section.allowedVariantIds.length <= 12)).toBe(true);
-    expect(bounded.implementations.length).toBeLessThanOrEqual(80);
+    expect(bounded.implementations.length).toBeLessThanOrEqual(18);
+    expect(serialized.length).toBeLessThanOrEqual(60000);
     expect(serialized).not.toContain('renderJSX');
     expect(serialized).not.toContain('supabase');
     expect(serialized).not.toMatch(/api[_-]?key/i);
@@ -45,10 +46,28 @@ describe('V4 M8 — both AI layers share one canonical registry projection', () 
     }
   });
 
+  it('exposes the Wizard design vocabulary needed for Builder authorship', () => {
+    const bounded = boundRegistryContext(canonical(), { pageRole: 'shop' });
+    expect(bounded.artDirectionGrammar).toBeTruthy();
+    expect(bounded.implementations.some(entry => entry.pageRoles.includes('shop'))).toBe(true);
+    expect(bounded.implementations.some(entry => entry.vocabularyRefs.length > 0)).toBe(true);
+    expect(bounded.portableRecipeIds).toEqual(bounded.implementations.map(entry => entry.id));
+    expect(bounded.primitiveFamilies?.length).toBeGreaterThan(0);
+    expect(bounded.motionPrimitives?.length).toBeGreaterThan(0);
+    expect(bounded.artifacts?.length).toBeGreaterThan(0);
+    expect(bounded.catalogSurfaces?.length).toBeGreaterThan(0);
+    expect(bounded.capabilityRequirements).toBeDefined();
+  });
+
   it('resolves from the draft VFS and matches the aggregated context', () => {
     const context = canonical();
     const fromVfs = resolveBuilderRegistryContext({
-      vfsFiles: { [WIZARD_REGISTRY_CONTEXT_PATH]: JSON.stringify(context) },
+      vfsFiles: {
+        [WIZARD_REGISTRY_CONTEXT_PATH]: JSON.stringify(context),
+        '/src/pages/Home.tsx': 'export default function Home(){return <main/>}',
+        '/src/project-components/Hero.tsx': 'export function Hero(){return <section/>}',
+      },
+      pageRole: 'home',
     });
     const rebuilt = resolveBuilderRegistryContext({
       industry: 'store',
@@ -57,6 +76,10 @@ describe('V4 M8 — both AI layers share one canonical registry projection', () 
     });
     expect(fromVfs?.sections.map(s => s.type)).toEqual(rebuilt?.sections.map(s => s.type));
     expect(fromVfs?.designRegistrySignature).toBe(rebuilt?.designRegistrySignature);
+    expect(fromVfs?.validImportPaths).toEqual(expect.arrayContaining([
+      '@/pages/Home',
+      '@/project-components/Hero',
+    ]));
   });
 
   it('never throws for a legacy draft without registry context', () => {
