@@ -18,6 +18,7 @@ import {
   validateAIFileEdits,
 } from '@/services/aiVFSOrchestrator';
 import { getDependenciesForSandpack } from '@/utils/dependencyExtractor';
+import { isSandpackAllowedImport } from '@/utils/sandpackDependencies';
 import type { TopologyChange } from '@/services/pageTopologyOrchestrator';
 import type { CanonicalAuthorshipEvidence } from './canonicalAuthoringRequest';
 
@@ -77,12 +78,34 @@ function fnv1a(text: string): string {
   return hash.toString(16).padStart(8, '0');
 }
 
+const SPECIFIER_PATTERN = /(\bfrom\s*|\bimport\s*\(?\s*)(['"])([^'"./][^'"]*)\2/g;
+
+/**
+ * Deterministically repair package names the model mis-spells with
+ * underscores (e.g. "react_router_dom" → "react-router-dom") when only the
+ * hyphenated form is an allowed preview package. Unknown names are left
+ * untouched so the runtime preflight still reports them.
+ */
+export function repairPackageSpecifierTypos(files: Record<string, string>): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [path, content] of Object.entries(files)) {
+    out[path] = /\.(t|j)sx?$/.test(path)
+      ? content.replace(SPECIFIER_PATTERN, (whole, lead: string, quote: string, spec: string) => {
+          if (!spec.includes('_') || isSandpackAllowedImport(spec)) return whole;
+          const fixed = spec.replace(/_/g, '-');
+          return isSandpackAllowedImport(fixed) ? `${lead}${quote}${fixed}${quote}` : whole;
+        })
+      : content;
+  }
+  return out;
+}
+
 /** Normalize AI output into a transactional change set (no side effects). */
 export function buildAICandidateChangeSet(input: BuildCandidateInput): CandidateBuildResult {
   const base = input.baseFiles;
   const canonical = canonicalizeAIFilePaths(input.aiFiles, base as Record<string, string>);
   const { appliable, skipped } = validateAIFileEdits(canonical, base as Record<string, string>);
-  const repaired = repairAiJsxTypos(appliable);
+  const repaired = repairPackageSpecifierTypos(repairAiJsxTypos(appliable));
 
   const fileOps: CandidateFileOp[] = [];
   for (const path of Object.keys(repaired).sort()) {
