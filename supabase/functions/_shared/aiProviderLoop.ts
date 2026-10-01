@@ -481,8 +481,8 @@ export async function runProviderLoop(opts: {
       } else {
         const errText = await resp.text().catch(() => '');
         recordProviderError(label, `${resp.status} ${errText.substring(0, 200)}`);
-        if (resp.status === 402 || (resp.status === 403 && /credit|limit|disabled/i.test(errText))) {
-          deferredEarlyError = { status: resp.status, error: gatewayErrorMessage(errText) };
+        if (resp.status === 402) {
+          deferredEarlyError = { status: 402, error: gatewayErrorMessage(errText) };
         }
       }
     } catch (err) {
