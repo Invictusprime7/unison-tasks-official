@@ -14,6 +14,9 @@ export interface AppBuilderOrchestratorDependencies {
   runComposer: (input: ComposerLoopInput) => Promise<ComposerLoopResult>;
 }
 
+const CLOSURE_REPAIR_RESERVE_MS = 75_000;
+const MIN_CLOSURE_REPAIR_MS = 20_000;
+
 export async function orchestrateAppBuild(
   input: AppBuildRequest,
   dependencies: AppBuilderOrchestratorDependencies,
@@ -25,6 +28,12 @@ export async function orchestrateAppBuild(
     filePath: page.filePath,
     role: page.role,
   }));
+  // Timing only (never a design input): page authoring must leave room for the
+  // site-wide closure repair inside the same stage budget, otherwise the repair
+  // starts after the budget is spent and the launch watchdog fires.
+  const startedAt = Date.now();
+  const totalBudgetMs = input.budgetMs ?? 280_000;
+  const authoringBudgetMs = Math.max(60_000, totalBudgetMs - CLOSURE_REPAIR_RESERVE_MS);
   const generation = buildAppBuilderGenerationContext(input.contract);
   const baseFiles = applyDesignSources(input.initialFiles, generation.materialization);
   const manifestSource = baseFiles['/.unison/design-source-manifest.json'];
@@ -37,7 +46,7 @@ export async function orchestrateAppBuild(
     files: { ...baseFiles },
     revisionId: input.baseRevisionId,
     signal: input.signal,
-    budgetMs: input.budgetMs,
+    budgetMs: authoringBudgetMs,
     maxPages: input.maxPages,
     concurrency: input.concurrency,
     preflight: input.preflight,
@@ -66,7 +75,8 @@ export async function orchestrateAppBuild(
   let closureRepairAttempts = 0;
 
   // One site-wide repair attempt sees the complete closure diagnostics and protected-path constraints.
-  if (!compatibilityMode && !closure.ok && !input.signal?.aborted) {
+  const closureTimeLeftMs = startedAt + totalBudgetMs - Date.now();
+  if (!compatibilityMode && !closure.ok && !input.signal?.aborted && closureTimeLeftMs >= MIN_CLOSURE_REPAIR_MS) {
     const home = pages.find((page) => page.pageId === input.contract.topology.sitePlan.homePageId) ?? pages[0];
     if (home) {
       const diagnostics = closure.issues
@@ -98,8 +108,9 @@ export async function orchestrateAppBuild(
         request: assembled.request,
         baseFiles: candidateFiles,
         baseRevisionId: input.baseRevisionId ?? undefined,
-        maxAttempts: 3,
+        maxAttempts: 2,
         signal: input.signal,
+        timeoutMs: closureTimeLeftMs,
         preflight: input.preflight,
         candidateOrigin: 'repair',
         candidateIntent: 'site-wide-closure',
