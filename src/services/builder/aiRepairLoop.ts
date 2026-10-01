@@ -107,7 +107,14 @@ export async function runComposerRepairLoop(input: ComposerLoopInput): Promise<C
       const reason = classifyError(error);
       // Only transient failures would be retryable; the client already retried
       // them. Everything here is terminal for this request (gateway semantics).
-      return { ok: false, reason, attempts: attempt, errors: [`AI request failed (${reason}).`], response: lastResponse, prepared: lastPrepared };
+      // Keep the server's own safe message (e.g. the gateway's credit-hold or
+      // top-up text) so the launch error names the real remedy.
+      const detail = String((error as { message?: string } | null)?.message ?? '').trim().slice(0, 300);
+      const message = detail && !/^AI generation failed \(\d+\)$/.test(detail)
+        ? `AI request failed (${reason}): ${detail}`
+        : `AI request failed (${reason}).`;
+      console.warn('[aiRepairLoop] provider request failed', { reason, status: (error as { context?: { status?: number } } | null)?.context?.status, detail });
+      return { ok: false, reason, attempts: attempt, errors: [message], response: lastResponse, prepared: lastPrepared };
     }
     const response = decodeComposerResponse(data);
     if (!response) {
