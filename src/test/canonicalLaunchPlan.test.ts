@@ -57,6 +57,14 @@ describe('canonical launch plan', () => {
     expect(compiled.siteBundleSnapshot.vfsFiles['/.unison/wizard-registry-context.json']).toBeTruthy();
   });
 
+  it('emits no fictional package imports or placeholder component barrels', () => {
+    const files = buildCanonicalLaunchPlan(selections).infrastructureFiles;
+    for (const [path, content] of Object.entries(files)) {
+      expect(content, path).not.toContain('@unison/');
+    }
+    expect(Object.keys(files).filter((path) => /^\/src\/components\/[^/]+\/index\.ts$/.test(path))).toEqual([]);
+  });
+
   it('keeps compilePlayground out of the plan-only implementation', () => {
     const planSource = readFileSync('src/services/launch/canonicalLaunchPlan.ts', 'utf8');
     const compatibilitySource = readFileSync('src/platform/core/canonicalPipeline.ts', 'utf8');

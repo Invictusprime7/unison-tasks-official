@@ -1,5 +1,6 @@
 /** Candidate-only, mutation-free site-wide closure checks for App Builder. */
 
+import { APP_BUILDER_GENERATION_PREFIXES } from '@/contracts/aiComposerContract';
 import {
   findLocalJsxImportContractViolations,
   findUnresolvedLocalImports,
@@ -36,12 +37,7 @@ function isProtected(path: string, protectedPaths: readonly string[]): boolean {
 
 /** Generation scope: App Builder can only write to these directories */
 function isAllowedGenerationPath(path: string): boolean {
-  const allowedPrefixes = [
-    '/src/pages/',           // Page implementations
-    '/src/project-components/', // Custom project components
-    '/src/components/generated/', // Generated component stubs (if needed)
-  ];
-  return allowedPrefixes.some((prefix) => path.startsWith(prefix));
+  return APP_BUILDER_GENERATION_PREFIXES.some((prefix) => path.startsWith(prefix));
 }
 
 export function validateAppBuildCandidate(input: {

@@ -41,6 +41,17 @@ describe('AI candidate gates', () => {
     expect(r.ok).toBe(false);
   });
 
+  it('keeps /package.json untouched when dependency resolution is disabled', async () => {
+    const pkg = JSON.stringify({ name: 'app', dependencies: { react: '^18.3.1' } }, null, 2);
+    const r = await prepareAICandidate({
+      aiFiles: { '/src/pages/Home.tsx': "import { motion } from 'framer-motion';\nexport default function Home(){return <motion.main><h1>Hi</h1></motion.main>}" },
+      baseFiles: { ...base, '/package.json': pkg },
+      resolveDependencies: false,
+      preflight: (c) => c,
+    });
+    expect(r.nextFiles['/package.json']).toBe(pkg);
+  }, 20000);
+
   it('allows role-fit visual variation but blocks true affinity contradictions', async () => {
     const language = {
       sourcePageId: 'home', variants: { navbar: 'navbar:floating-pill' }, tokens: ['--ut-type-display'], typography: ['ut-display'],

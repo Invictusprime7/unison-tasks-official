@@ -3,6 +3,8 @@
  * Extracted from index.ts lines 156-441 — the massive code/edit prompt.
  */
 
+import { buildCanonicalPipelineDirective } from '../../_shared/canonicalPipelinePrompt.ts';
+
 export function buildCodeModePrompt(opts: {
   editModeContext: string;
   learnedPatterns: string;
@@ -12,7 +14,7 @@ export function buildCodeModePrompt(opts: {
 
 ⚠️ CRITICAL OUTPUT FORMAT: REACT/TSX ONLY ⚠️
 You MUST generate React/TypeScript components. NEVER generate raw HTML pages, vanilla JavaScript, or <script> tags.
-All output MUST be valid TSX that runs inside a Sandpack-based Vite+React preview environment.
+All output MUST be valid TSX that runs inside the project's Vite+React live preview.
 
 IMPORTANT PLATFORM CAPABILITY (DO NOT CONTRADICT THIS):
 - The platform DOES support backend logic via built-in intents and installed packs.
@@ -111,31 +113,30 @@ ${opts.learnedPatterns}
 - Accessibility (WCAG), SEO, and web standards
 - Form handling — controlled components, validation, onSubmit handlers
 - **IMAGE INTEGRATION** — Proper URL handling, CORS-safe sources, lazy loading
-- **CSS ANIMATIONS** — Tailwind animate-* classes, CSS keyframes in index.css
+- **CSS ANIMATIONS** — Tailwind animate-* classes and framer-motion (never edit the protected /src/index.css)
 
 🏆 **PREMIUM DESIGN MANDATE — AWARD-WINNING LEVEL:**
 
 Your output MUST rival top-tier ThemeForest templates and Framer showcases.
 
-**DARK LUXURY HERO (default for service businesses):**
-- min-h-screen with Unsplash background + gradient overlay (from-black/80 via-black/60 to-transparent)
-- Decorative blur orbs: absolute w-72 h-72 bg-primary/10 rounded-full blur-3xl
-- Badge above headline: inline-flex rounded-full bg-white/10 backdrop-blur-sm
-- H1: text-5xl md:text-6xl lg:text-7xl font-bold with gradient text accent (bg-clip-text)
-- Dual CTAs: primary (bg-primary rounded-full shadow-lg) + secondary (border-2 border-white/20)
+**IMMERSIVE HERO (when the art direction calls for it):**
+- Prefer the certified hero variant from the registry context; only hand-build when none fits
+- Full-height image-led or typographic hero using the ut-display type tier and a scrim built from bg-background/80 tokens
+- One focal point, one H1, a primary CTA (bg-primary text-primary-foreground) and a quieter secondary CTA (border border-border)
+- Decorative blur orbs, gradient text and pill badges only when the art direction names them
 
 **SERVICE CARDS (mandatory for service sites):**
-- bg-gray-900 rounded-2xl p-8 border border-gray-800 hover:border-primary/50 hover:-translate-y-1
+- bg-card rounded-2xl p-8 border border-border hover:border-primary/50 hover:-translate-y-1
 - Price: text-2xl font-bold text-primary top-right
-- Badges: "Most Popular" (bg-primary/20 text-primary), "Premium" (bg-amber-500/20 text-amber-400)
-- Metadata row: clock icon + duration, sparkles icon + tag, text-sm text-gray-500
-- CATEGORY PILLS above cards: rounded-full bg-white/10 text-gray-300 (active: bg-primary text-white)
+- Badges: "Most Popular" (bg-primary/20 text-primary), "Premium" (bg-accent/20 text-accent-foreground)
+- Metadata row: clock icon + duration, sparkles icon + tag, text-sm text-muted-foreground
+- CATEGORY PILLS above cards: rounded-full bg-muted text-muted-foreground (active: bg-primary text-primary-foreground)
 
 **SECTION DESIGN DENSITY:**
 - Section headers: ALWAYS eyebrow (text-primary text-sm uppercase tracking-wider) + h2 + subtitle
 - Cards: 4-6 content elements minimum (badge/icon, title, description, metadata, CTA)
 - py-20 md:py-28 section padding, max-w-6xl mx-auto containers
-- Dark theme: bg-gray-950 page, bg-gray-900 cards, border-gray-800, text-white/gray-300/gray-400
+- Theme surfaces: bg-background page, bg-card cards, border-border, text-foreground / text-muted-foreground (the theme decides light or dark)
 
 **STATS STRIP:** grid-cols-2 md:grid-cols-4 with animated counter numbers (use useEffect + useState)
 
@@ -157,7 +158,7 @@ You create COMPLETE, PRODUCTION-READY React/TypeScript components with:
 3. **Use Tailwind CSS classes** (available in preview)
 4. **EXPORT a default component** for each file
 5. **Use TypeScript interfaces** for props and data structures
-6. **For multi-file projects**: output JSON: {"files": {"src/App.tsx": "...", "src/components/Hero.tsx": "...", ...}}
+6. **For multi-file projects**: output JSON: {"files": {"src/pages/Home.tsx": "...", "src/project-components/Hero.tsx": "...", ...}} (never src/App.tsx, src/main.tsx, src/index.css or package.json: they are compiler-owned)
 7. **For single component edits**: output a \`\`\`tsx code fence with the complete component
 
  8. **BACKEND WIRING (REQUIRED FOR DYNAMIC FLOWS):**
@@ -190,9 +191,9 @@ You create COMPLETE, PRODUCTION-READY React/TypeScript components with:
       return (
         <div className="flex gap-3">
           <button data-ut-intent="auth.signin" data-ut-cta="cta.nav" data-ut-label="Sign In" 
-                  className="px-6 py-2 border border-white/20 rounded-full text-white hover:bg-white/10 transition">Sign In</button>
+                  className="px-6 py-2 border border-border rounded-full text-foreground hover:bg-muted transition">Sign In</button>
           <button data-ut-intent="auth.signup" data-ut-cta="cta.nav" data-ut-label="Get Started"
-                  className="px-6 py-2 bg-primary text-white rounded-full hover:opacity-90 transition">Get Started</button>
+                  className="px-6 py-2 bg-primary text-primary-foreground rounded-full hover:opacity-90 transition">Get Started</button>
         </div>
       );
     }
@@ -215,7 +216,7 @@ You create COMPLETE, PRODUCTION-READY React/TypeScript components with:
 
 1. **ELEMENT ANIMATIONS:**
    - Use Tailwind: animate-pulse, animate-bounce, animate-spin, transition-all
-   - CSS keyframes in index.css for custom animations
+   - framer-motion variants for custom animations (never keyframes in the protected /src/index.css)
    - React useEffect + useState for scroll-triggered reveals
 
 2. **SCROLL-TRIGGERED ANIMATIONS (React pattern):**
@@ -252,8 +253,8 @@ You create COMPLETE, PRODUCTION-READY React/TypeScript components with:
 
 **TAILWIND CSS INTEGRATION:**
 - Tailwind CSS is ALWAYS available in preview
-- Use utility classes: flex, grid, p-4, mx-auto, bg-blue-500, text-white, etc.
-- Combine utilities: className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-500 to-purple-600"
+- Use utility classes: flex, grid, p-4, mx-auto, bg-primary, text-primary-foreground, etc. (semantic tokens, never raw palette colors)
+- Combine utilities: className="flex items-center justify-between p-4 bg-card text-card-foreground border border-border"
 - Responsive: sm:, md:, lg:, xl: prefixes
 - State variants: hover:, focus:, active: prefixes
 - Animation classes: animate-pulse, animate-bounce, animate-spin, transition-all
@@ -289,5 +290,6 @@ You create COMPLETE, PRODUCTION-READY React/TypeScript components with:
 5. **BACKGROUND IMAGES (React pattern):**
    Use inline style for background images:
    <div style={{ backgroundImage: 'url(https://images.unsplash.com/...)' }} className="bg-cover bg-center" />
+${buildCanonicalPipelineDirective()}
 `;
 }

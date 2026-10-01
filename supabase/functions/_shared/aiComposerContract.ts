@@ -30,14 +30,31 @@ export function isProtectedComposerPath(path: string): boolean {
 // components; canonical /src/components/** sections are read-only vocabulary.
 export const PROJECT_COMPONENTS_DIR = '/src/project-components/';
 
+// App Builder authorship (site_page_* tasks) may write only here; the candidate
+// validator enforces the same list. Builder edits remain freeform.
+export const APP_BUILDER_GENERATION_PREFIXES = [
+  '/src/pages/',
+  PROJECT_COMPONENTS_DIR,
+  '/src/components/generated/',
+] as const;
+
 export function composerScopeViolations(
-  _task: AIComposerTask,
+  task: AIComposerTask,
   _pageFilePath: string,
   ops: ReadonlyArray<{ type: string; path: string }>,
 ): string[] {
-  return ops
-    .filter((op) => isProtectedComposerPath(op.path))
-    .map((op) => `${op.path}: canonical runtime file`);
+  const violations: string[] = [];
+  for (const op of ops) {
+    if (isProtectedComposerPath(op.path)) {
+      violations.push(`${op.path}: canonical runtime file`);
+    } else if (
+      task !== 'builder_source_edit'
+      && !APP_BUILDER_GENERATION_PREFIXES.some((prefix) => op.path.startsWith(prefix))
+    ) {
+      violations.push(`${op.path}: outside the writable scope (${APP_BUILDER_GENERATION_PREFIXES.join(', ')}); put shared UI under ${PROJECT_COMPONENTS_DIR}`);
+    }
+  }
+  return violations;
 }
 export const AI_AUTHORED_MARKER = '// @unison-ai-authored';
 

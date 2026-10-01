@@ -793,14 +793,9 @@ export async function runLaunchPipeline(
     );
   }
 
-  // ── Stage: author ────────────────────────────────────────────────────────
-  // The Unison App Builder generates the complete application in the app-build
-  // stage BEFORE the initial commit. Revision 1 contains the final accepted
-  // application; no page-by-page rewriting occurs after commit. Post-launch
-  // AI editing uses the same App Builder via the Web Builder.
-  run.markStage('author', 'done');
-
   // ── Stage: handoff ────────────────────────────────────────────────────────
+  // The App Builder generated the complete application in app-build BEFORE the
+  // initial commit; revision 1 is final and no page rewrites occur after it.
   status("Opening the builder…");
   const handoff = await run.stage("handoff", async () => {
     const committed = commit.result;
@@ -833,7 +828,7 @@ export async function runLaunchPipeline(
       sitePlan,
       siteBundleSnapshot: committed.siteBundleSnapshot,
       materializedPlayground: committedPlayground,
-      compiledPlayground,
+      compiledPlayground: null,
       pipelineManifest: committed.runtimeManifest,
       wizardSelections: plan.selections,
       wizardSeed: contextualWizardSeedFile,

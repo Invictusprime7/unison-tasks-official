@@ -10,6 +10,9 @@ import {
 } from '@/services/builderRegistryContext';
 import type { WizardAggregatedRegistryContext } from '@/services/launch/wizardRegistryAggregation';
 
+/** Mirrors `aiComposerRequestSchema.brief.max` on the edge function. */
+const COMPOSER_BRIEF_LIMIT = 12000;
+
 export const CANONICAL_AUTHORING_OPERATIONS = [
   'create_source',
   'replace_source',
@@ -156,7 +159,7 @@ function renderComponentRecipes(registry: unknown, pageRole?: string): string {
         const variant = v as Record<string, unknown>;
         return {
           id: variant.id as string,
-          name: typeof variant.name === 'string' ? variant.name : variant.id,
+          name: typeof variant.name === 'string' ? variant.name : (variant.id as string),
           description: typeof variant.description === 'string' ? variant.description : undefined,
         };
       })
@@ -201,9 +204,6 @@ export async function assembleCanonicalAuthoringRequest(
     input.baseFiles,
     input.sourceTargets?.length ? input.sourceTargets : [input.page.filePath],
   );
-  const knowledgeBudget = Math.min(5000, Math.max(0, 12000 - input.brief.length - 90));
-  const knowledge = selectDesignKnowledge(input.knowledgeQuery, knowledgeBudget);
-  const knowledgeManifest = await designKnowledgeManifest(knowledge);
   const rawRegistry = input.registryContext === undefined
     ? input.baseFiles['/.unison/wizard-registry-context.json']
     : input.registryContext;
@@ -228,7 +228,15 @@ export async function assembleCanonicalAuthoringRequest(
   if (boundedRegistry && boundedRegistry.length > 60000) {
     throw new Error('[CanonicalAuthoringRequest] bounded registry context exceeds 60000 characters.');
   }
-  const componentRecipeBrief = registryValue ? renderComponentRecipes(registryValue, input.page.role) : '';
+  const componentRecipeBrief = registryValue
+    ? renderComponentRecipes(registryValue, input.page.role).slice(0, 2400)
+    : '';
+  const knowledgeBudget = Math.min(
+    5000,
+    Math.max(0, COMPOSER_BRIEF_LIMIT - input.brief.length - componentRecipeBrief.length - 120),
+  );
+  const knowledge = selectDesignKnowledge(input.knowledgeQuery, knowledgeBudget);
+  const knowledgeManifest = await designKnowledgeManifest(knowledge);
   const evidence: CanonicalAuthorshipEvidence = {
     protocolVersion: '1.0',
     baseRevisionId: input.baseRevisionId ?? null,
@@ -247,7 +255,7 @@ export async function assembleCanonicalAuthoringRequest(
     `${input.brief}`,
     componentRecipeBrief ? `\n${componentRecipeBrief}` : '',
     `\nCURATED DESIGN KNOWLEDGE (guidance; project source remains authoritative):\n${knowledge.text}`,
-  ].filter(Boolean).join('');
+  ].filter(Boolean).join('').slice(0, COMPOSER_BRIEF_LIMIT);
   let routes = input.routes;
   if (routes.length === 0) {
     try {
@@ -271,7 +279,7 @@ export async function assembleCanonicalAuthoringRequest(
       files: source.files,
       routes,
       priorPages: input.priorPages,
-      diagnostics: input.diagnostics,
+      diagnostics: input.diagnostics?.map((item) => item.slice(0, 1000)).slice(0, 30),
       previousResponse: input.previousResponse,
       registryContext: boundedRegistry,
       runtimeContext: input.runtimeContext?.slice(0, 12000),

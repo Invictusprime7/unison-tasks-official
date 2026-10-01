@@ -23,12 +23,12 @@ describe('launchRun', () => {
     expect(snap.fatal).toBeNull();
   });
 
-  it('never degrades the deterministic seed stage, even with a fallback', async () => {
+  it('never degrades an authorship stage, even with a fallback', async () => {
     const snapshots: ReturnType<typeof createLaunchRun>['snapshot'][] = [];
     const run = createLaunchRun({ onChange: (snapshot) => snapshots.push(() => snapshot) });
     let thrown: unknown;
     try {
-      await run.stage('seed', async () => {
+      await run.stage('contract', async () => {
         throw new Error('429 rate limited');
       }, { fallback: () => 'seed-files' });
     } catch (error) {
@@ -37,16 +37,16 @@ describe('launchRun', () => {
 
     const snap = run.snapshot();
     expect(isLaunchFatalError(thrown)).toBe(true);
-    expect(thrown).toMatchObject({ stage: 'seed', code: 'seed.failed' });
+    expect(thrown).toMatchObject({ stage: 'contract', code: 'contract.failed' });
     expect((thrown as { originalError: Error }).originalError.stack).toContain('launchRun.test.ts');
     expect(snap.degradations).toHaveLength(0);
-    expect(snap.stages.find((s) => s.name === 'seed')?.status).toBe('failed');
+    expect(snap.stages.find((s) => s.name === 'contract')?.status).toBe('failed');
     expect(snap.fatal).toMatch(/429 rate limited/);
-    expect(snapshots.map((read) => read().stages.find((s) => s.name === 'seed')?.status))
+    expect(snapshots.map((read) => read().stages.find((s) => s.name === 'contract')?.status))
       .toEqual(expect.arrayContaining(['active', 'failed']));
 
     const report = createLaunchFailureReport(thrown, snap);
-    expect(report).toMatchObject({ stage: 'seed', code: 'seed.failed', errorName: 'Error' });
+    expect(report).toMatchObject({ stage: 'contract', code: 'contract.failed', errorName: 'Error' });
     expect(report.stack).toContain('launchRun.test.ts');
   });
 

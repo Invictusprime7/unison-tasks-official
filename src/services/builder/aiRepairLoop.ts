@@ -57,6 +57,8 @@ export interface ComposerLoopInput {
   candidateOrigin?: 'builder' | 'wizard' | 'repair';
   candidateIntent?: string;
   initialRouteOps?: readonly TopologyChange[];
+  /** false keeps /package.json out of the candidate (App Builder owns dependencies via its contract). */
+  resolveDependencies?: boolean;
 }
 
 function classifyError(error: unknown): ComposerStopReason {
@@ -155,6 +157,7 @@ export async function runComposerRepairLoop(input: ComposerLoopInput): Promise<C
       } : undefined,
       preflight: input.preflight,
       affinity: input.affinity,
+      resolveDependencies: input.resolveDependencies,
     });
     lastPrepared = prepared;
     if (prepared.ok) {
@@ -167,7 +170,7 @@ export async function runComposerRepairLoop(input: ComposerLoopInput): Promise<C
     request = {
       ...request,
       task: request.task === 'builder_source_edit' ? 'builder_source_edit' : 'site_page_repair',
-      diagnostics: prepared.errors.slice(0, 30),
+      diagnostics: prepared.errors.slice(0, 30).map((item) => item.slice(0, 1000)),
       // Repair receives the complete accumulated candidate. A later response
       // may return only the failing file without discarding valid files from
       // earlier attempts.

@@ -3,6 +3,8 @@
  * Extracted from index.ts — no contract changes.
  */
 
+import { buildCanonicalPipelineDirective } from '../../_shared/canonicalPipelinePrompt.ts';
+
 // ── Template action context ──────────────────────────────────────────────────
 
 export function buildTemplateActionContext(templateAction?: string): string {
@@ -14,7 +16,7 @@ ${templateAction === 'add' ? `User wants to ADD new elements/sections/components
 - For React projects: create new component files or add JSX to existing components
 - Identify the best location for new content based on the site component map
 - Maintain existing design patterns, imports, and component structure
-- If adding a section to a page: import and render it in the parent component (App.tsx or relevant page)
+- If adding a section to a page: import and render it in the relevant /src/pages/ file (never /src/App.tsx, which is compiler-owned)
 - Output modified files in JSON format: {"files": {"/path": "content"}}` : ''}
 ${templateAction === 'remove' ? `User wants to REMOVE elements/sections/components from the project.
 - For React projects: remove the component usage from the parent, clean up unused imports
@@ -105,11 +107,11 @@ You have FULL AUTHORITY to make ANY UI/UX decisions to improve this template. Th
 **OUTPUT REQUIREMENTS:**
 1. Return COMPLETE, PRODUCTION-READY React/TSX components
 2. Use Tailwind CSS with design token classes (bg-primary, text-foreground, etc.)
-3. Use CSS-in-JS or index.css for custom animations (NOT <style> tags)
+3. Use Tailwind utilities or framer-motion for animation (NOT <style> tags; /src/index.css is protected)
 4. Use React hooks for interactivity (NOT <script> tags)
 5. Ensure responsive design (mobile-first with sm:, md:, lg: breakpoints)
 6. Wire ALL conversion elements with data-ut-intent
-7. For multi-file: output JSON {"files": {"src/App.tsx": "...", ...}}. For single file: use \`\`\`tsx code fence.
+7. For multi-file: output JSON {"files": {"src/pages/Home.tsx": "...", "src/project-components/Feature.tsx": "...", ...}} (never src/App.tsx, src/main.tsx, src/index.css or package.json). For single file: use \`\`\`tsx code fence.
 
 📦 **STRUCTURED OUTPUT FORMATS (ADVANCED):**
 For targeted modifications, use these formats:
@@ -141,11 +143,11 @@ You are applying a visual aesthetic preset. This changes ONLY colors, typography
 - Font families (e.g., font-sans → font-serif, add Google Fonts via class)
 - Font sizes (text-sm, text-lg, text-xl, etc.)
 - Font weights (font-normal, font-medium, font-bold, font-extrabold)
-- Text colors (text-gray-900 → text-slate-800, text-cyan-400, etc.)
-- Background colors (bg-white → bg-slate-900, bg-gradient-to-r, etc.)
+- Text colors, expressed ONLY as semantic tokens (text-foreground, text-muted-foreground, text-primary, text-accent); never raw palette classes or hex values
+- Background colors, expressed ONLY as semantic tokens (bg-background, bg-card, bg-muted, bg-primary); never raw palette classes or hex values
 - Border colors, radius, and styles
-- Accent/primary colors for buttons, links, and highlights
-- Gradient colors and directions
+- Accent/primary emphasis through token classes (bg-primary, text-primary, ring-ring) rather than new colors
+- Gradient direction only when the preset's art direction names a gradient
 - Shadow effects
 - Text decoration, letter spacing, uppercase/lowercase styling
 - Hover/focus color states
@@ -298,6 +300,7 @@ When user asks to reposition elements, ONLY add/modify classes on the targeted e
 - "max width" → max-w-4xl mx-auto, max-w-6xl mx-auto
 - "container" → container mx-auto px-4
 
+${buildCanonicalPipelineDirective()}
 `;
 }
 
@@ -350,6 +353,11 @@ When the user asks to "wire", "connect", "integrate", "hook up", "link to backen
 - You MUST NOT rearrange, rewrite, or "improve" any HTML/JSX structure or element order.
 - The ONLY acceptable changes are functional: adding event listeners, fetch calls, form handlers, hooks, state.
 - Copy the entire file as-is and ONLY inject the minimal code needed for the backend wiring.
+CANONICAL LIMITS (apply even to a surgical edit):
+- Never output /src/App.tsx, /src/main.tsx, /src/index.css or /package.json; if the request needs routing changes, say so instead of editing the router.
+- Do not add imports that do not resolve to a file in the project; do not add dependencies.
+- A color change uses semantic tokens (bg-primary, text-foreground), never raw palette classes or hex values.
+- Keep the page's single navbar/footer, data-ut-variant markers and data-ut-intent attributes untouched unless the request names them.
 🔒🔒🔒 END SURGICAL EDIT OVERRIDE 🔒🔒🔒
 ${vfsFilesContext}
 `;

@@ -13,7 +13,7 @@ describe('Wizard composition failure diagnostics', () => {
   });
   it('preserves the endpoint failure code in the saved launch report', () => {
     const details = describeCompositionFailure({ context: { status: 404 } });
-    const report = createLaunchFailureReport(new LaunchFatalError(details.message, { stage: 'seed', code: 'composition.endpoint-unavailable' }), null);
+    const report = createLaunchFailureReport(new LaunchFatalError(details.message, { stage: 'contract', code: 'composition.endpoint-unavailable' }), null);
     expect(report.code).toBe('composition.endpoint-unavailable');
     expect(report.message).toContain('not deployed');
   });

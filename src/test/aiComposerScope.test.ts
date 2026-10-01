@@ -10,9 +10,22 @@ describe('AI Composer canonical compatibility scope', () => {
       { type: 'create', path: '/src/project-components/site/SiteNav.tsx' },
     ])).toEqual([]);
   });
-  it('allows freeform authored source across pages and shared components', () => {
-    expect(composerScopeViolations('site_page_author', page, [
+  it('confines App Builder page tasks to the shared generation scope', () => {
+    const violations = composerScopeViolations('site_page_author', page, [
       { type: 'replace', path: page },
+      { type: 'create', path: '/src/components/Navbar.tsx' },
+      { type: 'create', path: '/src/hooks/useNavigation.ts' },
+      { type: 'create', path: '/src/components/generated/Stub.tsx' },
+    ]);
+    expect(violations).toHaveLength(2);
+    expect(violations.join()).toContain('/src/components/Navbar.tsx');
+    expect(violations.join()).toContain('/src/hooks/useNavigation.ts');
+    expect(composerScopeViolations('site_page_repair', page, [
+      { type: 'delete', path: '/src/components/ui/button.tsx' },
+    ])).toHaveLength(1);
+  });
+  it('keeps Builder source edits freeform outside protected files', () => {
+    expect(composerScopeViolations('builder_source_edit', page, [
       { type: 'create', path: '/src/components/Navbar.tsx' },
       { type: 'create', path: '/src/hooks/useNavigation.ts' },
     ])).toEqual([]);

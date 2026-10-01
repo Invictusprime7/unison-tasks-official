@@ -41,6 +41,7 @@ export async function orchestrateAppBuild(
     })),
     compositionPlan: input.contract.design.compositionPlan,
     registryContext: input.contract.design.registryContext,
+    resolveDependencies: false,
   });
 
   const compatibilityMode = Boolean(input.acceptPage);
@@ -91,6 +92,7 @@ export async function orchestrateAppBuild(
         preflight: input.preflight,
         candidateOrigin: 'repair',
         candidateIntent: 'site-wide-closure',
+        resolveDependencies: false,
       });
       closureRepairAttempts = repaired.attempts;
       if (repaired.ok && repaired.prepared) {

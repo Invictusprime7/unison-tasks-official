@@ -105,8 +105,21 @@ function normalizeLinkPath(raw: string | undefined | null): string {
   return trimmed || '/';
 }
 
-function countMatches(source: string, patterns: RegExp[]): number {
-  return patterns.reduce((total, pattern) => total + (source.match(pattern)?.length ?? 0), 0);
+const SECTIONING_TAGS = new Set(['main', 'section', 'article', 'aside']);
+
+/** Count page-level chrome landmarks; <header>/<footer> nested in sectioning content are not site chrome. */
+function countChromeLandmarks(source: string, tag: 'header' | 'footer', extra?: RegExp): number {
+  let depth = 0;
+  let count = extra ? (source.match(extra)?.length ?? 0) : 0;
+  for (const match of source.matchAll(/<(\/?)(main|section|article|aside|header|footer)\b[^>]*?(\/?)>/g)) {
+    const [, closing, name, selfClosing] = match;
+    if (SECTIONING_TAGS.has(name)) {
+      if (!selfClosing) depth = Math.max(0, depth + (closing ? -1 : 1));
+    } else if (name === tag && !closing && depth === 0) {
+      count += 1;
+    }
+  }
+  return count;
 }
 
 /**
@@ -155,7 +168,7 @@ export function assertSiteShellClosure(
       });
     }
 
-    const navbarCount = countMatches(source, [/<header\b/g, /<FloatingNavbar\b/g]);
+    const navbarCount = countChromeLandmarks(source, 'header', /<FloatingNavbar\b/g);
     if (navbarCount > 1) {
       violations.push({
         code: 'duplicate-primary-navbar',
@@ -163,7 +176,7 @@ export function assertSiteShellClosure(
         pageId: route?.pageId,
       });
     }
-    const footerCount = countMatches(source, [/<footer\b/g]);
+    const footerCount = countChromeLandmarks(source, 'footer');
     if (footerCount > 1) {
       violations.push({
         code: 'duplicate-footer',

@@ -161,6 +161,7 @@ export async function prepareAICandidate(input: {
   routeOps?: readonly import('@/services/pageTopologyOrchestrator').TopologyChange[];
   evidence?: import('./canonicalAuthoringRequest').CanonicalAuthorshipEvidence;
   attempt?: number;
+  resolveDependencies?: boolean;
   preflight?: (changed: Record<string, string>) => Record<string, string>;
   affinity?: {
     language?: HomepageVisualLanguage;
@@ -178,6 +179,7 @@ export async function prepareAICandidate(input: {
     routeOps: input.routeOps,
     evidence: input.evidence,
     attempt: input.attempt,
+    resolveDependencies: input.resolveDependencies,
   });
   if (input.preflight && build.changeSet.fileOps.length) {
     const changed = Object.fromEntries(
@@ -196,6 +198,7 @@ export async function prepareAICandidate(input: {
       routeOps: input.routeOps,
       evidence: input.evidence,
       attempt: input.attempt,
+      resolveDependencies: input.resolveDependencies,
     });
   }
   const gates = await runCandidateGates(build, input.affinity);

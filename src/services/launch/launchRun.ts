@@ -2,7 +2,7 @@
  * Launch Run — the single state machine that owns the Wizard → Web Builder
  * journey.
  *
- *   selections → plan → seed → finalize → preflight → commit → handoff
+ *   selections → plan → contract → app-build → preflight → commit → handoff
  *
  * Two hard rules:
  *
@@ -19,11 +19,11 @@ import { startLaunchTelemetry, type LaunchTelemetryEvent } from '@/services/laun
 
 export type LaunchStageName =
   | 'plan'
-  | 'seed'
+  | 'contract'
+  | 'app-build'
   | 'enrich'
   | 'preflight'
   | 'commit'
-  | 'author'
   | 'handoff';
 
 export type LaunchStageStatus = 'pending' | 'active' | 'done' | 'degraded' | 'failed';
@@ -56,21 +56,21 @@ export interface LaunchRunSnapshot {
 
 export const LAUNCH_STAGE_LABELS: Record<LaunchStageName, string> = {
   plan: 'Designing your site layout',
-  seed: 'Styling your brand & colors',
-  enrich: 'AI crafting bespoke content',
+  contract: 'Planning your application',
+  'app-build': 'AI designing your pages',
+  enrich: 'Finalizing your design',
   preflight: 'Polishing interactive details',
   commit: 'Building your live workspace',
-  author: 'AI designing your pages',
   handoff: 'Opening your visual studio',
 };
 
 const DEFAULT_STAGE_TIMEOUTS: Record<LaunchStageName, number> = {
   plan: 30_000,
-  seed: 60_000,
+  contract: 30_000,
+  'app-build': 300_000,
   enrich: 240_000,
   preflight: 120_000,
   commit: 60_000,
-  author: 300_000,
   handoff: 20_000,
 };
 
@@ -208,7 +208,8 @@ export interface LaunchRun {
  * can never be degraded away: degradation must not substitute content.
  */
 const AUTHORSHIP_STAGES: ReadonlySet<LaunchStageName> = new Set<LaunchStageName>([
-  'seed',
+  'contract',
+  'app-build',
   'preflight',
 ]);
 
@@ -217,7 +218,7 @@ const AUTHORSHIP_STAGES: ReadonlySet<LaunchStageName> = new Set<LaunchStageName>
  * health is measured on this vocabulary, never on ad-hoc console output.
  */
 const STAGE_TELEMETRY_EVENT: Partial<Record<LaunchStageName, LaunchTelemetryEvent>> = {
-  seed: 'wizard.lane_a.compiled',
+  contract: 'wizard.lane_a.compiled',
   preflight: 'wizard.preflight.accepted',
   commit: 'wizard.revision.committed',
   handoff: 'wizard.web_builder.ready',
@@ -226,7 +227,7 @@ const STAGE_TELEMETRY_EVENT: Partial<Record<LaunchStageName, LaunchTelemetryEven
 export function createLaunchRun(options: LaunchRunOptions = {}): LaunchRun {
   const controller = new AbortController();
   const telemetry = startLaunchTelemetry();
-  const stageOrder: LaunchStageName[] = ['plan', 'seed', 'enrich', 'preflight', 'commit', 'author', 'handoff'];
+  const stageOrder: LaunchStageName[] = ['plan', 'contract', 'app-build', 'enrich', 'preflight', 'commit', 'handoff'];
   const stages: LaunchStageState[] = stageOrder.map((name) => ({
     name,
     status: 'pending',

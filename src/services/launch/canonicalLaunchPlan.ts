@@ -233,47 +233,6 @@ export function buildCanonicalLaunchPlan(
   });
   infrastructureFiles['/src/index.css'] = resolved.themedCss;
 
-  // Generate comprehensive component exports for App Builder.
-  // Includes registered section variants, motion primitives, UI foundation.
-  const componentStubFiles: Record<string, string> = {
-    // Registered section variant components (from src/sections/variants/)
-    '/src/components/hero/index.ts': `export { HeroImageStream } from '@unison/sections/hero';\nexport { HeroUnderline } from '@unison/sections/hero';\nexport { HeroVariableType } from '@unison/sections/hero';\nexport { HeroImageFan } from '@unison/sections/hero';\n`,
-    '/src/components/services/index.ts': `export { ServicesBentoSpotlight } from '@unison/sections/services';\n`,
-    '/src/components/gallery/index.ts': `export { GalleryCinematicGrid } from '@unison/sections/gallery';\n`,
-    '/src/components/testimonials/index.ts': `export { TestimonialsColumns } from '@unison/sections/testimonials';\nexport { TestimonialsVoice } from '@unison/sections/testimonials';\nexport { TestimonialsVerticalMarquee } from '@unison/sections/testimonials';\nexport { TestimonialsEditorial } from '@unison/sections/testimonials';\n`,
-    '/src/components/cta/index.ts': `export { CTAGradientBanner } from '@unison/sections/cta';\nexport { CTAEditorial } from '@unison/sections/cta';\n`,
-    '/src/components/features/index.ts': `export { FeaturesBentoMosaic } from '@unison/sections/features';\nexport { FeaturesIntegrations } from '@unison/sections/features';\n`,
-    '/src/components/contact/index.ts': `export { ContactCompactCard } from '@unison/sections/contact';\n`,
-    '/src/components/footer/index.ts': `export { FooterMultiColumn } from '@unison/sections/footer';\nexport { FooterDarkBand } from '@unison/sections/footer';\n`,
-    '/src/components/faq/index.ts': `export { FAQCards } from '@unison/sections/faq';\nexport { FAQTwoColumn } from '@unison/sections/faq';\nexport { FAQAccordion } from '@unison/sections/faq';\nexport { FaqSearchable } from '@unison/sections/faq';\n`,
-    '/src/components/about/index.ts': `export { AboutStoryPanel } from '@unison/sections/about';\nexport { AboutStatement } from '@unison/sections/about';\nexport { AboutEditorialSplit } from '@unison/sections/about';\n`,
-
-    // Core re-exports
-    '/src/components/index.ts': `export * from './hero';\nexport * from './services';\nexport * from './gallery';\nexport * from './testimonials';\nexport * from './cta';\nexport * from './features';\nexport * from './contact';\nexport * from './footer';\nexport * from './faq';\nexport * from './about';\nexport * from './motion';\nexport * from './background';\nexport * from '../project-components';\n`,
-
-    // Motion primitives (from generatedUiFoundation.ts)
-    '/src/components/motion/index.ts': `export const Reveal = null;\nexport const RevealGroup = null;\nexport const Stagger = null;\nexport const StaggerGroup = null;\nexport const StaggerItem = null;\nexport const MarqueeBand = null;\nexport const HorizontalRail = null;\nexport const HoverDepth = null;\nexport const ImageReveal = null;\nexport const ParallaxMedia = null;\nexport const MaskReveal = null;\nexport const MotionImage = null;\n`,
-
-    // Background primitives
-    '/src/components/background/index.ts': `export const OrbitalBackdrop = null;\nexport const GlowField = null;\nexport const AnimatedGrid = null;\nexport const NoiseField = null;\nexport const GradientOrbs = null;\nexport const MediaCanvas = null;\n`,
-
-    // Project-local component structure
-    '/src/project-components/index.ts': `export * from './site';\nexport * from './layout';\nexport * from './sections';\n`,
-    '/src/project-components/site/index.ts': `export const SiteNav = null;\nexport const SiteFooter = null;\nexport const SiteHeader = null;\nexport const SiteSidebar = null;\n`,
-    '/src/project-components/layout/index.ts': `export const PageLayout = null;\nexport const ContainerLayout = null;\nexport const GridLayout = null;\nexport const FlexLayout = null;\n`,
-    '/src/project-components/sections/index.ts': `export const SectionWrapper = null;\nexport const SectionContent = null;\n`,
-
-    // Ensure package.json is protected
-    '/package.json': JSON.stringify({
-      "name": "unison-generated-site",
-      "version": "1.0.0",
-      "type": "module",
-      "scripts": { "dev": "vite", "build": "vite build", "preview": "vite preview" },
-      "dependencies": { "react": "^18.3.0", "react-dom": "^18.3.0", "@radix-ui/react-alert-dialog": "^1.0.0" },
-      "devDependencies": { "vite": "^5.0.0", "typescript": "^5.3.0" }
-    }, null, 2),
-  };
-
   const pageBodies = Object.keys(infrastructureFiles).filter((path) => /^\/src\/pages\//.test(path));
   if (pageBodies.length) {
     throw new Error(`[canonicalLaunchPlan] Plan-only projection emitted page bodies: ${pageBodies.join(', ')}`);
@@ -281,7 +240,7 @@ export function buildCanonicalLaunchPlan(
   return {
     version: CANONICAL_LAUNCH_PLAN_VERSION,
     ...resolved,
-    infrastructureFiles: { ...componentStubFiles, ...infrastructureFiles },
+    infrastructureFiles,
   };
 }
 

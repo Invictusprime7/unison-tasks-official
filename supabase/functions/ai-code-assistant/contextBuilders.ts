@@ -175,6 +175,11 @@ export function buildRegistryContextBlock(registryContext: unknown): string {
     }>;
     capabilityRequirements?: Array<{ id?: string; providedIntents?: string[] }>;
     runtimeDependencies?: Record<string, string>;
+    validImportPaths?: string[];
+    portableRecipeIds?: string[];
+    motionPrimitives?: string[];
+    motionProfile?: string;
+    interactionProfile?: string;
   };
   const sections = (ctx.sections ?? [])
     .filter((section) => (section.allowedVariantIds?.length ?? 0) > 0)
@@ -194,6 +199,11 @@ export function buildRegistryContextBlock(registryContext: unknown): string {
     .map((capability) => `${capability.id}${capability.providedIntents?.length ? ` (${capability.providedIntents.join(', ')})` : ''}`)
     .join('; ');
   const deps = Object.keys(ctx.runtimeDependencies ?? {}).join(', ');
+  const strings = (value: unknown, max: number): string[] =>
+    Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === 'string').slice(0, max) : [];
+  const importPaths = strings(ctx.validImportPaths, 100).join('\n');
+  const recipes = strings(ctx.portableRecipeIds, 60).join(', ');
+  const motion = strings(ctx.motionPrimitives, 20).join(', ');
 
   return `\n\n## CANONICAL REGISTRY CONTEXT (authoritative)
 Industry: ${ctx.industry ?? 'unknown'} | Template: ${ctx.templateId ?? 'unknown'} | Theme: ${ctx.themePresetId ?? 'unknown'}${ctx.artDirectionPackId ? ` | Art direction: ${ctx.artDirectionPackId}` : ''}${ctx.generationPolicy ? ` | Policy: ${ctx.generationPolicy}` : ''}
@@ -202,12 +212,18 @@ ${states ? `\nComponent-state contracts to honour:\n${states}` : ''}
 ${signatures ? `\nCertified visual signatures and compatibility:\n${signatures}` : ''}
 ${capabilities ? `\nCapability requirements: ${capabilities}` : ''}
 ${deps ? `\nAllowed runtime dependencies: ${deps}` : ''}
+${recipes ? `\nPortable recipes / certified implementations you may compose from: ${recipes}` : ''}
+${motion || ctx.motionProfile || ctx.interactionProfile ? `\nMotion & interaction: primitives ${motion || 'none'}; motion profile ${ctx.motionProfile ?? 'unspecified'}; interaction profile ${ctx.interactionProfile ?? 'unspecified'}` : ''}
+${importPaths ? `\nVALID IMPORT PATHS (verified to exist in the project; import only from these, FILES, or files you create):\n${importPaths}` : ''}
 
 RULES:
 - Only reference variant IDs listed above; never invent a design ID.
 - Preserve the declared component states (hover/focus/expanded/loading/reduced-motion) when rewriting a section.
 - Preserve certified visual signatures and never replace a certified implementation with generic section architecture.
 - Do not add runtime dependencies outside the allowed list.
+- Mark a section built from a certified variant with data-ut-variant="section:variant" using the exact ID above.
+- Certified implementations promoted from 21st.dev sources are consumed only through this registry; never import or fetch 21st.dev code at runtime.
+- Compose from the listed recipes and variants before hand-rolling a section; import only from VALID IMPORT PATHS.
 `;
 }
 

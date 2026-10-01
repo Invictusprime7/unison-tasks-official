@@ -85,6 +85,8 @@ export interface SiteAuthoringInput {
   compositionPlan?: SiteCompositionPlan;
   /** Registry context for component availability (sections, variants). */
   registryContext?: unknown;
+  /** false keeps /package.json untouched in authored candidates. */
+  resolveDependencies?: boolean;
 }
 
 export interface SiteAuthoringResult {
@@ -214,6 +216,7 @@ export async function authorSitePages(input: SiteAuthoringInput): Promise<SiteAu
       },
       candidateOrigin: 'wizard',
       candidateIntent: `author:${page.role}`,
+      resolveDependencies: input.resolveDependencies,
     });
     let loop = await runLoop(await buildRequest(null));
     // Redundancy check: one targeted recomposition when this page repeats another page's topology.

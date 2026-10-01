@@ -7,6 +7,8 @@
  * preambles for consistent first-build generation and subsequent edits.
  */
 
+import { buildCanonicalPipelineDirective } from '../../_shared/canonicalPipelinePrompt.ts';
+
 /**
  * Shared React / TypeScript / Radix / shadcn knowledge block.
  * Injected into every builder-lane prompt so the AI produces
@@ -57,9 +59,9 @@ use the project's existing shadcn components from \`@/components/ui/\`:
 - Slider → \`import { Slider } from "@/components/ui/slider"\`
 - Progress → \`import { Progress } from "@/components/ui/progress"\`
 - Avatar → \`import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"\`
-- Toast → use \`import { toast } from "sonner"\` — call \`toast("Message")\` or \`toast.success()\` / \`toast.error()\`
+- Toast → when sonner is already a project dependency, use \`import { toast } from "sonner"\` — call \`toast("Message")\` or \`toast.success()\` / \`toast.error()\`
 
-CRITICAL: ALWAYS prefer these existing \`@/components/ui/*\` primitives over hand-rolling custom UI.
+CRITICAL: Prefer these existing \`@/components/ui/*\` primitives over hand-rolling custom UI, but ONLY import a primitive that is present in FILES or in the VALID IMPORT PATHS list; an import of a file that does not exist is rejected.
 If a shadcn component exists for the pattern, USE IT. Never create a raw \`<div role="dialog">\` when Dialog exists.
 Never create a custom dropdown with \`position: absolute\` when DropdownMenu exists.
 
@@ -75,6 +77,7 @@ Never create a custom dropdown with \`position: absolute\` when DropdownMenu exi
 - Stagger children: use \`transition={{ delay: index * 0.1 }}\`
 
 **Form handling (when adding forms):**
+- Only if react-hook-form, zod and @hookform/resolvers already appear in the project; otherwise use controlled inputs with useState (never add dependencies).
 - Use react-hook-form: \`import { useForm } from "react-hook-form"\`
 - With zod: \`import { zodResolver } from "@hookform/resolvers/zod"\`
 - Pattern: \`const form = useForm<FormData>({ resolver: zodResolver(schema), defaultValues: {} })\`
@@ -111,7 +114,7 @@ const ELITE_DESIGN_KNOWLEDGE = `
 - Full-bleed sections (w-full bg) with contained content (max-w-7xl mx-auto) create visual breathing room
 - Card grids: 3-col desktop, 2-col tablet, 1-col mobile is the universal safe pattern
 - Sticky elements: only navbar and critical CTAs — never sticky sidebars on content pages
-- Bento grids: use varied card sizes (col-span-2 mixed with col-span-1) for visual interest
+- Bento grids: use varied card sizes (col-span-2 mixed with col-span-1) only when the page's composition calls for it; do not repeat the same grid on every page
 
 **TYPOGRAPHY MASTERY:**
 - Font pairing: one display/heading font + one body font — never more than 2 families
@@ -126,9 +129,9 @@ const ELITE_DESIGN_KNOWLEDGE = `
 - 60-30-10 rule: 60% neutral/background, 30% secondary, 10% accent/primary
 - Contrast ratios: WCAG AA minimum — 4.5:1 for body text, 3:1 for large text and UI elements
 - Semantic colors: success=green, error=red, warning=amber, info=blue — never deviate
-- Dark mode: don't just invert — use elevated surfaces (gray-800 → gray-750 → gray-700) for depth
-- Gradients: subtle 2-color gradients (15-30° hue shift) feel modern; rainbow gradients feel dated
-- Opacity layers: use bg-black/50 or bg-white/80 for overlays, never solid backgrounds on modals
+- Dark mode: don't just invert — layer elevated surfaces with semantic tokens (bg-background → bg-card → bg-muted) for depth
+- Gradients: avoid by default; use a subtle 2-color token gradient (from-primary/10 to-accent/10) only when the art direction names one
+- Opacity layers: use token opacity (bg-background/80, bg-foreground/50) for overlays, never raw black/white and never solid backgrounds on modals
 - Hover states: darken by 10-15% or shift hue slightly — never change color family on hover
 
 **SPACING & RHYTHM:**
@@ -313,6 +316,7 @@ EXAMPLES OF BEHAVIORAL EDITS:
   return opts.basePrompt
     + REACT_PRIMITIVES_KNOWLEDGE
     + ELITE_DESIGN_KNOWLEDGE
+    + buildCanonicalPipelineDirective()
     + conversationalBlock
     + editPreamble
     + behavioralBlock
@@ -365,6 +369,7 @@ CRITICAL RULES:
   return opts.basePrompt
     + REACT_PRIMITIVES_KNOWLEDGE
     + ELITE_DESIGN_KNOWLEDGE
+    + buildCanonicalPipelineDirective()
     + conversationalBlock
     + debugPreamble
     + opts.memoryBlock
@@ -414,6 +419,7 @@ You are helping the user build and improve their web application.
   return opts.basePrompt
     + REACT_PRIMITIVES_KNOWLEDGE
     + ELITE_DESIGN_KNOWLEDGE
+    + buildCanonicalPipelineDirective()
     + conversationalBlock
     + generalPreamble
     + opts.memoryBlock

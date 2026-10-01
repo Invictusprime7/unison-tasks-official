@@ -17,10 +17,10 @@ import type {
 
 const STAGE_HINT: Record<string, string> = {
   plan: "Planning pages",
-  seed: "Setting the visual system",
-  enrich: "Composing content",
+  contract: "Planning the application",
+  "app-build": "Designing each page",
+  enrich: "Finalizing the design",
   preflight: "Checking every page",
-  author: "Designing each page",
   commit: "Saving your project",
   handoff: "Opening the builder",
 };

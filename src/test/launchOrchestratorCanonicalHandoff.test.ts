@@ -19,7 +19,7 @@ describe('launch orchestrator canonical handoff', () => {
     expect(source).toContain('entryPoint: committed.runtimeManifest.entryPoint');
 
     const handoffSource = source.slice(source.indexOf('const committed = commit.result;'));
-    expect(handoffSource).toContain('compiledPlayground,');
+    expect(handoffSource).toContain('compiledPlayground: null,');
     expect(handoffSource).toContain('committed.playground ?? materializedPlayground');
   });
 
@@ -49,8 +49,8 @@ describe('launch orchestrator canonical handoff', () => {
     expect(source).not.toContain('industryOverlay: plan.generationCategory');
   });
 
-  it('builds post-Stage4b business and intent runtime contracts before sealing', () => {
-    const stage4bResult = position('} = stage4b.pipelineResult;');
+  it('builds post-App Builder business and intent runtime contracts before sealing', () => {
+    const stage4bResult = position('const appBuild = await run.stage("app-build"');
     const profileLoad = position('await loadBusinessProfile(input.existingBusinessId)');
     const dataBindings = position('planSectionDataBindings(siteBundleSnapshot)');
     const businessRuntime = position('buildBusinessRuntimeContract({');
@@ -76,44 +76,46 @@ describe('launch orchestrator canonical handoff', () => {
   });
 
   it('derives the versioned App Builder contract from canonical launch objects before preflight', () => {
-    const stage4bResult = position('} = stage4b.pipelineResult;');
+    const contractStage = position('await run.stage("contract"');
     const appBuilderContract = position('const appBuildContract = buildAppBuildContract({');
+    const appBuilderRun = position('unisonAppBuilder.generate({');
     const canonicalBuild = position('await buildCanonicalLaunchArtifactsAsync(');
 
-    expect(source).toContain('sitePlan: sitePlan!');
-    expect(source).toContain('pageRegistry: siteBundleSnapshot.pageRegistry');
-    expect(source).toContain('artDirection,');
+    expect(source).toContain('pageRegistry: canonicalPlan.playground.pageRegistry');
+    expect(source).toContain('artDirection: canonicalPlan.artDirection,');
     expect(source).toContain('designContext,');
-    expect(source).toContain('registryContext,');
+    expect(source).toContain('registryContext: canonicalPlan.registryContext,');
     expect(source).toContain('protectedPaths: WIZARD_LANE_B_PROTECTED_PATHS');
-    expect(source).toContain('void appBuildContract;');
+    expect(source).toContain('contract: appBuildContract,');
+    expect(source).toContain('initialFiles: canonicalPlan.infrastructureFiles,');
     expect(source).not.toContain('"/.unison/app-build-contract.json"');
-    expect(stage4bResult).toBeLessThan(appBuilderContract);
-    expect(appBuilderContract).toBeLessThan(canonicalBuild);
+    expect(contractStage).toBeLessThan(appBuilderContract);
+    expect(appBuilderContract).toBeLessThan(appBuilderRun);
+    expect(appBuilderRun).toBeLessThan(canonicalBuild);
   });
 
-  it('keeps Launcher authorship deterministic while preserving public context', () => {
-    const stage4bResult = position('} = stage4b.pipelineResult;');
+  it('lets App Builder alone author pages while preserving public context', () => {
+    const stage4bResult = position('const appBuild = await run.stage("app-build"');
     const publicProfile = position('buildPublicBusinessContext(businessProfile)');
     const canonicalPages = position('const canonicalPages = Object.values(siteBundleSnapshot.pageRegistry.pages)');
-    const bindingGuide = position('buildWizardBindingGuide(siteBundleSnapshot');
+    const bindingGuide = position('buildWizardBindingGuide(canonicalPlan.playground');
     const deterministicEnrichment = position('run.markStage("enrich", "done")');
     const preflight = position('await buildCanonicalLaunchArtifactsAsync(');
 
     expect(source).toContain('generationBrief: siteBundleSnapshot.meta.generationBrief');
     expect(source).toContain('designIntervention: siteBundleSnapshot.meta.designIntervention');
-    expect(source).toContain('generatedFiles: siteBundleSnapshot.vfsFiles');
-    expect(source).toContain('compileArtifact: stage4b.pipelineResult.compileArtifact');
+    expect(source).toContain('generatedFiles: candidateFiles');
+    expect(source).toContain('compileArtifact: createWizardCompileArtifact(siteBundleSnapshot)');
     expect(source).toContain('approvedExperienceCapabilities: resolveApprovedExperienceCapabilities({');
     expect(source).toContain('requiredCapabilities: resolveExperienceRequirement(');
-    expect(source).toContain('webgl: siteBundleSnapshot.meta.designIntervention?.envelope?.webgl');
+    expect(source).toContain('webgl: canonicalPlan.designIntervention.envelope?.webgl');
     expect(source).not.toContain('enrichWizardPagesWithAI');
     expect(source).not.toContain('runBuilderTurn');
     expect(source).not.toContain('enrich.ai_rejected');
     expect(stage4bResult).toBeLessThan(canonicalPages);
     expect(canonicalPages).toBeLessThan(publicProfile);
-    expect(publicProfile).toBeLessThan(bindingGuide);
-    expect(bindingGuide).toBeLessThan(deterministicEnrichment);
+    expect(bindingGuide).toBeLessThan(stage4bResult);
+    expect(publicProfile).toBeLessThan(deterministicEnrichment);
     expect(deterministicEnrichment).toBeLessThan(preflight);
   });
 

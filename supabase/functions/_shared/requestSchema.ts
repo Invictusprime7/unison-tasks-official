@@ -4,7 +4,9 @@
 import { z } from "zod";
 
 const messageContentSchema = z.union([
-  z.string().min(1).max(200_000),
+  // Site-wide composer repairs carry up to 140KB of source plus the previous
+  // candidate and registry evidence, which exceeds 200KB once JSON-escaped.
+  z.string().min(1).max(400_000),
   z.array(z.unknown()).min(1).max(50),
 ]);
 

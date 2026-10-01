@@ -83,6 +83,24 @@ describe('site shell topology', () => {
     expect(codes).toContain('duplicate-footer');
   });
 
+  it('ignores section-level headers and footers nested in page content', () => {
+    const topology = buildSiteShellTopology(registry());
+    const source = `
+      <header><nav><a href="#/about">About</a></nav></header>
+      <main>
+        <section><header><h2>Story</h2></header></section>
+        <article><header>Card</header><footer>meta</footer></article>
+        <section><header>Team</header></section>
+      </main>
+      <footer>site</footer>
+    `;
+    const codes = assertSiteShellClosure(topology, {
+      pageSources: { '/src/pages/Home.tsx': source },
+    }).map((violation) => violation.code);
+    expect(codes).not.toContain('duplicate-primary-navbar');
+    expect(codes).not.toContain('duplicate-footer');
+  });
+
   it('flags router drift in both directions', () => {
     const topology = buildSiteShellTopology(registry());
     const violations = assertSiteShellClosure(topology, {
