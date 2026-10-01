@@ -35,6 +35,8 @@ export function RecentProjectCard({
   const formattedDate = new Date(updatedAt).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
   });
 
   return (
@@ -69,7 +71,7 @@ export function RecentProjectCard({
               <div className="w-10 h-10 rounded-lg bg-muted-foreground/10 flex items-center justify-center mx-auto mb-2">
                 <ExternalLink className="h-5 w-5" />
               </div>
-              <span className="text-xs">No preview</span>
+              <span className="text-xs">Open to see latest version</span>
             </div>
           </div>
         )}

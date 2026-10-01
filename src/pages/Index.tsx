@@ -92,7 +92,7 @@ const Index = () => {
           // editor_code, and the complete VFS TOAST payload made this four-row
           // query read megabytes of canonical runtime state and could exceed
           // PostgREST's statement timeout.
-          .select('id, metadata, updated_at, created_at')
+          .select('id, name, project_id, last_revision_id, updated_at, created_at, previewCode:metadata->>previewCode, metaName:metadata->>name, metaDescription:metadata->>description')
           .eq('user_id', user.id)
           .order('updated_at', { ascending: false })
           .limit(4);
@@ -100,15 +100,29 @@ const Index = () => {
         if (error) {
           console.error('Error loading recent projects:', error);
         } else {
-          const projects: RecentProject[] = (data || []).map((row: any) => {
-            const meta = (row.metadata || {}) as Record<string, any>;
-            const previewCode = typeof meta.previewCode === 'string' ? meta.previewCode : '';
+          const rows = (data || []) as any[];
+          // Latest saved checkpoint per draft — the real "last saved" time.
+          const revisionIds = rows.map((r) => r.last_revision_id).filter(Boolean);
+          const revisionTimes = new Map<string, string>();
+          if (revisionIds.length) {
+            const { data: revs } = await supabase
+              .from('site_revisions')
+              .select('id, created_at')
+              .in('id', revisionIds);
+            for (const r of (revs || []) as any[]) revisionTimes.set(r.id, r.created_at);
+          }
+          const projects: RecentProject[] = rows.map((row) => {
+            // The legacy previewCode snapshot is written once at launch and
+            // never updated by later saves, so it showed the original site.
+            // Only use it for drafts that have no saved revisions.
+            const previewCode = !row.last_revision_id && typeof row.previewCode === 'string' ? row.previewCode : '';
+            const savedAt = (row.last_revision_id && revisionTimes.get(row.last_revision_id)) || row.updated_at;
             return {
               id: row.id,
-              name: meta.name || 'Untitled Project',
-              description: meta.description ?? null,
+              name: row.name || row.metaName || 'Untitled Project',
+              description: row.metaDescription ?? null,
               is_public: false,
-              updated_at: row.updated_at,
+              updated_at: [savedAt, row.updated_at].sort().pop() as string,
               created_at: row.created_at,
               canvas_data: { previewCode, html: previewCode },
             };
@@ -123,6 +137,10 @@ const Index = () => {
     };
 
     loadRecentProjects();
+    // Refresh when the user comes back from the builder in another tab.
+    const onFocus = () => { void loadRecentProjects(); };
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
   }, [user]);
 
   // Load connected integrations when user is authenticated

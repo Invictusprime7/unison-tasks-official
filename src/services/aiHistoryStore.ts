@@ -130,6 +130,7 @@ function purgeLegacyKeysOnce(): void {
         toDelete.push(k);
       }
     }
+    toDelete.push('unison.aiHistory.draft.__unscoped__');
     for (const k of toDelete) window.localStorage.removeItem(k);
   } catch {
     /* best-effort */
@@ -153,6 +154,9 @@ function safeParse(raw: string | null): AIHistoryRecord {
 function readLocal(draftId: string | null | undefined): AIHistoryRecord {
   if (typeof window === 'undefined') return { ...EMPTY };
   purgeLegacyKeysOnce();
+  // History exists only for a real saved draft. A shared "unscoped" bucket
+  // leaked one site's chat into every other unsaved site.
+  if (!isUuid(draftId)) return { ...EMPTY };
   try {
     return safeParse(window.localStorage.getItem(lsKey(draftId)));
   } catch {
@@ -162,6 +166,7 @@ function readLocal(draftId: string | null | undefined): AIHistoryRecord {
 
 function writeLocal(projectId: string | null | undefined, record: AIHistoryRecord): void {
   if (typeof window === 'undefined') return;
+  if (!isUuid(projectId)) return;
   try {
     window.localStorage.setItem(lsKey(projectId), JSON.stringify(record));
   } catch (err) {
