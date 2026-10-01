@@ -590,9 +590,18 @@ export async function commitMutation(
     && !restoredRevision && !reviewedComposition && !input.options?.compositionUpgrade
     ? { ...input.current.vfsFiles }
     : null;
-  const sourcePreservationOperations = sourcePreservationBaseline
+  let sourcePreservationOperations = sourcePreservationBaseline
     ? sourceOperationsBetween(sourcePreservationBaseline, workingFiles)
     : [];
+  // Deterministic canonical normalization (intent closure, forbidden-intent
+  // stripping, nav stamping) is platform-owned, not an unreviewed rewrite.
+  // Once it has run, its bytes become part of the explicit candidate so the
+  // preservation guard checks against what the gates actually validated.
+  const adoptCanonicalNormalization = () => {
+    if (sourcePreservationBaseline) {
+      sourcePreservationOperations = sourceOperationsBetween(sourcePreservationBaseline, files);
+    }
+  };
 
   // 5. Resolve the canonical projection -------------------------------------
   // Confirmation is a persistence boundary, not another generation stage.
@@ -821,6 +830,7 @@ export async function commitMutation(
     });
     if (repair.stages.earlyRepair !== 'failed' && repair.stages.finalRepair !== 'failed') {
       files = repair.files;
+      adoptCanonicalNormalization();
       if (snapshotForPersistence) snapshotForPersistence = mergeWizardLaunchSnapshot(snapshotForPersistence as SiteBundleSnapshot, files);
       preflight = runFullPreflight(files, {
         siteBundleSnapshot: (snapshotForPersistence as { meta?: unknown } | null) as SiteBundleSnapshot | null,
@@ -955,6 +965,7 @@ export async function commitMutation(
       files = reviewedArtifact && !reviewedComposition && !restoredRevision
         ? preserveWizardMetadataFiles(preflight.files, workingFiles)
         : preflight.files;
+      adoptCanonicalNormalization();
     } catch (err) {
       log('repair', 'error', 'auto-repair threw', String(err));
     }

@@ -666,7 +666,7 @@ describe('Golden E2E — salon launcher → AI edits → publish gate', () => {
     expect(revisionStore).toEqual([]);
   });
 
-  it('rejects deterministic preflight normalization unless it is a new explicit candidate', async () => {
+  it('adopts validated deterministic preflight normalization into the explicit candidate', async () => {
     const files = { '/src/App.tsx': 'export default function App(){return <main data-ut-intent="nav.goto">Safe</main>}' };
     const normalized = { '/src/App.tsx': 'export default function App(){return <main data-ut-intent="nav.goto" data-ut-slot="primary">Safe</main>}' };
     mockPipeline(files);
@@ -697,16 +697,17 @@ describe('Golden E2E — salon launcher → AI edits → publish gate', () => {
         stages: { earlyRepair: 'ok', finalRepair: 'ok', runtimeCompatibility: { ok: true } },
       } as unknown as ReturnType<typeof runFullPreflight>);
 
-    await expect(commitMutation({
+    const result = await commitMutation({
       source: 'ai-builder',
       identity: IDENTITY,
       current: { vfsFiles: files },
       patch: emptyPatchPlan(),
       options: { dryRun: true, requireReadinessPass: false },
-    })).rejects.toThrow(/before backend effects changed source outside the explicit candidate/);
+    });
 
+    expect(result.status).toBe('committed');
+    expect(result.vfsFiles?.['/src/App.tsx']).toBe(normalized['/src/App.tsx']);
     expect(runFullPreflight).toHaveBeenCalledTimes(3);
-    expect(revisionStore).toEqual([]);
   });
 
   it.each(['playground-edit', 'binding-fast-path', 'preview-toolbar'] as const)(
