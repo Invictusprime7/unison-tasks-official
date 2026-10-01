@@ -9,6 +9,8 @@
  * - Debug tab for iframe error handling with Supabase access
  */
 
+import { buildRenderedSiteDigest } from '@/services/builder/renderedSiteDigest';
+import { computeBuilderVfsSignature } from '@/services/builderStateRecovery';
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -1500,22 +1502,23 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
             }
           }
 
-          // Build lightweight preview DOM snapshot for AI context-awareness
+          // Rendered site context: live DOM of the current route, cached
+          // digests of routes viewed this session, source digests otherwise.
           let previewSnapshot: string | undefined;
           try {
             const iframe = previewRef?.current?.getIframe?.();
-            const doc = iframe?.contentDocument;
-            if (doc?.body) {
-              const route = iframe?.contentWindow?.location.hash || '/';
-              const sections = Array.from(doc.querySelectorAll('section, header, nav, main, footer, [data-component]'))
-                .map(el => {
-                  const tag = el.tagName.toLowerCase();
-                  const dc = el.getAttribute('data-component');
-                  const text = (el as HTMLElement).innerText?.slice(0, 60)?.replace(/\n/g, ' ') || '';
-                  return dc ? `<${tag} data-component="${dc}"> "${text}"` : `<${tag}> "${text}"`;
-                }).slice(0, 15);
-              previewSnapshot = `[Preview DOM] Route: ${route}\nVisible sections (${sections.length}):\n${sections.join('\n')}`;
-            }
+            let doc: Document | null = null;
+            let route = '/';
+            try {
+              doc = iframe?.contentDocument ?? null;
+              route = (iframe?.contentWindow?.location.hash || '#/').replace(/^#/, '') || '/';
+            } catch { /* cross-origin preview */ }
+            previewSnapshot = buildRenderedSiteDigest({
+              doc,
+              route,
+              vfsFiles,
+              signature: computeBuilderVfsSignature(vfsFiles),
+            });
           } catch { /* best-effort */ }
 
           // ── Build conversation history for multi-turn awareness ──
