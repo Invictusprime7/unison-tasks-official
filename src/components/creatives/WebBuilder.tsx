@@ -120,6 +120,8 @@ import {
   resolveProjectActivePagePath,
 } from '@/services/projectRuntimeEnvelope';
 import { runBuilderAiMutation } from "@/services/builder/builderMutationService";
+import { listCheckpoints, pickUndoTarget, restoreCheckpoint, type Checkpoint } from "@/services/builder/checkpointService";
+import CheckpointsPopover from "@/components/web-builder/CheckpointsPopover";
 import { prepareAICandidate } from "@/services/builder/aiCandidateGates";
 import { repairBuilderCandidate } from "@/services/builder/aiRepairLoop";
 import { emptyPatchPlan, legacyFilesToPatchPlan, type FileOp, type PatchSource } from "@/types/patchPlan";
@@ -6848,6 +6850,79 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
 
 
 
+  // ── Saved checkpoints: undo/redo restore committed revisions ──────────
+  const checkpointEffectiveRef = useRef<string | null>(null);
+  const [checkpointRedo, setCheckpointRedo] = useState<Checkpoint[]>([]);
+  const [checkpointBusy, setCheckpointBusy] = useState(false);
+  const [checkpointTick, setCheckpointTick] = useState(0);
+  const checkpointIdentity = () =>
+    currentUserId && businessId && currentDraftId
+      ? buildCommitIdentity({
+          userId: currentUserId,
+          businessId,
+          projectId: resolvedProjectId,
+          draftId: currentDraftId,
+          revisionId: currentRevisionId,
+        })
+      : null;
+  const checkpointsEnabled = Boolean(currentUserId && businessId && currentDraftId);
+  const markCheckpointSaved = (revisionId: string | null | undefined) => {
+    if (!revisionId) return;
+    checkpointEffectiveRef.current = revisionId;
+    setCheckpointRedo([]);
+    setCheckpointTick((tick) => tick + 1);
+  };
+  const applyCheckpoint = async (target: Checkpoint, verb: 'Undo' | 'Redo' | 'Restored'): Promise<boolean> => {
+    const identity = checkpointIdentity();
+    if (!identity) {
+      toast.error('Checkpoints are unavailable until this project is saved.');
+      return false;
+    }
+    setCheckpointBusy(true);
+    try {
+      const result = await restoreCheckpoint(identity, target, verb);
+      if (result.status !== 'committed' || !result.persistedRevisionId) {
+        toast.error(`${verb} could not be saved`, { description: result.publishBlockers?.[0]?.message });
+        return false;
+      }
+      // canonical-vfs-exempt: adoption of an accepted commitMutation (restore) result
+      importBuilderFiles(result.vfsFiles, {
+        replace: true, preferredPath: activePagePath, entryPoint: launchEntryPoint,
+        adoption: commitAdoptionRecord(result),
+      });
+      setCurrentRevisionId(result.persistedRevisionId);
+      checkpointEffectiveRef.current = target.id;
+      setCheckpointTick((tick) => tick + 1);
+      toast.success(verb === 'Restored' ? 'Checkpoint restored' : verb, { description: target.label });
+      return true;
+    } catch (error) {
+      toast.error(`${verb} failed`, { description: error instanceof Error ? error.message : String(error) });
+      return false;
+    } finally {
+      setCheckpointBusy(false);
+    }
+  };
+  const handleCheckpointUndo = async () => {
+    if (!currentDraftId || checkpointBusy) return;
+    const list = await listCheckpoints(currentDraftId);
+    const effective = checkpointEffectiveRef.current ?? currentRevisionId ?? null;
+    const target = pickUndoTarget(list, effective);
+    if (!target) {
+      toast.info('Nothing earlier to undo to.');
+      return;
+    }
+    const currentCheckpoint = list.find((c) => c.id === effective) ?? list[0];
+    if (await applyCheckpoint(target, 'Undo')) {
+      if (currentCheckpoint) setCheckpointRedo((stack) => [...stack, currentCheckpoint]);
+    }
+  };
+  const handleCheckpointRedo = async () => {
+    const next = checkpointRedo[checkpointRedo.length - 1];
+    if (!next || checkpointBusy) return;
+    if (await applyCheckpoint(next, 'Redo')) setCheckpointRedo((stack) => stack.slice(0, -1));
+  };
+
+
   return (
     <BuilderSessionProvider
       value={{
@@ -7335,6 +7410,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                         },
                         activePagePath,
                         candidate: candidate.build.changeSet,
+                        label: applyMeta?.prompt ? applyMeta.prompt.slice(0, 120) : undefined,
                       }
                     : null;
                   if (!commitCtx) {
@@ -7393,6 +7469,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                     });
                   }
                   if (outcome.revisionId) setCurrentRevisionId(outcome.revisionId);
+                  markCheckpointSaved(outcome.revisionId);
                   return { success: true, errors: [] };
                 }}
                 onViewEdits={(edits) => {
@@ -7884,6 +7961,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                       },
                       activePagePath,
                       candidate: candidate.build.changeSet,
+                      label: applyMeta?.prompt ? applyMeta.prompt.slice(0, 120) : undefined,
                     }
                   : null;
                 if (!commitCtx) {
@@ -8092,12 +8170,24 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                     onSelectPage={handlePageTabSelect}
                     onAddPage={handlePageTabAdd}
                     onRemovePage={handlePageTabRemove}
-                    onUndo={handleUndo}
-                    onRedo={handleRedo}
+                    onUndo={checkpointsEnabled ? () => void handleCheckpointUndo() : handleUndo}
+                    onRedo={checkpointsEnabled ? () => void handleCheckpointRedo() : handleRedo}
                     onRefresh={handleRefreshPreview}
                     onOpenPreview={() => livePreviewRef.current?.openInNewTab()}
-                    canUndo={codeHistory.canUndo}
-                    canRedo={codeHistory.canRedo}
+                    canUndo={checkpointsEnabled ? !checkpointBusy : codeHistory.canUndo}
+                    canRedo={checkpointsEnabled ? !checkpointBusy && checkpointRedo.length > 0 : codeHistory.canRedo}
+                    extraActions={checkpointsEnabled ? (
+                      <CheckpointsPopover
+                        draftId={currentDraftId}
+                        currentRevisionId={checkpointEffectiveRef.current ?? currentRevisionId}
+                        refreshKey={checkpointTick}
+                        disabled={checkpointBusy}
+                        onRestore={async (checkpoint) => {
+                          const effective = checkpointEffectiveRef.current ?? currentRevisionId;
+                          if (await applyCheckpoint(checkpoint, 'Restored') && effective) setCheckpointRedo([]);
+                        }}
+                      />
+                    ) : undefined}
                     isRefreshing={isRefreshing}
                   />
                   <div 
