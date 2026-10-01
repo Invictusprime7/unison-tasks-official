@@ -5,6 +5,7 @@
  * between pages in the preview. Only visible when >1 page exists.
  */
 
+import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { ExternalLink, FileText, Home, Plus, Redo2, RefreshCcw, Undo2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -37,6 +38,8 @@ interface PageNavigationBarProps {
   canUndo?: boolean;
   canRedo?: boolean;
   isRefreshing?: boolean;
+  /** Extra controls rendered next to undo/redo (e.g. checkpoints). */
+  extraActions?: ReactNode;
 }
 
 export function PageNavigationBar({
@@ -52,6 +55,7 @@ export function PageNavigationBar({
   canUndo = false,
   canRedo = false,
   isRefreshing = false,
+  extraActions,
 }: PageNavigationBarProps) {
   return (
     <div className="flex h-8 shrink-0 items-center gap-1 border-b border-white/[0.05] bg-transparent px-2">
@@ -104,6 +108,7 @@ export function PageNavigationBar({
         </Button>
       )}
       <div className="ml-1 flex shrink-0 items-center gap-0.5 border-l border-white/[0.06] pl-1">
+        {extraActions}
         {onUndo && (
           <Button
             variant="ghost"

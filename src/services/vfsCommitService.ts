@@ -1775,6 +1775,10 @@ export interface LoadedRevision {
   operationIds: string[];
   fileProvenance: FileProvenanceMap;
   createdAt: string;
+  /** Revision this one was committed on top of (null for the first). */
+  parentRevisionId?: string | null;
+  /** Human-readable checkpoint label (patch summary), when recorded. */
+  label?: string | null;
 }
 
 /**
@@ -1907,7 +1911,7 @@ export async function loadProjectedRevisionForDraft(
 
 // Columns for list views: everything except the heavy file/snapshot payloads.
 const REVISION_SUMMARY_COLUMNS =
-  'id, project_id, business_id, draft_id, source, status, readiness_report, diagnostics, publish_ready, publish_blockers, vfs_hash, candidate_id, operation_ids, created_at';
+  'id, project_id, business_id, draft_id, parent_revision_id, source, status, readiness_report, diagnostics, publish_ready, publish_blockers, vfs_hash, candidate_id, operation_ids, created_at, patch_summary:patch_json->>summary';
 
 /**
  * Move D — publish flow loads the latest revision whose publish gate +
@@ -1972,6 +1976,12 @@ function mapRevisionRow(row: Record<string, unknown>): LoadedRevision {
       : [],
     fileProvenance: (row.file_provenance ?? {}) as FileProvenanceMap,
     createdAt: String(row.created_at),
+    parentRevisionId: (row.parent_revision_id as string | null) ?? null,
+    label: typeof row.patch_summary === 'string'
+      ? row.patch_summary
+      : typeof (row.patch_json as { summary?: unknown } | null)?.summary === 'string'
+        ? String((row.patch_json as { summary: string }).summary)
+        : null,
   };
 }
 
@@ -1991,6 +2001,8 @@ function mapRevisionRow(row: Record<string, unknown>): LoadedRevision {
 export async function restoreRevision(args: {
   targetRevisionId: string;
   identity: BuilderIdentity;
+  /** Optional checkpoint label recorded on the new revision. */
+  label?: string;
 }): Promise<CommitMutationResult> {
   const target = await loadRevision(args.targetRevisionId);
   if (!target) {
@@ -2020,6 +2032,7 @@ export async function restoreRevision(args: {
     patch: {
       ...emptyPatchPlan(),
       fileOps,
+      summary: args.label ?? `Restored checkpoint ${args.targetRevisionId.slice(0, 8)}`,
       reason: `restore:${args.targetRevisionId}`,
     } as PatchPlan,
     options: { restoreRevisionId: args.targetRevisionId },

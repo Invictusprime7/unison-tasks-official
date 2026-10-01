@@ -520,8 +520,11 @@ export default ${componentName};`;
     }
 
     setNodes(nextNodes);
-    setActiveFileId('');
-    setOpenTabs([]);
+    // Node ids are path-derived, so editor tabs on surviving files stay open;
+    // only tabs for removed files close. Keeps edits feeling in-place.
+    const surviving = new Set(nextNodes.map((node) => node.id));
+    setActiveFileId((current) => (current && surviving.has(current) ? current : ''));
+    setOpenTabs((tabs) => tabs.filter((id) => surviving.has(id)));
   }, []);
 
   // Sort nodes: folders first, then files, alphabetically

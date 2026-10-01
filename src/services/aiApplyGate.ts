@@ -49,6 +49,8 @@ export interface AiCommitContext {
   activePagePath: string;
   /** Exact isolated candidate accepted by the Composer gates. */
   candidate?: AICandidateChangeSet;
+  /** Checkpoint label shown in the version list (usually the user's prompt). */
+  label?: string;
 }
 
 export function buildAiCandidatePatch(ctx: AiCommitContext): PatchPlan {
@@ -61,7 +63,7 @@ export function buildAiCandidatePatch(ctx: AiCommitContext): PatchPlan {
     throw new Error('[aiApplyGate] candidate base revision is stale; regenerate from the current revision.');
   }
   return {
-    summary: `AI candidate ${candidate.id}`,
+    summary: ctx.label ? `AI · ${ctx.label}` : `AI candidate ${candidate.id}`,
     operationIds: [`ai-candidate:${candidate.id}`],
     fileOps: candidate.fileOps.map((operation) => operation.type === 'delete'
       ? { type: 'delete' as const, path: operation.path }

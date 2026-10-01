@@ -632,7 +632,7 @@ async function runBuilderLane(
 
   // Inject live preview DOM snapshot for context awareness
   if (previewSnapshot) {
-    finalSystemPrompt += `\n\n${previewSnapshot}\nUse this to understand what the user currently sees and which elements/sections exist in the live preview.`;
+    finalSystemPrompt += `\n\n${previewSnapshot}\nUse this to understand what the user currently sees across every page of the site — sections, headings, menu, actions and theme — and target edits precisely.`;
   }
 
   // Inject component behavior context for all edit types
