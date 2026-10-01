@@ -1,6 +1,8 @@
 # Build to Canvas Workflow
 
-> **Stack**: React 18 + TypeScript 5.9 | Fabric.js 7.2 (canvas) | `useTemplateState` hook | `canonicalPipeline` service | SystemLauncher wizard → WebBuilder playground
+> **Stack**: React 18 + TypeScript 5.9 | Fabric.js 7.2 (canvas) | `useTemplateState` hook | canonical revision VFS | `LauncherWizard → runLaunchPipeline → launchOrchestrator → WebBuilder`
+
+> This document describes the canvas projection workflow. It does not define fresh-launch source authority: `UnisonAppBuilder` authors the application candidate, `commitMutation` promotes it, and Canvas consumes that accepted source.
 
 ## 🎯 New AI Template Flow
 

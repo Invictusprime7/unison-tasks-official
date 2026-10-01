@@ -1,5 +1,7 @@
 # Wizard Progressive Redesign
 
+> **AUTHORITY NOTE (2026-09-30):** The UI plan remains active. `runLaunchPipeline` now means orchestration of canonical planning, App Builder candidate generation, validation, one initial commit and handoff—not deterministic website authorship owned by the Wizard.
+
 ## Outcome
 Transform the existing three-step launcher into a restrained, progressive modal that reveals one decision group at a time, gives style selection a large visual-preview treatment, and reduces launch progress to a concise cascading sequence.
 

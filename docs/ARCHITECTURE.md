@@ -1,5 +1,7 @@
 # Unison — Architecture Documentation
 
+> **Fresh-launch authority (2026-09-30):** `LauncherWizard → runLaunchPipeline → launchOrchestrator → UnisonAppBuilder → candidate gates → commitMutation`. The Wizard captures intent; App Builder authors the candidate; canonical services own contracts, protected infrastructure and revision promotion.
+
 ## Framework Foundation
 
 **React 18.3 + TypeScript 5.9** application built on **Vite + SWC** with a hooks-first, context-driven architecture.
@@ -365,9 +367,7 @@ src/
 │   └── ...                             # 95+ more utilities
 ├── components/
 │   ├── onboarding/
-│   │   ├── SystemLauncher.tsx          # 4-step wizard launcher
-│   │   ├── BusinessLauncher.tsx        # Quick-start industry launcher
-│   │   └── SystemLauncher.tsx          # Canonical Wizard generation and handoff
+│   │   └── wizard/LauncherWizard.tsx   # Selection-only launcher and orchestration handoff
 │   ├── creatives/
 │   │   ├── WebBuilder.tsx              # Main playground (1000+ lines)
 │   │   └── web-builder/

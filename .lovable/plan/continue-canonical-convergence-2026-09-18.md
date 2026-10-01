@@ -1,5 +1,7 @@
 # Continue Canonical Convergence
 
+> **SUPERSEDED FOR FRESH-LAUNCH SEQUENCING (2026-09-30):** Preserve its registry and validation tasks, but replace Stage-4b-site-plus-optional-enrichment authority with the `AppBuildContract → UnisonAppBuilder candidate → gates → one initial commit` sequence.
+
 ## Goal
 Complete the next open convergence slice without adding a parallel registry or changing the newer launch policy: contextual composition remains required, Stage 4b remains mandatory, and Lane B remains optional candidate enrichment.
 

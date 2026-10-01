@@ -1,5 +1,7 @@
 # Architectural Consolidation — Integration Checklist
 
+> **Historical checklist:** Paths and `SystemLauncher` steps below document the March 2026 integration. For current work use `LauncherWizard → runLaunchPipeline → launchOrchestrator` and the App Builder canonical-substitution milestone; do not recreate the archived launcher-owned generation path.
+
 **Phase 1 & 2 Complete** ✅  
 **Date:** March 31, 2026  
 

@@ -1,5 +1,7 @@
 # Fix: preview falls back to the Lane A scaffold + "steps skipped" note
 
+> **HISTORICAL INCIDENT NOTE (2026-09-30):** The import-closure and companion-module findings remain relevant. The Lane A baseline fallback described here is not an active fresh-launch strategy; App Builder now owns candidate generation and any deterministic fallback must live inside that boundary.
+
 ## What is actually happening
 
 The console error from your last launch is the tell:

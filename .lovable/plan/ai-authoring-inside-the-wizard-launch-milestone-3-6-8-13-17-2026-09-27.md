@@ -1,5 +1,7 @@
 # AI authoring inside the Wizard launch (milestone §3, §6–8, §13, §17–19, §24, §30–31, §37)
 
+> **SUPERSEDED FOR FRESH-LAUNCH SEQUENCING (2026-09-30):** The active authority is [App Builder Canonical Substitution](../../docs/milestones/UNISON_APP_BUILDER_CANONICAL_SUBSTITUTION_MILESTONE_2026-09-30.md). Preserve this document's structured Composer, bounded repair, protected-path and candidate-validation work, but do not implement its deterministic-baseline-first, per-page-commit or `kept-baseline` launch sequence.
+
 ## Goal
 When a customer finishes the Wizard, AI designs and writes the pages as part of the launch. Each page is checked on a draft copy, saved, and shown in the live preview. Then the next page starts. The Wizard screens stay choose-only; the AI work runs in the launch process behind them. Builder chat edits after launch use the same steps, just on a smaller piece of the site.
 

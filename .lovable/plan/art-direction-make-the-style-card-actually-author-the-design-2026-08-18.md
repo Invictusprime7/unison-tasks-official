@@ -1,5 +1,7 @@
 # Art Direction: make the style card actually author the design
 
+> **HISTORICAL AUTHORITY NOTE (2026-09-30):** Preserve the Art Direction findings and contract work. Any deterministic-page-plus-Lane-B sequencing below is superseded by App Builder canonical substitution; Stage 4b supplies Art Direction and token context but does not own fresh-launch page bodies.
+
 ## My honest read on the direction
 
 You're right that industry currently dominates, but widening the packs alone won't get you Fable-grade output. Three things are true in the code today:

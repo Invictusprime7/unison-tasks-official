@@ -1,5 +1,7 @@
 # UNISON — 21st-First Registry Reunification, Visual Composition & Canonical Launch Plan
 
+> **SUPERSEDED FOR FRESH-LAUNCH AUTHORITY (2026-09-30):** Retain this document as registry and certification history. [App Builder Canonical Substitution](milestones/UNISON_APP_BUILDER_CANONICAL_SUBSTITUTION_MILESTONE_2026-09-30.md) replaces its optional enrichment over a deterministic Stage 4b website with one App Builder-authored application candidate before revision 1.
+
 ## Current Wizard AI policy ? user clarification, 2026-09-17
 
 AI composition is OPTIONAL for new Wizard generation. A missing, invalid or incomplete composition degrades the launch with a visible note and Stage 4b compiles the deterministic Design Intervention for the selected industry layout. AI improves quality but is never an availability risk. The template-free Wizard remains unchanged.

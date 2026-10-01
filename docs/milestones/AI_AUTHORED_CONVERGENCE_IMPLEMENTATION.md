@@ -1,10 +1,12 @@
 # AI-authored convergence implementation ledger
 
+> **TARGET REVISION (2026-09-30):** This remains the evidence ledger for source preservation, provenance, CAS and candidate safety. Its end state is now [App Builder Canonical Substitution](UNISON_APP_BUILDER_CANONICAL_SUBSTITUTION_MILESTONE_2026-09-30.md): fresh-launch authored files originate in App Builder's isolated candidate, and no independent canonical page generator may create a competing source set after acceptance.
+
 Started 2026-09-29 against repository commit `10a6df19`. Requirements: [original milestone](UNISON_AI_AUTHORED_CONVERGENCE_MILESTONE_2026-09-29.md). All milestone acceptance gates remain open; the rows below distinguish implemented primitives from production evidence.
 
 ## Preserved decisions
 
-Original TSX, page-local variants and project-local components remain allowed. Registry recommendations and certification metadata are not a whitelist. Real parsing/import/runtime, declared sealed design, topology and revision constraints remain enforced. Keep the existing author/repair/candidate/single-writer pipeline, mirrored Composer contract and universal composition planner. Never promote timestamps or author identity above revision lineage.
+Original TSX, page-local variants and project-local components remain allowed. Registry recommendations and certification metadata are not a whitelist. Real parsing/import/runtime, declared sealed design, topology and revision constraints remain enforced. Migrate the existing author/repair/candidate machinery beneath `UnisonAppBuilder`, while preserving the mirrored Composer contract, universal composition planner and single canonical writer. Never promote timestamps or author identity above revision lineage.
 
 ## Work and acceptance sequence
 

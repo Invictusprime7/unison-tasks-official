@@ -1,5 +1,7 @@
 # Cross-Industry Page Composition Intelligence — Slice 1
 
+> **AUTHORITY NOTE (2026-09-30):** This planner remains active as data-only intelligence under `UnisonAppBuilder` context assembly. Its output contributes to `AppBuildContract` and candidate generation; it does not drive an independent deterministic fresh-launch page author.
+
 Goal: every page in every generated site gets its own business and narrative job. The Theme Family, Art Direction, Brand and AI-authored page pipeline stay the same. One planner serves every industry. There are no per-industry engines and no rigid templates.
 
 ## Step A — Audit (a short written report in `docs/milestones/`)
@@ -8,7 +10,7 @@ Map what already exists and reuse it:
 - Page Archetypes and allowed families per role: `sections/pageArchetypeContract.ts`, `resolve-page-vocabulary.ts`
 - Variant choice and visual signatures: `variants/registry`, `contracts/visual-signature.ts`, `resolve-legal-implementations.ts`
 - Site-level coherence: `services/launch/siteDesignContract.ts`, `compositionAffinity.ts`, `compositionCanonicalContract.ts`
-- AI page authoring: `siteAuthoringOrchestrator` → `aiRepairLoop` → `persistAiCommit`, plus the brief built in `aiPageComposition.ts`
+- Application authoring primitives: `siteAuthoringOrchestrator` → `aiRepairLoop` → candidate gates, migrating beneath `UnisonAppBuilder`; initial generation commits only after site-wide closure
 - Current checks for repeated layouts (expected to be minimal)
 
 ## Step B — Gap report

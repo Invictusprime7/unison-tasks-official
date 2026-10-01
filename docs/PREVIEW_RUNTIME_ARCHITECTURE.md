@@ -1,5 +1,7 @@
 # Preview Runtime Architecture
 
+> **Fresh-launch authority (2026-09-30):** Preview consumes the VFS from the accepted canonical revision. The active launch path is `LauncherWizard → runLaunchPipeline → launchOrchestrator`; neither Preview nor the Wizard independently authors page presentation.
+
 > **Stack**: React 18 + TypeScript 5.9 | VFSContext + useVFSPreview hooks | Sandpack (CodeSandbox) + Docker Vite | @babel/standalone for runtime JSX
 
 ## Overview
@@ -28,11 +30,11 @@ There is **ONE** answer to each question:
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│              SystemLauncher / BusinessLauncher           │
-│  - Industry/theme selection                             │
-│  - Calls systems-build edge function                    │
-│  - Output: Source VFS (/src/* files)                    │
-│  - Uses normalizeLauncherFiles() for cleanup            │
+│       LauncherWizard / launchOrchestrator               │
+│  - Captures industry/theme/application intent           │
+│  - Resolves contracts and invokes UnisonAppBuilder      │
+│  - Promotes one accepted Source VFS revision            │
+│  - Preview receives exact committed files               │
 └──────────────────────┬──────────────────────────────────┘
                        │ Source VFS
                        ▼
@@ -40,7 +42,7 @@ There is **ONE** answer to each question:
 │              WebBuilder (VFS Context)                    │
 │  - Stores source VFS as canonical truth                 │
 │  - Editor modifies source VFS directly                  │
-│  - AI generates into source VFS                         │
+│  - AI edits return through App Builder + commitMutation │
 └──────────────────────┬──────────────────────────────────┘
                        │ Source VFS
                        ▼

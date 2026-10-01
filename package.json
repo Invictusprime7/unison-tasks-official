@@ -18,6 +18,7 @@
     "lint": "eslint .",
     "lint:pipeline-bypass": "node scripts/lint-pipeline-bypass.mjs",
     "lint:canonical-vfs-writes": "node scripts/lint-canonical-vfs-writes.mjs",
+    "lint:app-builder-authority": "node scripts/lint-app-builder-authority.mjs",
     "lint:single-source-of-truth": "node scripts/lint-single-source-of-truth.mjs",
     "lint:catalog-contracts": "node scripts/lint-catalog-contracts.mjs",
     "test:edge": "npx --yes deno@2 test --allow-all --no-check supabase/functions/",

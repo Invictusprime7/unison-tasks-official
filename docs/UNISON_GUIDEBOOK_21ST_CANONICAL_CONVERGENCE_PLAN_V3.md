@@ -1,9 +1,11 @@
 # UNISON — Guidebook + 21st Canonical Convergence & De-Fragmentation Plan
+
+> **AUTHORITY REVISION (2026-09-30):** Keep the certification, registry context, source provenance, validator and design-system work in this guidebook. [App Builder Canonical Substitution](milestones/UNISON_APP_BUILDER_CANONICAL_SUBSTITUTION_MILESTONE_2026-09-30.md) supersedes its two-layer fresh-launch sequence: App Builder consumes the deterministic plan and authors one candidate application before revision 1; Stage 4b does not pre-author or later recompose page bodies.
 ## Current Wizard AI policy ? user clarification, 2026-09-17
 
-Contextual AI composition is required for new Wizard generation. A missing, invalid or incomplete composition stops before Stage 4b and reports the specific failure. Do not replace it with an AI-disabled launch. The template-free Wizard remains unchanged.
+Contextual composition planning remains required for new Wizard generation. A missing, invalid or incomplete plan reports the specific failure. The template-free Wizard remains unchanged.
 
-Stage 4b compiles and validates the accepted AI plan using canonical registered implementations. A successful plan does not skip Lane B. Lane B receives that plan as bounded context and may propose registered page-body TSX; only validation, canonical merge, preflight and commitMutation may promote it. Rejected or unavailable refinements preserve the already validated AI-composed pages. Global theme, routes, protected foundation files, intents and commit ownership stay canonical.
+Canonical planning resolves topology, contracts, registry knowledge and Stage 4b theme/Art Direction context. `UnisonAppBuilder` consumes that plan to author one isolated application candidate before revision 1; only validation, protected-infrastructure projection, preflight and `commitMutation` may promote it. Global theme, routes, protected foundation files, intents and commit ownership stay canonical.
 
 This user clarification overrides V3 sections 3/5/24/28 where they propose optional composition or deterministic launch without AI. V3 is retained as a reference plan; its embedded execution prompt is not an independent instruction. Refinement can be disabled through the launch-service policy for diagnostics; composition cannot.
 

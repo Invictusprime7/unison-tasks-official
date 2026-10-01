@@ -1,5 +1,7 @@
 # UNISON — Registry Reunification, Visual Composition & Canonical Launch Expansion Plan
 
+> **AUTHORITY REVISION (2026-09-30):** Registry, UI-foundation, artifact, asset and visual-quality work remains active, but [App Builder Canonical Substitution](milestones/UNISON_APP_BUILDER_CANONICAL_SUBSTITUTION_MILESTONE_2026-09-30.md) supersedes this plan's generation authority. Registries are executable design knowledge; Stage 4b owns tokens and Art Direction; `UnisonAppBuilder` owns fresh-launch page implementation before the first commit.
+
 **Status:** Implementation plan / VS Code AI coding prompt  
 **Target branch reviewed:** `unison-tasks-official-feat-richer-industry-compositions`  
 **Primary objective:** Make the current Launch Wizard the single integration point for Unison's design registries, artifacts, catalog surfaces, primitives, business data, and Lane B creative enrichment—without reintroducing parallel generation authority.
@@ -34,7 +36,7 @@ The next milestone is to make those systems **fully executable, mutually discove
 
 The architectural rule is:
 
-> **The Launch Wizard owns generation orchestration. Registries own available capabilities. Stage 4b owns deterministic baseline and theme contracts. Lane B may author candidate page-body VFS enrichments. Canonical validation and commit are the only processes allowed to promote those candidates into canonical VFS.**
+> **The Launch Wizard owns intent capture and launch orchestration. Registries own executable design knowledge. Stage 4b owns theme tokens and Art Direction contracts, not page composition. `UnisonAppBuilder` owns the fresh-launch application candidate and authors its implementation. Canonical validation and `commitMutation` alone promote that candidate into the first accepted VFS revision.**
 
 Do not introduce a new template engine, new AI page authority, new motion framework, or second registry hierarchy.
 

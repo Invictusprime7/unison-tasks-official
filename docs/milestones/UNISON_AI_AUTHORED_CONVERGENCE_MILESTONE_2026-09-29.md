@@ -1,5 +1,7 @@
 # Unison milestone: AI-authored convergence and design knowledge
 
+> **AUTHORITY REVISION (2026-09-30):** [App Builder Canonical Substitution](UNISON_APP_BUILDER_CANONICAL_SUBSTITUTION_MILESTONE_2026-09-30.md) now governs fresh-launch sequencing. Preserve the candidate, provenance, source-preservation, shared-knowledge and revision-safety requirements here. Replace any baseline-website-first interpretation with: canonical planning supplies contracts and protected infrastructure; `UnisonAppBuilder` authors the initial application candidate before revision 1.
+
 **Status:** implementation plan, grounded in the September 28 repository ZIP.  
 **Revision:** September 29, 2026 — integrates design knowledge and a release-blocking compiler/VFS source preservation contract.  
 **Outcome:** Wizard and AI Builder use shared, versioned design knowledge to freely compose proven Unison registries and original project-local components into distinctive, executable React/TSX pages. Every accepted edit becomes one canonical, reproducible VFS revision used by Preview and Publish, with explicit evidence of which elements support visual editing.
@@ -10,7 +12,7 @@ This revision extends the milestone in place. The September 27 `UNISON_LOVABLE_C
 
 AI is a first-class **source author** in both initial Wizard generation and subsequent AI Builder edits. It may choose layout, hierarchy, section order, composition, copy, interactions, local TSX modules, and supported styling. Registries supply reusable capabilities and context, not a fixed sequence of permitted page layouts. AI may create wrappers and page-specific components around proven primitives. A novel presentation does not require prior registration; a new business capability still needs a valid runtime contract.
 
-The compiler supplies topology, route identity, business capabilities, theme tokens, runtime bindings, and a baseline. It checks and seals authored output, but must not replace valid AI page bodies with its baseline. `SiteBundleSnapshot` remains the authority for **accepted revisions**, not the exclusive author of source. The same user intent, source hash, model/configuration, dependency manifest, and resolved asset IDs must be recorded for replay; AI generation itself need not be byte deterministic.
+The canonical platform supplies topology, route identity, business capabilities, theme tokens, runtime bindings, and protected infrastructure. `UnisonAppBuilder` authors the fresh-launch application candidate before revision 1. Canonical validation may check and seal that output but must not generate or substitute a competing page implementation. `SiteBundleSnapshot` remains the authority for **accepted revisions**, not the authoring engine. The same user intent, source hash, model/configuration, dependency manifest, and resolved asset IDs must be recorded for replay; AI generation itself need not be byte deterministic.
 
 **Highest-priority prerequisite:** compiler reconciliation and VFS synchronization must never silently overwrite, regenerate, drop, or resurrect accepted AI/user source. Source preservation is enforced by the commit boundary and revision identity, not by a best-effort prompt or an optional caller flag. Complete M0 below before enabling expanded authoring by default.
 
@@ -28,7 +30,7 @@ The compiler supplies topology, route identity, business capabilities, theme tok
 | `src/services/launch/siteAuthoringOrchestrator.ts` | Builds page briefs with design contracts, preferred vocabulary, creative authority, page variation and homepage inheritance. | Consume the shared context package; preserve page-specific creative intent across generation and repair. |
 | `supabase/functions/ai-code-assistant/contextBuilders.ts` | Emits registry rules, supported states, visual signatures and allowed dependencies. | Distinguish real registry identifiers from freely authored local components; remove prompt interpretations that force every new composition into an existing variant. |
 
-Do a fresh trace before editing: inspect `SystemLauncher` call sites, `wizardStage4bRuntime`, `canonicalLaunchVfs`, the VFS commit service, snapshot projection, preview hydration and publish source selection. This table records observed seams, not proof that every path is already wired.
+Do a fresh trace before editing: inspect `LauncherWizard → runLaunchPipeline → launchOrchestrator`, `wizardStage4bRuntime`, `canonicalLaunchVfs`, the VFS commit service, snapshot projection, preview hydration and publish source selection. This table records observed seams, not proof that every path is already wired.
 
 ## M0 prerequisite: compiler and VFS must preserve authored source
 

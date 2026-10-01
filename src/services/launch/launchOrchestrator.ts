@@ -1,15 +1,15 @@
 import { validateTwentyFirstGenerationCoverage, summarizeCoverageReport } from '@/services/launch/twentyFirstCoverageGate';
 /**
- * Launch Orchestrator — the single, deterministic Wizard → Builder pipeline.
+ * Launch Orchestrator — Wizard intent → canonical plan → App Builder → Builder.
  *
- * Guidebook contract:
- *   selections → canonical seed → registered composition + Design Contract V2
- *   → canonical compiler (Stage 4b theme tokens) → sealed SiteBundleSnapshot
- *   → canonical commit → builder handoff.
+ * Migration target:
+ *   selections → canonical plan/design contracts → AppBuildContract
+ *   → isolated application candidate → canonical gates → one initial commit
+ *   → sealed SiteBundleSnapshot → Builder handoff.
  *
- * AI page authorship is retired: nothing in this module calls a model, and no
- * page body is ever authored outside the canonical compiler. Every stage runs
- * through `launchRun` so the UI can render live pipeline awareness.
+ * The current baseline-first implementation remains temporarily below while
+ * the App Builder substitution is staged. Do not extend that legacy sequence:
+ * fresh-launch page authorship is moving before the initial canonical commit.
  */
 
 import { supabase } from "@/integrations/supabase/client";

@@ -1,5 +1,7 @@
 # Registry and visual composition implementation design
 
+> **AUTHORITY REVISION (2026-09-30):** Preserve the registry wiring and executable-identity work here. Fresh-launch source authority is now governed by [App Builder Canonical Substitution](milestones/UNISON_APP_BUILDER_CANONICAL_SUBSTITUTION_MILESTONE_2026-09-30.md); `launchOrchestrator` must migrate from compiler-then-enrichment to plan-then-App-Builder-candidate.
+
 Source: `UNISON_REGISTRY_VISUAL_COMPOSITION_CANONICAL_LAUNCH_PLAN.md`, supplied September 15, 2026. This design maps that proposal to the current working tree. It does not adopt the document's embedded execution prompt as a new repository policy.
 
 ## Outcome and boundaries
