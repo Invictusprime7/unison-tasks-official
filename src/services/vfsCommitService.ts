@@ -809,7 +809,7 @@ export async function commitMutation(
   // (intent closure, nav stamping, experience manifests). Apply that repair
   // once, then validate the repaired candidate in acceptance mode. Structural,
   // syntax and runtime blockers still fail the second pass.
-  if (!previewOk && input.source === 'ai-builder') {
+  if (!previewOk && (input.source === 'ai-builder' || input.source === 'playground-edit')) {
     const repair = runFullPreflight(files, {
       siteBundleSnapshot: (snapshotForPersistence as { meta?: unknown } | null) as SiteBundleSnapshot | null,
       industry: input.options?.industry,
@@ -939,8 +939,19 @@ export async function commitMutation(
           | null,
         industry: input.options?.industry,
         brand: input.options?.businessName,
-          mode: 'acceptance',
+        mode: 'repair',
+        allowQuarantine: false,
       });
+      if (preflight.stages.earlyRepair !== 'failed' && preflight.stages.finalRepair !== 'failed') {
+        preflight = runFullPreflight(preflight.files, {
+          siteBundleSnapshot: (snapshotForPersistence as { meta?: unknown } | null) as
+            | import('@/platform/core/canonicalPipeline').SiteBundleSnapshot
+            | null,
+          industry: input.options?.industry,
+          brand: input.options?.businessName,
+          mode: 'acceptance',
+        });
+      }
       files = reviewedArtifact && !reviewedComposition && !restoredRevision
         ? preserveWizardMetadataFiles(preflight.files, workingFiles)
         : preflight.files;
