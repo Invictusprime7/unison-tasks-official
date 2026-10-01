@@ -1735,15 +1735,48 @@ export interface LoadedRevision {
   createdAt: string;
 }
 
+/**
+ * Session cache of full revision rows. Heavy payload columns are reused only
+ * after a cheap summary read confirms the revision still has the same
+ * vfs_hash; every summary column is always taken from the fresh read, so
+ * status/readiness changes are never served stale.
+ */
+const REVISION_ROW_CACHE = new Map<string, Record<string, unknown>>();
+const REVISION_ROW_CACHE_MAX = 16;
+
 export async function loadRevision(revisionId: string): Promise<LoadedRevision | null> {
+  const cached = REVISION_ROW_CACHE.get(revisionId);
+  if (cached && typeof cached.vfs_hash === 'string' && cached.vfs_hash) {
+    const { data: summary, error: summaryError } = await supabase
+      .from('site_revisions')
+      .select(REVISION_SUMMARY_COLUMNS)
+      .eq('id', revisionId)
+      .maybeSingle();
+    if (summaryError || !summary) {
+      REVISION_ROW_CACHE.delete(revisionId);
+      if (!summaryError) return null;
+    } else if ((summary as Record<string, unknown>).vfs_hash === cached.vfs_hash) {
+      const merged = { ...cached, ...(summary as Record<string, unknown>) };
+      REVISION_ROW_CACHE.delete(revisionId);
+      REVISION_ROW_CACHE.set(revisionId, merged);
+      return mapRevisionRow(merged);
+    } else {
+      REVISION_ROW_CACHE.delete(revisionId);
+    }
+  }
   const { data, error } = await supabase
     .from('site_revisions')
     .select('*')
     .eq('id', revisionId)
     .maybeSingle();
   if (error || !data) return null;
-  const loaded = mapRevisionRow(data as Record<string, unknown>);
-  return loaded;
+  const row = data as Record<string, unknown>;
+  REVISION_ROW_CACHE.set(revisionId, row);
+  if (REVISION_ROW_CACHE.size > REVISION_ROW_CACHE_MAX) {
+    const oldest = REVISION_ROW_CACHE.keys().next().value;
+    if (oldest) REVISION_ROW_CACHE.delete(oldest);
+  }
+  return mapRevisionRow(row);
 }
 
 export async function loadLatestRevisionForProject(
