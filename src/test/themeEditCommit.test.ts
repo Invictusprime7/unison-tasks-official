@@ -26,7 +26,6 @@ vi.mock('@/integrations/supabase/client', () => ({
       const snapshot = payload.p_site_bundle_snapshot as { vfsFiles: Record<string, string> };
       const runtimeFiles = Object.fromEntries(Object.entries(payload.p_vfs_files as Record<string, string>)
         .filter(([path]) => !path.startsWith('/.unison/')));
-      if (!snapshot.vfsFiles) console.log('DBGSNAP', payload.p_source, Object.keys(snapshot ?? {}).join(','));
       expect(snapshot.vfsFiles).toEqual(runtimeFiles);
       const row = Object.fromEntries(Object.entries(payload).map(([key, value]) => [key.replace(/^p_/, ''), value]));
       row.id = `00000000-0000-4000-8000-${String(revisions.length + 1).padStart(12, '0')}`;

@@ -660,7 +660,6 @@ export async function commitMutation(
       }
     } catch (err) {
       const canonicalError = err instanceof Error ? err.message : String(err);
-      if (process.env.DBG_SNAP) console.log("DBGTHREW", canonicalError.slice(0, 600));
       log('canonical', 'error', 'canonical pipeline threw', err instanceof Error ? {
         message: err.message,
         stack: err.stack,
@@ -728,7 +727,6 @@ export async function commitMutation(
   // so always project the final file map into the snapshot.
   void projectionRestored;
   let snapshotForPersistence = mergeWizardLaunchSnapshot((snapshot as SiteBundleSnapshot | null) ?? null, files);
-  if (process.env.DBG_SNAP) console.log("DBG729", input.source, !!snapshot, !!finalizedArtifact, !!canonicalResult, !!snapshotForPersistence);
   snapshotForPersistence = stampBusinessSystemState(
     snapshotForPersistence as SiteBundleSnapshot | null,
     presentationSnapshot,
@@ -1199,7 +1197,6 @@ export async function commitMutation(
   }
 
   // 7. Persist revision + return -------------------------------------------
-  if (process.env.DBG_SNAP) console.log("DBG1200", input.source, !!snapshotForPersistence, Object.keys((snapshotForPersistence as any) ?? {}).length);
   return finalize({
     input,
     status,
