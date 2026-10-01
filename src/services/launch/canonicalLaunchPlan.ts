@@ -233,13 +233,30 @@ export function buildCanonicalLaunchPlan(
   });
   infrastructureFiles['/src/index.css'] = resolved.themedCss;
 
-  // Ensure component stubs exist so App Builder's generated imports resolve.
-  // These are minimal stubs; App Builder will generate actual component content.
+  // Generate comprehensive component stubs so App Builder's imports resolve.
+  // Includes motion primitives, background effects, UI foundation, and registry components.
   const componentStubFiles: Record<string, string> = {
-    '/src/components/index.ts': '// Re-exports for generated page imports\nexport * from \'./generated\';\n',
-    '/src/components/generated/index.ts': '// Placeholder for generated components\n',
-    '/src/project-components/index.ts': '// Project-local components\nexport * from \'./site\';\n',
-    '/src/project-components/site/index.ts': '// Site components\nexport const SiteNav = () => null;\nexport const SiteFooter = () => null;\n',
+    // Core component re-exports
+    '/src/components/index.ts': `export * from './generated';\nexport * from '../project-components';\n`,
+    '/src/components/generated/index.ts': `// Generated UI foundation components\nexport { default } from './index';\n`,
+
+    // Motion primitives (from generatedUiFoundation.ts)
+    '/src/components/motion/index.ts': `export const Reveal = null;\nexport const RevealGroup = null;\nexport const Stagger = null;\nexport const StaggerGroup = null;\nexport const StaggerItem = null;\nexport const MarqueeBand = null;\nexport const HorizontalRail = null;\nexport const HoverDepth = null;\nexport const ImageReveal = null;\nexport const ParallaxMedia = null;\nexport const MaskReveal = null;\nexport const MotionImage = null;\n`,
+
+    // Background primitives
+    '/src/components/background/index.ts': `export const OrbitalBackdrop = null;\nexport const GlowField = null;\nexport const AnimatedGrid = null;\nexport const NoiseField = null;\nexport const GradientOrbs = null;\nexport const MediaCanvas = null;\n`,
+
+    // UI foundation catalog imports
+    '/src/components/catalog/index.ts': `// Catalog data surface components\nexport * from '@/platform/core/generatedUiCatalog';\n`,
+
+    // Project-local component structure
+    '/src/project-components/index.ts': `export * from './site';\nexport * from './layout';\nexport * from './sections';\n`,
+    '/src/project-components/site/index.ts': `export const SiteNav = null;\nexport const SiteFooter = null;\nexport const SiteHeader = null;\nexport const SiteSidebar = null;\n`,
+    '/src/project-components/layout/index.ts': `export const PageLayout = null;\nexport const ContainerLayout = null;\nexport const GridLayout = null;\nexport const FlexLayout = null;\n`,
+    '/src/project-components/sections/index.ts': `export const SectionWrapper = null;\nexport const SectionContent = null;\n`,
+
+    // Radix UI primitives (from UI foundation)
+    '/src/components/radix/index.ts': `// Radix UI primitives\nexport * from '@radix-ui/react-alert-dialog';\nexport * from '@radix-ui/react-dialog';\nexport * from '@radix-ui/react-dropdown-menu';\nexport * from '@radix-ui/react-hover-card';\nexport * from '@radix-ui/react-popover';\nexport * from '@radix-ui/react-scroll-area';\nexport * from '@radix-ui/react-select';\nexport * from '@radix-ui/react-tabs';\nexport * from '@radix-ui/react-tooltip';\n`,
   };
 
   const pageBodies = Object.keys(infrastructureFiles).filter((path) => /^\/src\/pages\//.test(path));
