@@ -9,3 +9,4 @@
 - AI Composer edge modes (`site-page-author`, `site-page-repair`, `builder-source-edit`) live in the existing `ai-code-assistant` function (`composerLane.ts`), not a new endpoint; why: the milestone forbids parallel pipelines.
 - Site affinity is a graded projection of `SiteDesignContract`: sealed pack/chrome/legality are invariants, while hero, alignment, section order, density, legal variants, and local components remain page-local; why: coherence must not collapse page intent or creative range.
 - Page composition intelligence lives in `src/services/composition/` (one universal planner + data-only industry profiles, consumed under App Builder orchestration); why: industries differ by data, never by engine.
+- Lovable AI (managed gateway) is the primary provider in `_shared/aiProviderLoop.ts`; direct OpenAI/Gemini/Anthropic keys are fallbacks only. Why: direct keys can run out of credit and block launches.

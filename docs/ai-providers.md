@@ -2,6 +2,8 @@
 
 ## Provider runtime
 
+> **Current order:** Lovable AI (managed gateway) is tried first with nearly the full time budget; the direct providers below are fallbacks only.
+
 The Builder and Wizard use a **parallel Gemini/OpenAI runtime** through the `ai-code-assistant` Supabase Edge Function. Each automatic request is assigned to one provider by a stable hash of the authenticated user and request text, so repeated edits remain on the same provider while traffic is distributed predictably. The other configured provider remains the immediate fallback.
 
 | Order | Provider | Secret | Used for |
