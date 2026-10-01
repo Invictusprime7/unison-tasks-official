@@ -4358,14 +4358,11 @@ export type Database = {
         Row: {
           backend_ops_applied: Json
           business_id: string
-          candidate_id: string | null
           created_at: string
           created_by: string
           diagnostics: Json
           draft_id: string
-          file_provenance: Json
           id: string
-          operation_ids: string[]
           parent_revision_id: string | null
           patch_json: Json
           playground_state: Json
@@ -4383,14 +4380,11 @@ export type Database = {
         Insert: {
           backend_ops_applied?: Json
           business_id: string
-          candidate_id?: string | null
           created_at?: string
           created_by: string
           diagnostics?: Json
           draft_id: string
-          file_provenance?: Json
           id?: string
-          operation_ids?: string[]
           parent_revision_id?: string | null
           patch_json?: Json
           playground_state?: Json
@@ -4408,14 +4402,11 @@ export type Database = {
         Update: {
           backend_ops_applied?: Json
           business_id?: string
-          candidate_id?: string | null
           created_at?: string
           created_by?: string
           diagnostics?: Json
           draft_id?: string
-          file_provenance?: Json
           id?: string
-          operation_ids?: string[]
           parent_revision_id?: string | null
           patch_json?: Json
           playground_state?: Json
