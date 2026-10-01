@@ -19,8 +19,19 @@ export interface DraftFrameworkMigrationSummary {
  * privileged bulk rewrite can cross profiles.
  */
 export async function upgradeCurrentUserDraftFrameworkVfs(): Promise<DraftFrameworkMigrationSummary> {
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data: { session } } = await supabase.auth.getSession();
+  const user = session?.user;
   if (!user) return { scanned: 0, upgraded: 0, failed: 0 };
+
+  // Read-only scan of every draft's full file map — run at most once per
+  // browser session per user to avoid repeated multi-MB reads.
+  const sweepKey = `draft_framework_sweep_v1:${user.id}`;
+  try {
+    if (sessionStorage.getItem(sweepKey)) return { scanned: 0, upgraded: 0, failed: 0 };
+    sessionStorage.setItem(sweepKey, '1');
+  } catch {
+    // storage unavailable; fall through
+  }
 
   const summary: DraftFrameworkMigrationSummary = { scanned: 0, upgraded: 0, failed: 0 };
   let lastId: string | null = null;

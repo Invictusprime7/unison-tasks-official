@@ -1742,7 +1742,8 @@ export async function loadRevision(revisionId: string): Promise<LoadedRevision |
     .eq('id', revisionId)
     .maybeSingle();
   if (error || !data) return null;
-  return mapRevisionRow(data as Record<string, unknown>);
+  const loaded = mapRevisionRow(data as Record<string, unknown>);
+  return loaded;
 }
 
 export async function loadLatestRevisionForProject(
@@ -1791,8 +1792,13 @@ export async function loadProjectedRevisionForDraft(
   if (!revision) {
     throw new Error(`[VFSCommitService] draft ${draftId} points to an invalid committed revision`);
   }
-  return mapRevisionRow(revision as Record<string, unknown>);
+  const loaded = mapRevisionRow(revision as Record<string, unknown>);
+  return loaded;
 }
+
+// Columns for list views: everything except the heavy file/snapshot payloads.
+const REVISION_SUMMARY_COLUMNS =
+  'id, project_id, business_id, draft_id, source, status, readiness_report, diagnostics, publish_ready, publish_blockers, vfs_hash, candidate_id, operation_ids, created_at';
 
 /**
  * Move D — publish flow loads the latest revision whose publish gate +
@@ -1823,9 +1829,10 @@ export async function listRecentRevisionsForProject(
   projectId: string,
   limit = 10,
 ): Promise<LoadedRevision[]> {
+  // History feed is summary-only; restore loads the full row by id.
   const { data, error } = await supabase
     .from('site_revisions')
-    .select('*')
+    .select(REVISION_SUMMARY_COLUMNS)
     .eq('project_id', projectId)
     .order('created_at', { ascending: false })
     .limit(limit);
