@@ -1516,8 +1516,8 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
             previewSnapshot = buildRenderedSiteDigest({
               doc,
               route,
-              vfsFiles,
-              signature: computeBuilderVfsSignature(vfsFiles),
+              vfsFiles: vfsFiles ?? {},
+              signature: computeBuilderVfsSignature(vfsFiles ?? {}),
             });
           } catch { /* best-effort */ }
 
