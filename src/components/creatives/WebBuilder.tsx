@@ -8017,6 +8017,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                   });
                 }
                 if (outcome.revisionId) setCurrentRevisionId(outcome.revisionId);
+                markCheckpointSaved(outcome.revisionId);
                 return { success: true, errors: [] };
               }}
               onViewEdits={() => { setViewMode('split'); setAiPanelOpen(false); }}
