@@ -53,8 +53,7 @@ export async function orchestrateAppBuild(
   });
   let closureRepairAttempts = 0;
 
-  // One site-wide repair attempt sees the complete candidate and every closure
-  // diagnostic. It remains in memory and passes through the same Composer gates.
+  // One site-wide repair attempt sees the complete closure diagnostics and protected-path constraints.
   if (!compatibilityMode && !closure.ok && !input.signal?.aborted) {
     const home = pages.find((page) => page.pageId === input.contract.topology.sitePlan.homePageId) ?? pages[0];
     if (home) {
@@ -62,18 +61,25 @@ export async function orchestrateAppBuild(
         .filter((issue) => issue.severity === 'blocker')
         .map((issue) => `${issue.code}${issue.path ? ` (${issue.path})` : ''}: ${issue.message}`)
         .slice(0, 30);
+
+      // Enhanced repair instruction for protected-path violations
+      const hasProtectedPathViolation = diagnostics.some(d => d.includes('protected-source-changed'));
+      const repairInstruction = hasProtectedPathViolation
+        ? 'Resolve every supplied closure diagnostic across the candidate application. IMPORTANT: Do not modify package.json, tsconfig.json, or .unison/* files — these are canonical infrastructure. Work only within approved dependencies and available component imports. If imports are missing, use only components and utilities already available in the approved dependencies.'
+        : 'Resolve every supplied closure diagnostic across the candidate application.';
+
       const assembled = await assembleCanonicalAuthoringRequest({
         task: 'site_page_repair',
         page: home,
         brief: 'Repair site-wide application closure without changing canonical infrastructure or the sealed design identity.',
         knowledgeQuery: `${input.contract.business.industry} site-wide module route design closure`,
-        instruction: 'Resolve every supplied closure diagnostic across the candidate application.',
+        instruction: repairInstruction,
         baseFiles: candidateFiles,
         baseRevisionId: input.baseRevisionId,
         sourceTargets: pages.map((page) => page.filePath),
         routes: pages.map((page) => ({ title: page.title, route: page.route })),
         registryContext: input.contract.design.registryContext,
-        runtimeContext: `Approved capabilities: ${input.contract.business.capabilities.join(', ')}. Protected paths: ${input.contract.runtime.protectedPaths.join(', ')}.`,
+        runtimeContext: `Approved capabilities: ${input.contract.business.capabilities.join(', ')}. Protected paths: ${input.contract.runtime.protectedPaths.join(', ')}. Approved dependencies: ${input.contract.runtime.approvedDependencies.join(', ')}.`,
         diagnostics,
       });
       const repaired = await dependencies.runComposer({
