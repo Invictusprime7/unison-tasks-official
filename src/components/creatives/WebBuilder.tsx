@@ -3468,7 +3468,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   // and explicit callbacks (onSave, file selection) update previewCode when needed.
   
   // Auto-save functionality
-  const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
   const saveQueueRef = useRef<Promise<boolean>>(Promise.resolve(true));
@@ -4538,7 +4538,6 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
         lastRecordedPendingVfsSignatureRef.current = '';
         setLastSavedAt(new Date());
         setAutoSaveStatus('saved');
-        setTimeout(() => setAutoSaveStatus('idle'), 2000);
         return true;
       } catch (error) {
         // Expected, transient: right after a Wizard launch handoff, the
@@ -4553,7 +4552,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
         } else {
           console.error('[AutoSave] Error saving draft:', error);
         }
-        setAutoSaveStatus('idle');
+        setAutoSaveStatus(isIdentityNotReadyYet ? 'idle' : 'error');
         return false;
       }
     };
@@ -4659,6 +4658,23 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     return () => window.clearTimeout(t);
     // virtualFS.nodes is the canonical change signal exposed by useVFS.
   }, [virtualFS.nodes, computeVfsSignature, hydratedRevision]);
+
+  // Continuity after inactivity: when the tab becomes visible again, refresh
+  // the auth session first, then save any edits made before the break.
+  useEffect(() => {
+    const resume = () => {
+      if (document.visibilityState !== 'visible') return;
+      void supabaseClient.auth.getSession().finally(() => {
+        void saveDraftRef.current();
+      });
+    };
+    document.addEventListener('visibilitychange', resume);
+    window.addEventListener('online', resume);
+    return () => {
+      document.removeEventListener('visibilitychange', resume);
+      window.removeEventListener('online', resume);
+    };
+  }, []);
 
   // Flush on tab close, refresh, or visibility change so AI edits aren't lost.
   useEffect(() => {
@@ -7137,6 +7153,19 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
             {autoSaveStatus === 'saved' && (
               <Cloud className="h-3.5 w-3.5 text-lime-400 drop-shadow-[0_0_5px_rgba(0,255,0,0.6)]" />
             )}
+            <span
+              className={cn('text-xs', autoSaveStatus === 'error' ? 'text-amber-400' : 'text-white/55')}
+              title={lastSavedAt ? `Last saved ${lastSavedAt.toLocaleString()}` : undefined}
+              aria-live="polite"
+            >
+              {autoSaveStatus === 'saving'
+                ? 'Saving…'
+                : autoSaveStatus === 'error'
+                  ? 'Not saved — retrying'
+                  : autoSaveStatus === 'saved' || lastSavedAt
+                    ? `Saved${lastSavedAt ? ` ${lastSavedAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : ''}`
+                    : ''}
+            </span>
             <Button
               variant="ghost"
               size="sm"
@@ -7145,7 +7174,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
               title={currentTemplateName ? `Update "${currentTemplateName}"` : "Save to Projects"}
             >
               <Save className="h-3.5 w-3.5 mr-1.5" />
-              <span className="text-xs font-medium">{currentTemplateName ? 'Update' : 'Save'}</span>
+              <span className="text-xs font-medium">{currentTemplateName ? 'Save now' : 'Save'}</span>
             </Button>
             <DeployButton
               getFiles={() => getCurrentCanonicalBuildArtifacts()?.deployFiles || {}}
