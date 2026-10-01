@@ -30,6 +30,39 @@ function stableSourceHash(files: Readonly<Record<string, string>>): string {
   return `fnv1a:${hash.toString(16).padStart(8, '0')}`;
 }
 
+/** Attribute names (or '...' for a spread) on every JSX usage of a component. */
+function jsxUsages(source: string, name: string): Array<{ names: string[]; raw: string }> {
+  const usages: Array<{ names: string[]; raw: string }> = [];
+  const opener = new RegExp(`<${name}(?=[\\s/>])`, 'g');
+  for (let match = opener.exec(source); match; match = opener.exec(source)) {
+    let depth = 0;
+    let end = match.index + match[0].length;
+    for (; end < source.length; end += 1) {
+      const ch = source[end];
+      if (ch === '{') depth += 1;
+      else if (ch === '}') depth -= 1;
+      else if (ch === '>' && depth === 0 && source[end - 1] !== '=') break;
+    }
+    const attrs = source.slice(match.index + match[0].length, end);
+    const names: string[] = [];
+    let level = 0;
+    for (let i = 0; i < attrs.length; i += 1) {
+      const ch = attrs[i];
+      if (ch === '{') {
+        if (level === 0 && /^\{\s*\.\.\./.test(attrs.slice(i))) names.push('...');
+        level += 1;
+      } else if (ch === '}') level -= 1;
+      else if (level === 0 && /[A-Za-z_]/.test(ch) && !/[\w$-]/.test(attrs[i - 1] ?? ' ')) {
+        const ident = /^[\w-]+/.exec(attrs.slice(i))![0];
+        names.push(ident);
+        i += ident.length - 1;
+      }
+    }
+    usages.push({ names, raw: attrs });
+  }
+  return usages;
+}
+
 function isProtected(path: string, protectedPaths: readonly string[]): boolean {
   return protectedPaths.some((protectedPath) =>
     path === protectedPath || path.startsWith(`${protectedPath.replace(/\/$/, '')}/`));
@@ -101,6 +134,77 @@ export function validateAppBuildCandidate(input: {
       path: violation.filePath,
       message: `${violation.filePath} imports ${violation.symbol} from ${violation.importPath}, but that export is unavailable.`,
     });
+  }
+
+  const RECIPE_IMPORT = /import\s[^;]*?from\s+['"]([^'"]*\/recipes\/[^'"]*)['"]|\bREGISTERED_VARIANTS\b/g;
+  for (const [path, source] of Object.entries(files)) {
+    if (!isAllowedGenerationPath(path) || !/\.(?:tsx?|jsx?)$/.test(path)) continue;
+    if (RECIPE_IMPORT.test(source)) {
+      issues.push({
+        severity: 'blocker',
+        code: 'recipe-internal-import',
+        path,
+        message: `${path} reaches into recipe internals. Import variant components by name from @/unison/design-sources/<Family> instead of recipes/ or REGISTERED_VARIANTS.`,
+      });
+    }
+    RECIPE_IMPORT.lastIndex = 0;
+  }
+
+  const manifestSource = files['/.unison/design-source-manifest.json'] ?? input.initialFiles['/.unison/design-source-manifest.json'];
+  if (manifestSource) {
+    let implementations: Record<string, { exportName?: string; props?: string }> = {};
+    try { implementations = JSON.parse(manifestSource).implementations ?? {}; } catch { /* manifest is system-owned; ignore if unreadable */ }
+    const contracts = Object.values(implementations)
+      .filter((entry) => entry.exportName && entry.props)
+      .map((entry) => ({
+        name: entry.exportName!,
+        hint: entry.props!,
+        arrays: entry.props!.split(', ').flatMap((token) => {
+          const parsed = /^(\w+)(\?)?\[\](?:\{(.*)\})?$/.exec(token);
+          if (!parsed || parsed[2]) return [];
+          const required = (parsed[3] ?? '').split('|').filter((field) => field && !field.includes('?'));
+          return [{ prop: parsed[1], required }];
+        }),
+      }));
+    const attributeValue = (raw: string, prop: string): string | undefined => {
+      const start = new RegExp(String.raw`(?<![\w-])${prop}\s*=\s*\{`).exec(raw);
+      if (!start) return undefined;
+      let depth = 1;
+      let i = start.index + start[0].length;
+      for (; i < raw.length && depth > 0; i += 1) {
+        if (raw[i] === '{') depth += 1;
+        else if (raw[i] === '}') depth -= 1;
+      }
+      return raw.slice(start.index + start[0].length, i - 1).trim();
+    };
+    for (const page of pages) {
+      const source = files[page.filePath];
+      if (!source) continue;
+      for (const { name, hint, arrays } of contracts) {
+        if (!new RegExp(String.raw`<${name}(?=[\s/>])`).test(source)) continue;
+        for (const { names, raw } of jsxUsages(source, name)) {
+          const block = (code: string, message: string) => issues.push({ severity: 'blocker', code, path: page.filePath, message: `${page.filePath} <${name}>: ${message} Expected props: ${hint} (name[]{a|b?}: array of objects, ? = optional).` });
+          if (/<\s*(?:h[1-6]|p|div|section)\b/.test(raw)) {
+            block('design-source-nested-block', 'a text prop contains block markup (h1-h6/p/div). Pass plain strings; the section supplies the heading element.');
+          }
+          const missing = arrays.filter(({ prop }) => !names.includes(prop)).map(({ prop }) => prop);
+          if (missing.length && !names.includes('...')) {
+            block('design-source-missing-props', `missing required array props: ${missing.join(', ')}.`);
+            continue;
+          }
+          for (const { prop, required } of arrays) {
+            const value = attributeValue(raw, prop);
+            if (value === undefined) continue;
+            if (/^\[\s*\]$/.test(value)) {
+              block('design-source-empty-array', `${prop} is empty. Provide real items with ${required.join(', ') || 'content'}.`);
+            } else if (value.startsWith('[') && required.length) {
+              const absent = required.filter((field) => !new RegExp(String.raw`(?:^|[\s,{])${field}\s*[:,}]`).test(value));
+              if (absent.length) block('design-source-incomplete-items', `${prop} items are missing required field(s): ${absent.join(', ')}.`);
+            }
+          }
+        }
+      }
+    }
   }
 
   const registry = input.contract.topology.pageRegistry;

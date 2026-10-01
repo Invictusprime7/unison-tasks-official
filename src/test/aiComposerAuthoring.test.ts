@@ -7,6 +7,7 @@ vi.mock('@/services/builderBrainClient', () => ({ runBuilderTurn: vi.fn() }));
 import { repairBuilderCandidate, runComposerRepairLoop } from '@/services/builder/aiRepairLoop';
 import type { AICandidateChangeSet } from '@/services/builder/aiCandidateChangeSet';
 import { authorSitePages, orderAuthoringPages } from '@/services/launch/siteAuthoringOrchestrator';
+import { planSiteComposition } from '@/services/composition';
 
 const base = {
   '/src/pages/Home.tsx': 'export default function Home(){return <main>Old</main>}',
@@ -211,6 +212,23 @@ describe('site authoring orchestrator', () => {
     expect(result.files['/src/pages/Home.tsx']).toContain('hero:fashion-cinematic');
     expect(result.files['/src/pages/About.tsx']).toContain('hero:editorial-intro');
     expect(result.files['/src/pages/About.tsx']).toContain('navbar:editorial-minimal');
+  }, 30000);
+
+  it('uses the sealed contract compositionPlan instead of replanning', async () => {
+    const sealed = planSiteComposition('restaurant', pages.map((p) => ({ pageId: p.pageId, role: p.role })), 'sealed-seed');
+    sealed.pages = sealed.pages.map((p) => ({ ...p, compositionKey: `SEALED-${p.pageId}` }));
+    const requests: Array<Record<string, unknown>> = [];
+    const invoke = vi.fn(async (input: { messages: Array<{ content: string }> }) => {
+      const req = JSON.parse(input.messages[0].content);
+      requests.push(req);
+      return bad(req.page.filePath);
+    });
+    await authorSitePages({
+      pages, homePageId: 'home', designContext: null, businessName: 'B', files: base,
+      commitPage: vi.fn(), invoke: invoke as never, compositionPlan: sealed,
+    });
+    const home = requests.find((r) => (r.page as { role: string }).role === 'home');
+    expect(home?.brief).toContain('SEALED-home');
   }, 30000);
 
   it('pauses remaining pages after a credit error', async () => {

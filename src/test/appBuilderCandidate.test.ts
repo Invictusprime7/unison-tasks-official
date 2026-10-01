@@ -27,6 +27,7 @@ function contract(): AppBuildContract {
       seed: 'candidate-closure', themePresetId: 'editorial', themeTokens: {} as never,
       artDirection: {} as never, resolvedSiteDesignContext, uiFoundation: {} as never,
       registryContext: {} as never, compositionPlan: { industryId: 'salon', seed: 'candidate-closure', pages: [] },
+      sourceSelection: { implementationIds: [], portableRecipeIds: [], primitiveFamilyIds: [], experiencePrimitiveIds: [], pageCompositionIds: [] },
     },
     runtime: {
       framework: 'react-vite', language: 'typescript', styling: 'tailwind',
@@ -71,5 +72,47 @@ describe('App Builder candidate closure', () => {
       'module-closure-unresolved-import',
     ]));
   });
-});
 
+  it('blocks pages that reach into recipe internals', () => {
+    const files = {
+      ...initialFiles,
+      '/src/pages/Home.tsx': 'import { HeroImageStream } from "@/components/recipes/Hero"; export default function Home(){return <main><HeroImageStream /></main>}',
+      '/src/pages/Contact.tsx': 'import { REGISTERED_VARIANTS } from "../unison/design-sources/recipes/Hero"; export default function Contact(){return <main />}',
+    };
+    const report = validateAppBuildCandidate({ contract: contract(), files, initialFiles });
+    const blocked = report.issues.filter((issue) => issue.code === 'recipe-internal-import').map((issue) => issue.path);
+
+    expect(blocked.sort()).toEqual(['/src/pages/Contact.tsx', '/src/pages/Home.tsx']);
+  });
+
+  it('blocks design-source components rendered without required array props', () => {
+    const manifest = JSON.stringify({ implementations: { 'services:editorial-rows': { exportName: 'ServicesEditorialRows', props: 'headline, items[]' } } });
+    const base = { ...initialFiles, '/.unison/design-source-manifest.json': manifest };
+    const page = (body: string) => `import { ServicesEditorialRows } from "@/unison/design-sources/Services"; export default function Home(){return <main>${body}</main>}`;
+    const run = (body: string) => validateAppBuildCandidate({
+      contract: contract(),
+      files: { ...base, '/src/pages/Home.tsx': page(body) },
+      initialFiles: base,
+    }).issues.filter((issue) => issue.code === 'design-source-missing-props');
+
+    expect(run('<ServicesEditorialRows headline="x" />')).toHaveLength(1);
+    expect(run('<ServicesEditorialRows headline="x" items={[{ title: "a" }]} />')).toHaveLength(0);
+    expect(run('<ServicesEditorialRows {...props} />')).toHaveLength(0);
+  });
+
+  it('blocks empty, incomplete and nested-markup design-source usage', () => {
+    const manifest = JSON.stringify({ implementations: { 'services:editorial-rows': { exportName: 'ServicesEditorialRows', props: 'headline, items[]{title|description|price?}' } } });
+    const base = { ...initialFiles, '/.unison/design-source-manifest.json': manifest };
+    const codes = (body: string) => validateAppBuildCandidate({
+      contract: contract(),
+      files: { ...base, '/src/pages/Home.tsx': `import { ServicesEditorialRows } from "@/unison/design-sources/Services"; export default function Home(){return <main>${body}</main>}` },
+      initialFiles: base,
+    }).issues.map((issue) => issue.code);
+
+    expect(codes('<ServicesEditorialRows headline="x" items={[]} />')).toContain('design-source-empty-array');
+    expect(codes('<ServicesEditorialRows headline="x" items={[{ title: "a" }]} />')).toContain('design-source-incomplete-items');
+    expect(codes('<ServicesEditorialRows headline={<h2>x</h2>} items={[{ title: "a", description: "b" }]} />')).toContain('design-source-nested-block');
+    const clean = codes('<ServicesEditorialRows headline="x" items={[{ title: "a", description: "b" }, { title: "c", description: "d" }]} />');
+    expect(clean.filter((code) => code.startsWith('design-source-'))).toEqual([]);
+  });
+});

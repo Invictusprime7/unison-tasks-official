@@ -43,6 +43,7 @@ import { buildCodeModePrompt } from "./prompts/codePrompt.ts";
 import { buildTemplateJsonPrompt, buildTemplateHtmlPrompt, buildTemplateReactPrompt } from "./prompts/templatePrompts.ts";
 import { buildEditAssistantPrompt, buildDebugAssistantPrompt, buildGeneralBuilderPrompt } from "./prompts/builderPrompts.ts";
 import { buildDesignDirectorDirective } from "./prompts/designDirector.ts";
+import { buildUnisonDesignArchitectureDirective } from "../_shared/canonicalPipelinePrompt.ts";
 
 import { generateImageIfNeeded } from "./imageGeneration.ts";
 import { runProviderLoop } from "../_shared/aiProviderLoop.ts";
@@ -114,7 +115,7 @@ RUNTIME + IMPORT CONTRACT (HARD):
 - Experience budget: at most ONE heavy scene primitive (ImmersiveHero, ProductStage, ModelViewer, DepthGallery) per page band and TWO per page, only when the sealed design intervention lists the matching recipe. Readable copy and intent-bearing CTAs must live in the DOM, never inside the 3D scene.
 - Do not import "@/unison/ui/tailwind.css" from a page; it is already applied globally.
 - Use plain <img alt="..."> for images, not a framework-specific Image component.
-- Every emitted source string must independently parse as TSX. Balance every JSX tag, brace, bracket, parenthesis, quote, and template literal before returning JSON.${buildDesignDirectorDirective()}`;
+- Every emitted source string must independently parse as TSX. Balance every JSX tag, brace, bracket, parenthesis, quote, and template literal before returning JSON.${buildDesignDirectorDirective()}${buildUnisonDesignArchitectureDirective('full')}`;
 }
 
 

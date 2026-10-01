@@ -5,6 +5,9 @@ import type { ComposerLoopInput, ComposerLoopResult } from '@/services/builder/a
 import type { SiteAuthoringInput, SiteAuthoringResult } from '@/services/launch/siteAuthoringOrchestrator';
 import { APP_BUILDER_PROTOCOL_VERSION, type AppBuildRequest, type AppBuildResult } from './appBuilderContracts';
 import { validateAppBuildCandidate } from './appBuilderCandidate';
+import { evaluateDesignQuality } from './design/designQualityClosure';
+import { applyDesignSources } from './design/designSourceMaterializer';
+import { buildAppBuilderGenerationContext, reportDesignSourceUsage } from './appBuilderGenerationContext';
 
 export interface AppBuilderOrchestratorDependencies {
   authorSite: (input: SiteAuthoringInput) => Promise<SiteAuthoringResult>;
@@ -22,12 +25,14 @@ export async function orchestrateAppBuild(
     filePath: page.filePath,
     role: page.role,
   }));
+  const generation = buildAppBuilderGenerationContext(input.contract);
+  const baseFiles = applyDesignSources(input.initialFiles, generation.materialization);
   const authored = await dependencies.authorSite({
     pages,
     homePageId: input.contract.topology.sitePlan.homePageId,
     designContext: input.contract.design.resolvedSiteDesignContext,
     businessName: input.contract.business.businessName,
-    files: { ...input.initialFiles },
+    files: { ...baseFiles },
     revisionId: input.baseRevisionId,
     signal: input.signal,
     budgetMs: input.budgetMs,
@@ -41,6 +46,7 @@ export async function orchestrateAppBuild(
     })),
     compositionPlan: input.contract.design.compositionPlan,
     registryContext: input.contract.design.registryContext,
+    runtimeContext: generation.runtimeContext,
     resolveDependencies: false,
   });
 
@@ -50,7 +56,7 @@ export async function orchestrateAppBuild(
   let closure = validateAppBuildCandidate({
     contract: input.contract,
     files: candidateFiles,
-    initialFiles: input.initialFiles,
+    initialFiles: baseFiles,
   });
   let closureRepairAttempts = 0;
 
@@ -80,7 +86,7 @@ export async function orchestrateAppBuild(
         sourceTargets: pages.map((page) => page.filePath),
         routes: pages.map((page) => ({ title: page.title, route: page.route })),
         registryContext: input.contract.design.registryContext,
-        runtimeContext: `Approved capabilities: ${input.contract.business.capabilities.join(', ')}. Protected paths: ${input.contract.runtime.protectedPaths.join(', ')}. Approved dependencies: ${input.contract.runtime.approvedDependencies.join(', ')}.`,
+        runtimeContext: `${generation.runtimeContext}`.slice(0, 12000),
         diagnostics,
       });
       const repaired = await dependencies.runComposer({
@@ -101,7 +107,7 @@ export async function orchestrateAppBuild(
         closure = validateAppBuildCandidate({
           contract: input.contract,
           files: candidateFiles,
-          initialFiles: input.initialFiles,
+          initialFiles: baseFiles,
         });
       }
     }

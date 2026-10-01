@@ -85,6 +85,8 @@ export interface SiteAuthoringInput {
   compositionPlan?: SiteCompositionPlan;
   /** Registry context for component availability (sections, variants). */
   registryContext?: unknown;
+  /** Extra runtime facts for every page turn (e.g. certified design-source modules with prop contracts). */
+  runtimeContext?: string;
   /** false keeps /package.json untouched in authored candidates. */
   resolveDependencies?: boolean;
 }
@@ -154,7 +156,8 @@ export async function authorSitePages(input: SiteAuthoringInput): Promise<SiteAu
   let paused: ComposerStopReason | null = null;
   let establishedLanguage: HomepageVisualLanguage | undefined;
   // One universal planner assigns each page a distinct narrative + topology job.
-  const compositionPlan = planSiteComposition(
+  // A sealed plan from the AppBuildContract is authoritative; replanning here would fork the design.
+  const compositionPlan = input.compositionPlan ?? planSiteComposition(
     input.designContext?.contract.industry ?? 'generic',
     ordered.map((p) => ({ pageId: p.pageId, role: p.role })),
     input.designContext?.fingerprint ?? input.businessName,
@@ -198,9 +201,12 @@ export async function authorSitePages(input: SiteAuthoringInput): Promise<SiteAu
       routes,
       priorPages: priorPages.slice(-20),
       registryContext: input.registryContext,
-      runtimeContext: input.designContext
-        ? `Industry ${input.designContext.contract.industry}; experience ${input.designContext.contract.experience}; forbidden implementations ${JSON.stringify(input.designContext.hardLegality.forbiddenImplementations)}.`
-        : undefined,
+      runtimeContext: [
+        input.designContext
+          ? `Industry ${input.designContext.contract.industry}; experience ${input.designContext.contract.experience}; forbidden implementations ${JSON.stringify(input.designContext.hardLegality.forbiddenImplementations)}.`
+          : '',
+        input.runtimeContext ?? '',
+      ].filter(Boolean).join('\n').slice(0, 12000) || undefined,
     })).request;
     const runLoop = (request: AIComposerRequest) => runComposerRepairLoop({
       request,

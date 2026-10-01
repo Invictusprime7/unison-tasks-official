@@ -1,3 +1,4 @@
+import { buildUnisonDesignArchitectureDirective } from './canonicalPipelinePrompt.ts';
 import { z } from 'zod';
 import { normalizePageSectionOrder, pageArchetypeIssues } from './pageArchetypeContract.ts';
 import { projectionDensityIssues, type SiteDesignContractProjection } from './siteDesignContractProjection.ts';
@@ -141,7 +142,7 @@ export async function runCompositionLane(context: string, headers: Record<string
     status, headers: { ...headers, 'Content-Type': 'application/json' },
   });
   const canonicalContract = typeof options.brief?.canonicalContract === 'string' ? options.brief.canonicalContract : '';
-  const systemPrompt = COMPOSITION_SYSTEM_PROMPT + (canonicalContract
+  const systemPrompt = COMPOSITION_SYSTEM_PROMPT + buildUnisonDesignArchitectureDirective('brief') + (canonicalContract
     ? '\n\n' + canonicalContract + '\nThese machine-checked rules override any general guidance above. Satisfy every one of them.'
     : '');
   const messages = [{ role: 'system', content: systemPrompt }, { role: 'user', content: context }];

@@ -51,10 +51,52 @@ ${DESIGN_SYSTEM}
 ${PORTABLE_RECIPES}
 
 ${SHELL_CLOSURE}
-`;
+${buildUnisonDesignArchitectureDirective('full')}`;
 }
 
 /** Compact rule block for the structured composer lane (file-block output). */
 export function buildComposerCanonicalRules(): string {
-  return [VERIFIED_IMPORTS, DESIGN_SYSTEM, PORTABLE_RECIPES, SHELL_CLOSURE].join('\n\n');
+  return [ARCHITECTURE_HIERARCHY, ARCHITECTURE_DESIGN_SOURCES, VERIFIED_IMPORTS, DESIGN_SYSTEM, PORTABLE_RECIPES, SHELL_CLOSURE].join('\n\n');
+}
+
+const ARCHITECTURE_OWNERSHIP = `UNISON ARCHITECTURE (who owns what)
+- The Launcher Wizard owns intent. The Canonical Platform owns contracts (PageRegistry, theme tokens, protected files). The Unison Design System owns the executable design language. The App Builder (you, on fresh launches) is the only author of page source. The candidate gateway checks closure, and a single commit step is the only writer of accepted state (SiteBundleSnapshot).
+- You never create a parallel launcher, file store, registry or commit path, and never emit a competing router, theme or shell.`;
+
+const ARCHITECTURE_HIERARCHY = `DESIGN LAYERS (use the highest layer that fits; never skip down to hand-rolled markup)
+- L1 atoms and tokens: semantic color roles, ut-* typography, --ut-* spacing/radius/motion tokens, and the "@/unison/ui" facades (Section, Container, Stack, Grid, Split, Heading, Panel, MediaFrame, Reveal...).
+- L2 certified sections: registry variants named "section:variant" (for example hero:image-stream, services:editorial-rows). The registry context lists the closed set. Never invent an ID.
+- L3 portable recipes: certified section variants materialised as importable, read-only modules under /src/unison/design-sources/<Family>.
+- L4 page compositions: an ordered section plan per page role. Every page needs a distinct composition and section order; the gateway rejects repeated composition signatures.
+- L5 art direction: the sealed family, pack, type tier, surface and motion profile. Express it through tokens and variant choice, never through raw colors or one-off CSS.`;
+
+const ARCHITECTURE_DESIGN_SOURCES = `CERTIFIED DESIGN-SOURCE MODULES (when the context lists them)
+- Import the named export from the family entry module: import { ServicesEditorialRows } from '@/unison/design-sources/Services'. Use exactly the export names and prop lists given in the context.
+- Pass the listed props directly as JSX attributes. Props marked [] (for example items[]) are required arrays: omit one and the section crashes at render, and the gateway rejects the page. Give every item the fields the section renders (title, description, image, price and so on), with real business copy.
+- Text props such as headline and subhead are plain strings. The section already wraps them in the correct heading element, so never nest <h1>/<h2> or other block elements inside them.
+- Never import from /src/unison/design-sources/recipes/, never reference REGISTERED_VARIANTS, never copy or edit module internals. Design-source files are protected and read-only.
+- A family or variant that is not listed is authored locally under /src/project-components/ using L1 primitives, not guessed.`;
+
+/**
+ * Real Unison design architecture for AI prompts.
+ * 'full' is for functions that author or edit site source; 'brief' is for
+ * functions that only need to speak and decide in Unison's design language.
+ */
+export function buildUnisonDesignArchitectureDirective(level: 'full' | 'brief' = 'full'): string {
+  if (level === 'brief') {
+    return `
+
+## UNISON DESIGN ARCHITECTURE (context)
+Unison sites are composed from a layered design system: L1 tokens and primitives, L2 certified section variants ("section:variant" IDs from a closed registry), L3 portable recipes imported from @/unison/design-sources/<Family>, L4 per-page compositions with distinct section orders, and L5 sealed art direction (family, type tier, surface, motion). Colors come from semantic tokens, never raw palette values. Only the App Builder authors page source and only the single commit step writes accepted state. Never invent section variants, components, brand facts, or file paths; stay inside the supplied registry and contracts.
+`;
+  }
+  return `
+
+## UNISON DESIGN ARCHITECTURE (authoritative)
+${ARCHITECTURE_OWNERSHIP}
+
+${ARCHITECTURE_HIERARCHY}
+
+${ARCHITECTURE_DESIGN_SOURCES}
+`;
 }

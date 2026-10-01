@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { buildUnisonDesignArchitectureDirective } from "../_shared/canonicalPipelinePrompt.ts";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 import { verifyAuth, authError } from "../_shared/auth.ts";
 import { errorResponse, secureJsonResponse } from "../_shared/response.ts";
@@ -64,7 +65,7 @@ serve(async (req) => {
     const response = await createChatCompletion({
       model: "google/gemini-2.5-flash",
       messages: [
-        { role: "system", content: systemPrompt },
+        { role: "system", content: systemPrompt + buildUnisonDesignArchitectureDirective("brief") },
         { role: "user", content: text }
       ],
     });

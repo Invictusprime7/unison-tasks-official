@@ -1,5 +1,8 @@
 import { resolveLocalImport } from './aiCandidateGates';
 
+/** Recipe bundles are implementation detail; showing them teaches the model to import them. */
+const DESIGN_SOURCE_INTERNALS = /^\/src\/unison\/design-sources\/recipes\//;
+
 /** Read-only project knowledge, bounded by its encoded transport size. */
 export function selectSourceKnowledge(
   files: Record<string, string>,
@@ -35,6 +38,7 @@ export function selectSourceKnowledgeWithReport(
     const path = queue[index];
     if (visited.has(path)) continue;
     visited.add(path);
+    if (DESIGN_SOURCE_INTERNALS.test(path)) continue;
     const source = files[path];
     if (typeof source !== 'string') {
       omitted.push({ path, reason: 'missing' });

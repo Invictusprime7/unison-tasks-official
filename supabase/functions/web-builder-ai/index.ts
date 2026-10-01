@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { buildUnisonDesignArchitectureDirective } from "../_shared/canonicalPipelinePrompt.ts";
 import { z } from "zod";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 import { verifyAuth, authError } from "../_shared/auth.ts";
@@ -121,7 +122,7 @@ IMPORTANT: Return ONLY valid JSON, no markdown, no explanations outside the JSON
     const response = await createChatCompletion({
       model: "google/gemini-2.5-pro",
       messages: [
-        { role: "system", content: systemPrompt },
+        { role: "system", content: systemPrompt + buildUnisonDesignArchitectureDirective("brief") },
         { role: "user", content: prompt }
       ],
       response_format: { type: "json_object" },

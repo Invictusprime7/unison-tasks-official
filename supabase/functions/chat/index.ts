@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { buildUnisonDesignArchitectureDirective } from "../_shared/canonicalPipelinePrompt.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { createChatCompletion } from "../_shared/ai/providerClient.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
@@ -60,7 +61,7 @@ serve(async (req) => {
     const response = await createChatCompletion({
       model,
       messages: [
-        { role: "system", content: "You are Unison Task's AI assistant. Be clear, concise, and accurate." },
+        { role: "system", content: "You are Unison Task's AI assistant. Be clear, concise, and accurate." + buildUnisonDesignArchitectureDirective("brief") },
         ...messages,
       ],
       stream: true,

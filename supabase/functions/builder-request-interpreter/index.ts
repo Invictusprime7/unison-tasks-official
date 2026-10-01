@@ -10,6 +10,7 @@
  */
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { buildUnisonDesignArchitectureDirective } from "../_shared/canonicalPipelinePrompt.ts";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 import { verifyAuth, authError } from "../_shared/auth.ts";
 import { errorResponse, secureJsonResponse } from "../_shared/response.ts";
@@ -172,7 +173,7 @@ serve(async (req: Request) => {
     const response = await createChatCompletion({
       model: AI_MODEL,
       messages: [
-        { role: "system", content: SYSTEM_PROMPT },
+        { role: "system", content: SYSTEM_PROMPT + buildUnisonDesignArchitectureDirective("brief") },
         {
           role: "user",
           content: `USER REQUEST:\n"""\n${promptForModel}\n"""${buildContextBlock(payload.context)}${hintsBlock}`,

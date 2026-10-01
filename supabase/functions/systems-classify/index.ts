@@ -1,5 +1,6 @@
 // deno-lint-ignore-file no-import-prefix
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { buildUnisonDesignArchitectureDirective } from "../_shared/canonicalPipelinePrompt.ts";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 import { verifyAuth, authError } from "../_shared/auth.ts";
 import { errorResponse, secureJsonResponse } from "../_shared/response.ts";
@@ -339,7 +340,7 @@ Respond ONLY with valid JSON in this exact format:
     const response = await createChatCompletion({
       model: AI_MODEL,
       messages: [
-        { role: "system", content: systemPrompt },
+        { role: "system", content: systemPrompt + buildUnisonDesignArchitectureDirective("brief") },
         { role: "user", content: `Classify this business: ${prompt}` },
       ],
       temperature: 0.3,

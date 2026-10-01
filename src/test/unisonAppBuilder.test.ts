@@ -34,6 +34,7 @@ function contract(): AppBuildContract {
       artDirection: {} as never, resolvedSiteDesignContext: designContext,
       uiFoundation: {} as never, registryContext: {} as never,
       compositionPlan: { industryId: 'salon', seed: 'app-builder-test', pages: [] },
+      sourceSelection: { implementationIds: [], portableRecipeIds: [], primitiveFamilyIds: [], experiencePrimitiveIds: [], pageCompositionIds: [] },
     },
     runtime: {
       framework: 'react-vite', language: 'typescript', styling: 'tailwind',

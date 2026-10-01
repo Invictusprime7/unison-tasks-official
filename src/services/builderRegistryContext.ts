@@ -93,17 +93,24 @@ const MAX_CATALOG_SURFACES = 12;
 const MAX_ASSETS = 12;
 const MAX_IMPORT_PATHS = 100;
 
+const DESIGN_SOURCE_PUBLIC = /^\/src\/unison\/design-sources\/(?!recipes\/)[^/]+\.(?:tsx?|jsx?)$/;
+
+/** Design-source entry modules are never truncated away: the Builder must always see what it may import. */
 export function collectValidImportPaths(files?: Record<string, string> | null): string[] {
-  return Object.keys(files ?? {})
-    .filter(path => /^\/src\/.+\.(?:tsx?|jsx?)$/.test(path))
+  const all = Object.keys(files ?? {})
+    .filter(path => /^\/src\/.+\.(?:tsx?|jsx?)$/.test(path) && !path.startsWith('/src/unison/design-sources/recipes/'))
+    .sort();
+  const priority = all.filter(path => DESIGN_SOURCE_PUBLIC.test(path));
+  const rest = all.filter(path => !DESIGN_SOURCE_PUBLIC.test(path));
+  return [...priority, ...rest]
     .flatMap(path => {
       const withoutExtension = path.replace(/\.(?:tsx?|jsx?)$/, '');
       const alias = withoutExtension.replace(/^\/src\//, '@/').replace(/\/index$/, '');
       return [path, alias];
     })
-    .filter((path, index, all) => all.indexOf(path) === index)
-    .sort()
-    .slice(0, MAX_IMPORT_PATHS);
+    .filter((path, index, list) => list.indexOf(path) === index)
+    .slice(0, MAX_IMPORT_PATHS)
+    .sort();
 }
 
 /** Read the sealed projection persisted into the draft VFS by the launcher. */

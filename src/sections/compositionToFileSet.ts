@@ -122,7 +122,7 @@ const SECTION_FILES: Record<string, string> = {
   FAQ: '/src/components/FAQ.tsx',
 };
 
-function themeModule(template: TemplateComposition): string {
+function themeModule(_template?: TemplateComposition): string {
   const semanticTheme = JSON.stringify({
     colors: {
       background: 'var(--background)',
@@ -326,7 +326,8 @@ import { THEME } from './theme';
 const LAYOUT_VARIANTS: Record<string, string> = ${JSON.stringify(map)};
 const DEFAULT_VARIANT_ID = ${JSON.stringify(defaultVariantId)};
 
-export default function ${componentName}({ props, variantId }: { props: any; variantId?: string }) {
+export default function ${componentName}({ props: explicitProps, variantId, ...rest }: { props?: any; variantId?: string; [key: string]: any }) {
+  const props = explicitProps ?? rest;
   const requestedId = variantId || (props && LAYOUT_VARIANTS[props.layout]) || DEFAULT_VARIANT_ID;
   const resolvedId = REGISTERED_VARIANTS[requestedId] ? requestedId : DEFAULT_VARIANT_ID;
   const Component = REGISTERED_VARIANTS[resolvedId];
@@ -334,6 +335,11 @@ export default function ${componentName}({ props, variantId }: { props: any; var
   return <Component section={{ type: ${JSON.stringify(family.sectionType)}, variantId: resolvedId, props }} theme={THEME} />;
 }
 `;
+}
+
+/** Component name for a section type, or undefined when the type is not emittable. */
+export function certifiedComponentForSectionType(sectionType: string): string | undefined {
+  return SECTION_COMPONENT_BY_TYPE[sectionType];
 }
 
 const SECTION_MODULE_SOURCE: Record<keyof typeof SECTION_FILES, string> = Object.fromEntries(
@@ -944,5 +950,26 @@ export function compositionToReactFileSet(
     .filter(([path]) => /\.[jt]sx?$/.test(path))
     .map(([path, source]) => [path, compilerOwnershipHash(source)]));
   files[resolvedCompositionPathFor(pageFilePath)] = serializeResolvedComposition(composition);
+  return files;
+}
+
+/**
+ * Certified section wrappers + their prebuilt family bundles, keyed by the
+ * canonical /src/components paths. Pure and page-independent: the design-source
+ * materializer re-roots these; it never forks the recipe text.
+ */
+export function certifiedSectionModuleFiles(components: Iterable<string>): Record<string, string> {
+  const wanted = [...new Set(components)].filter((name) => SECTION_FILES[name]).sort();
+  const files: Record<string, string> = {};
+  if (!wanted.length) return files;
+  files[THEME_PATH] = themeModule();
+  for (const component of wanted) {
+    const family = SECTION_FAMILY_EMIT[component];
+    const bundle = (stylexRecipes.families as Record<string, string>)[family.sectionType];
+    if (!bundle) continue;
+    files[SECTION_FILES[component]] = SECTION_MODULE_SOURCE[component];
+    files[`/src/components/recipes/${component}.ts`] = bundle;
+    if (component === 'Navbar') files['/src/components/MobileNavigation.tsx'] = stylexRecipes.mobileNavigationModule;
+  }
   return files;
 }

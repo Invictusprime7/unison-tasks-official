@@ -45,6 +45,28 @@ export interface AppBuildIdentity {
   systemType: string;
 }
 
+export interface AppBuildDesignSourceSelection {
+  implementationIds: string[];
+  portableRecipeIds: string[];
+  primitiveFamilyIds: string[];
+  experiencePrimitiveIds: string[];
+  pageCompositionIds: string[];
+}
+
+const sortedUnique = (values: Iterable<string>): string[] => [...new Set(values)].sort();
+
+export function deriveDesignSourceSelection(registry: WizardAggregatedRegistryContext): AppBuildDesignSourceSelection {
+  const implementations = registry.implementations ?? [];
+  const families = registry.primitiveFamilies ?? [];
+  return {
+    implementationIds: sortedUnique(implementations.map((impl) => impl.id)),
+    portableRecipeIds: sortedUnique(implementations.filter((impl) => impl.certification === 'portable').map((impl) => impl.id)),
+    primitiveFamilyIds: sortedUnique(families.map((family) => family.family)),
+    experiencePrimitiveIds: sortedUnique(families.filter((family) => family.family === 'experience').flatMap((family) => family.values)),
+    pageCompositionIds: sortedUnique((registry.pageCompositions ?? []).flatMap((entry) => entry.alternatives.map((alt) => alt.id))),
+  };
+}
+
 export interface AppBuildContract {
   protocolVersion: typeof APP_BUILDER_PROTOCOL_VERSION;
   identity: AppBuildIdentity;
@@ -70,6 +92,8 @@ export interface AppBuildContract {
     uiFoundation: AppBuilderUIFoundation;
     registryContext: WizardAggregatedRegistryContext;
     compositionPlan: SiteCompositionPlan;
+    /** Which design knowledge must be hydrated; ids only, never duplicated source. */
+    sourceSelection: AppBuildDesignSourceSelection;
   };
   runtime: {
     framework: 'react-vite';
@@ -167,6 +191,7 @@ export interface AppBuildCandidate {
   diagnostics: readonly string[];
   provenance?: AppBuildCandidateProvenance;
   closure?: AppBuildCandidateClosureReport;
+  designReport?: import('./appBuilderGenerationContext').DesignSourceUsageReport;
 }
 
 export interface AppBuildCandidateProvenance {
@@ -293,6 +318,7 @@ export function buildAppBuildContract(input: BuildAppBuildContractInput): AppBui
       uiFoundation: input.uiFoundation,
       registryContext: input.registryContext,
       compositionPlan,
+      sourceSelection: deriveDesignSourceSelection(input.registryContext),
     },
     runtime: {
       framework: 'react-vite',
