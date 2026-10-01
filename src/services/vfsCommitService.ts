@@ -1736,13 +1736,17 @@ export interface LoadedRevision {
 }
 
 export async function loadRevision(revisionId: string): Promise<LoadedRevision | null> {
+  const cached = committedRevisionCache.get(revisionId);
+  if (cached) return cached;
   const { data, error } = await supabase
     .from('site_revisions')
     .select('*')
     .eq('id', revisionId)
     .maybeSingle();
   if (error || !data) return null;
-  return mapRevisionRow(data as Record<string, unknown>);
+  const loaded = mapRevisionRow(data as Record<string, unknown>);
+  rememberCommittedRevision(loaded);
+  return loaded;
 }
 
 export async function loadLatestRevisionForProject(
@@ -1779,6 +1783,11 @@ export async function loadProjectedRevisionForDraft(
     throw new Error(`[VFSCommitService] canonical draft ${draftId} has no committed revision projection`);
   }
 
+  const cached = committedRevisionCache.get(draft.last_revision_id);
+  if (cached && cached.projectId === projectId && cached.draftId === draftId) {
+    return cached;
+  }
+
   const { data: revision, error: revisionError } = await supabase
     .from('site_revisions')
     .select('*')
@@ -1791,8 +1800,30 @@ export async function loadProjectedRevisionForDraft(
   if (!revision) {
     throw new Error(`[VFSCommitService] draft ${draftId} points to an invalid committed revision`);
   }
-  return mapRevisionRow(revision as Record<string, unknown>);
+  const loaded = mapRevisionRow(revision as Record<string, unknown>);
+  rememberCommittedRevision(loaded);
+  return loaded;
 }
+
+// Committed revisions are append-only ledger rows, so a session-scoped cache
+// keyed by id is safe and avoids re-downloading multi-MB file maps on every
+// hydration/drift check.
+const COMMITTED_REVISION_CACHE_LIMIT = 8;
+const committedRevisionCache = new Map<string, LoadedRevision>();
+function rememberCommittedRevision(rev: LoadedRevision): void {
+  if (rev.status !== 'committed') return;
+  committedRevisionCache.delete(rev.id);
+  committedRevisionCache.set(rev.id, rev);
+  while (committedRevisionCache.size > COMMITTED_REVISION_CACHE_LIMIT) {
+    const oldest = committedRevisionCache.keys().next().value;
+    if (oldest === undefined) break;
+    committedRevisionCache.delete(oldest);
+  }
+}
+
+// Columns for list views: everything except the heavy file/snapshot payloads.
+const REVISION_SUMMARY_COLUMNS =
+  'id, project_id, business_id, draft_id, source, status, readiness_report, diagnostics, publish_ready, publish_blockers, vfs_hash, candidate_id, operation_ids, created_at';
 
 /**
  * Move D — publish flow loads the latest revision whose publish gate +
@@ -1823,9 +1854,10 @@ export async function listRecentRevisionsForProject(
   projectId: string,
   limit = 10,
 ): Promise<LoadedRevision[]> {
+  // History feed is summary-only; restore loads the full row by id.
   const { data, error } = await supabase
     .from('site_revisions')
-    .select('*')
+    .select(REVISION_SUMMARY_COLUMNS)
     .eq('project_id', projectId)
     .order('created_at', { ascending: false })
     .limit(limit);
