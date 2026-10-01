@@ -14,6 +14,8 @@ import { planSiteComposition, type SiteCompositionPlan } from '@/services/compos
 import type { ResolvedSiteDesignContext } from '@/services/launch/resolvedSiteDesignContext';
 import type { WizardAggregatedRegistryContext } from '@/services/launch/wizardRegistryAggregation';
 import type { PageRegistry } from '@/types/pageRegistry';
+import type { AICandidateChangeSet } from '@/services/builder/aiCandidateChangeSet';
+import type { TopologyChange } from '@/services/pageTopologyOrchestrator';
 
 export const APP_BUILDER_PROTOCOL_VERSION = 'unison-app-builder/1' as const;
 
@@ -102,15 +104,58 @@ export interface BuildAppBuildContractInput {
 export interface AppBuildRequest {
   operationId: string;
   contract: AppBuildContract;
+  initialFiles: Readonly<Record<string, string>>;
+  entryPoint: string;
+  baseRevisionId?: string | null;
+  signal?: AbortSignal;
+  budgetMs?: number;
+  maxPages?: number;
+  concurrency?: number;
+  preflight?: (files: Record<string, string>) => Record<string, string>;
+  onProgress?: (event: {
+    page: AppBuilderPageTarget;
+    index: number;
+    total: number;
+    phase: 'authoring' | 'committed' | 'kept-baseline';
+  }) => void;
+  /** M2 compatibility adapter; removed when M3 makes generation candidate-only. */
+  acceptPage?: (
+    nextFiles: Record<string, string>,
+    page: AppBuilderPageTarget,
+    beforeFiles: Record<string, string>,
+    candidate: AICandidateChangeSet,
+  ) => Promise<{ files: Record<string, string>; revisionId?: string | null }>;
+}
+
+export interface AppBuilderPageTarget {
+  pageId?: string;
+  title: string;
+  route: string;
+  filePath: string;
+  role: string;
 }
 
 export interface AppEditRequest {
   operationId: string;
-  contract: AppBuildContract;
-  baseRevisionId: string;
+  baseRevisionId?: string | null;
   currentFiles: Readonly<Record<string, string>>;
   instruction: string;
-  activePagePath?: string;
+  page: AppBuilderPageTarget;
+  sourceTargets: readonly string[];
+  routes?: readonly { title: string; route: string }[];
+  brief?: string;
+  knowledgeQuery?: string;
+  registryContext?: unknown;
+  runtimeContext?: string;
+  diagnostics?: readonly string[];
+  initialRouteOps?: readonly TopologyChange[];
+  signal?: AbortSignal;
+  timeoutMs?: number;
+  preflight?: (files: Record<string, string>) => Record<string, string>;
+}
+
+export interface AppRepairRequest extends AppEditRequest {
+  diagnostics: readonly string[];
 }
 
 export interface AppBuildCandidate {
@@ -127,10 +172,24 @@ export interface AppBuildResult {
   protocolVersion: typeof APP_BUILDER_PROTOCOL_VERSION;
   candidate: AppBuildCandidate;
   stopReason: AppBuildCandidateStopReason;
+  outcomes?: readonly AppBuildPageOutcome[];
+  revisionId?: string | null;
 }
 
 export interface AppEditResult extends AppBuildResult {
-  baseRevisionId: string;
+  baseRevisionId?: string | null;
+  changeSet?: AICandidateChangeSet;
+  summary?: string;
+}
+
+export interface AppBuildPageOutcome {
+  page: AppBuilderPageTarget;
+  status: 'authored' | 'kept-baseline' | 'skipped';
+  reason: string;
+  attempts: number;
+  summary?: string;
+  errors: readonly string[];
+  revisionId?: string | null;
 }
 
 function stableJsonValue(value: unknown): unknown {

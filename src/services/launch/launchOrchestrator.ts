@@ -113,10 +113,10 @@ import {
 import { buildWizardBindingGuide } from '@/services/wizardBindingBridge';
 import { runFullPreflight } from "@/services/runFullPreflight";
 import type { CommitMutationResult } from "@/services/vfsCommitService";
-import { authorSitePages } from '@/services/launch/siteAuthoringOrchestrator';
 import { compileResolvedSiteDesignContext } from '@/services/launch/resolvedSiteDesignContext';
 import { persistAiCommit } from '@/services/aiApplyGate';
 import { buildAppBuildContract } from '@/services/app-builder/appBuilderContracts';
+import { unisonAppBuilder } from '@/services/app-builder/UnisonAppBuilder';
 import { WIZARD_LANE_B_PROTECTED_PATHS } from '@/services/wizardLaneBEnrichment';
 
 export interface LaunchOrchestratorInput {
@@ -793,23 +793,12 @@ export async function runLaunchPipeline(
   if (callbacks.aiAuthoring !== false && import.meta.env.MODE !== 'test') {
     try {
       const committed = commit.result;
-      const registry = committed.siteBundleSnapshot!.pageRegistry;
-      const pages = Object.values(registry.pages)
-        .filter((page) => page.filePath && committed.vfsFiles[page.filePath])
-        .map((page) => ({
-          pageId: page.pageId,
-          title: page.title,
-          route: page.path,
-          filePath: page.filePath!,
-          role: String(page.pageRole ?? page.pageType ?? 'page'),
-        }));
-      const authored = await run.stage("author", async (signal) => authorSitePages({
-        pages,
-        homePageId: registry.homePageId,
-        designContext,
-        businessName: brand,
-        files: committed.vfsFiles,
-        revisionId: committed.persistedRevisionId,
+      const authored = await run.stage("author", async (signal) => unisonAppBuilder.generate({
+        operationId: `launch:${commit.confirmed.draftId}:author`,
+        contract: appBuildContract,
+        initialFiles: committed.vfsFiles,
+        entryPoint: committed.runtimeManifest!.entryPoint,
+        baseRevisionId: committed.persistedRevisionId,
         signal,
         budgetMs: 280_000,
         preflight: (changed) => runFullPreflight(changed, {
@@ -819,7 +808,7 @@ export async function runLaunchPipeline(
         onProgress: (event) => {
           if (event.phase === 'authoring') status(`Designing ${event.page.title}…`);
         },
-        commitPage: async (nextFiles, page, beforeFiles, candidate) => {
+        acceptPage: async (nextFiles, page, beforeFiles, candidate) => {
           const result = await persistAiCommit({
             businessId: commit.confirmed.businessId,
             projectId: commit.confirmed.projectId,
@@ -838,7 +827,7 @@ export async function runLaunchPipeline(
           return { files: result.vfsFiles, revisionId: result.persistedRevisionId };
         },
       }), { timeoutMs: 300_000 });
-      const kept = authored.outcomes.filter((o) => o.status !== 'authored');
+      const kept = (authored.outcomes ?? []).filter((o) => o.status !== 'authored');
       if (kept.length) {
         console.warn('[launchOrchestrator] AI pages kept baseline:', kept.map((o) => ({ page: o.page.title, status: o.status, reason: o.reason })));
         run.degrade('author', 'author.kept_baseline',

@@ -1,0 +1,124 @@
+import { describe, expect, it, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { compileResolvedSiteDesignContext } from '@/services/launch/resolvedSiteDesignContext';
+import { createUnisonAppBuilder } from '@/services/app-builder/UnisonAppBuilder';
+import { APP_BUILDER_PROTOCOL_VERSION, type AppBuildContract } from '@/services/app-builder/appBuilderContracts';
+import type { ComposerLoopResult } from '@/services/builder/aiRepairLoop';
+
+const baseFiles = {
+  '/src/pages/Home.tsx': 'export default function Home(){return <main>Before</main>}',
+  '/package.json': JSON.stringify({ dependencies: { react: '^18.3.1' } }),
+};
+
+function contract(): AppBuildContract {
+  const designContext = compileResolvedSiteDesignContext({
+    designSeed: 'app-builder-test',
+    businessModel: 'general' as never,
+    industry: 'salon',
+    roles: ['home'],
+  });
+  return {
+    protocolVersion: APP_BUILDER_PROTOCOL_VERSION,
+    identity: { projectId: 'project-1', businessId: 'business-1', siteId: 'site-1', systemType: 'website' },
+    topology: {
+      sitePlan: {
+        siteId: 'topology-1', industry: 'salon', businessName: 'Northstar', homePageId: 'home',
+        pages: [{ id: 'home', name: 'home', title: 'Home', route: '/', role: 'home', filePath: '/src/pages/Home.tsx', visibleInNav: true, isHome: true, generatedBy: 'wizard' }],
+        navItems: ['home'], funnels: [], redirects: [], generatedAt: '2026-09-30T12:00:00.000Z',
+      },
+      pageRegistry: { pages: {}, funnels: {}, homePageId: 'home', version: 1 },
+    },
+    business: { industry: 'salon', businessName: 'Northstar', goals: [], intents: [], capabilities: [], bindingGuide: '' },
+    design: {
+      seed: 'app-builder-test', themePresetId: 'editorial', themeTokens: {} as never,
+      artDirection: {} as never, resolvedSiteDesignContext: designContext,
+      uiFoundation: {} as never, registryContext: {} as never,
+      compositionPlan: { industryId: 'salon', seed: 'app-builder-test', pages: [] },
+    },
+    runtime: {
+      framework: 'react-vite', language: 'typescript', styling: 'tailwind',
+      protectedPaths: [], approvedDependencies: [], approvedExperienceCapabilities: [],
+    },
+  };
+}
+
+describe('UnisonAppBuilder facade', () => {
+  it('is the shared product boundary for Launcher generation and Builder source edits', () => {
+    const launcher = readFileSync('src/services/launch/launchOrchestrator.ts', 'utf8');
+    const builder = readFileSync('src/components/creatives/web-builder/AIBuilderPanel.tsx', 'utf8');
+
+    expect(launcher).toContain('unisonAppBuilder.generate({');
+    expect(builder).toContain('unisonAppBuilder.edit({');
+    expect(launcher).not.toContain('authorSitePages({');
+    expect(builder).not.toContain('runComposerRepairLoop({');
+  });
+
+  it('adapts site authoring behind generate and preserves the candidate result', async () => {
+    const authorSite = vi.fn(async (input: Parameters<NonNullable<Parameters<typeof createUnisonAppBuilder>[0]['authorSite']>>[0]) => ({
+      files: { ...input.files, '/src/pages/Home.tsx': 'export default function Home(){return <main>After</main>}' },
+      revisionId: 'revision-2',
+      outcomes: [{ page: input.pages[0], status: 'authored' as const, reason: 'accepted' as const, attempts: 1, errors: [] }],
+    }));
+    const builder = createUnisonAppBuilder({ authorSite });
+    const result = await builder.generate({
+      operationId: 'operation-1', contract: contract(), initialFiles: baseFiles,
+      entryPoint: '/src/main.tsx', baseRevisionId: 'revision-1',
+    });
+
+    expect(authorSite).toHaveBeenCalledOnce();
+    expect(result.candidate.status).toBe('ready-for-commit');
+    expect(result.candidate.files['/src/pages/Home.tsx']).toContain('After');
+    expect(result.revisionId).toBe('revision-2');
+  });
+
+  it('routes Builder edits through the existing Composer repair gates', async () => {
+    const nextFiles = { ...baseFiles, '/src/pages/Home.tsx': 'export default function Home(){return <main>Edited</main>}' };
+    const changeSet = {
+      id: 'cand_edit', baseRevisionId: 'revision-1',
+      provenance: { origin: 'builder' as const, knowledgeVersion: 'test' },
+      fileOps: [{ type: 'replace' as const, path: '/src/pages/Home.tsx', content: nextFiles['/src/pages/Home.tsx'] }],
+      routeOps: [], targetPages: ['home'], attempt: 1,
+    };
+    const composer: ComposerLoopResult = {
+      ok: true, reason: 'accepted', attempts: 1, errors: [], response: { summary: 'Edited safely' } as never,
+      prepared: {
+        ok: true,
+        build: { changeSet, candidateFiles: nextFiles, refused: [] },
+        gates: { passed: true, failures: [], advisories: [] },
+        nextFiles,
+        errors: [],
+      },
+    };
+    const runComposer = vi.fn(async () => composer);
+    const builder = createUnisonAppBuilder({ runComposer });
+    const result = await builder.edit({
+      operationId: 'operation-edit', baseRevisionId: 'revision-1', currentFiles: baseFiles,
+      instruction: 'Change the headline',
+      page: { title: 'Home', route: '/', role: 'home', filePath: '/src/pages/Home.tsx' },
+      sourceTargets: ['/src/pages/Home.tsx'],
+    });
+
+    expect(runComposer).toHaveBeenCalledOnce();
+    expect(result.stopReason).toBe('complete');
+    expect(result.changeSet).toBe(changeSet);
+    expect(result.candidate.files).toEqual(nextFiles);
+    expect(result.summary).toBe('Edited safely');
+  });
+
+  it('returns rejected candidates instead of bypassing failed gates', async () => {
+    const runComposer = vi.fn(async (): Promise<ComposerLoopResult> => ({
+      ok: false, reason: 'gates_exhausted', attempts: 3, errors: ['import-graph failed'],
+    }));
+    const result = await createUnisonAppBuilder({ runComposer }).edit({
+      operationId: 'operation-rejected', baseRevisionId: 'revision-1', currentFiles: baseFiles,
+      instruction: 'Break imports',
+      page: { title: 'Home', route: '/', role: 'home', filePath: '/src/pages/Home.tsx' },
+      sourceTargets: ['/src/pages/Home.tsx'],
+    });
+
+    expect(result.candidate.status).toBe('rejected');
+    expect(result.stopReason).toBe('repair-exhausted');
+    expect(result.candidate.files).toBe(baseFiles);
+    expect(result.changeSet).toBeUndefined();
+  });
+});

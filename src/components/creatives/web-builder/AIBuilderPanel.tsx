@@ -105,14 +105,13 @@ import {
   transactionVerdictLine,
 } from '@/services/builder/builderTransactionState';
 import { awaitPreviewVerification, markPreviewPending } from '@/services/builder/previewVerification';
-import { runComposerRepairLoop } from '@/services/builder/aiRepairLoop';
 import {
-  assembleCanonicalAuthoringRequest,
   resolveCanonicalAuthoringPage,
   shouldUseCanonicalComposer,
 } from '@/services/builder/canonicalAuthoringRequest';
 import type { TopologyChange } from '@/services/pageTopologyOrchestrator';
 import type { AICandidateChangeSet } from '@/services/builder/aiCandidateChangeSet';
+import { unisonAppBuilder } from '@/services/app-builder/UnisonAppBuilder';
 
 import {
   planBusinessCapabilities,
@@ -1576,8 +1575,8 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
                   route: page.route,
                 })
               : '';
-            const assembled = await assembleCanonicalAuthoringRequest({
-              task: 'builder_source_edit',
+            const editResult = await unisonAppBuilder.edit({
+              operationId: `builder:${generateId()}`,
               page,
               brief: [
                 'Edit the accepted React project without changing unrelated source.',
@@ -1587,7 +1586,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
               ].filter(Boolean).join('\n').slice(0, 6500),
               knowledgeQuery: `${_userContent} ${page.role} ${systemType ?? ''}`,
               instruction: _userContent.slice(0, 4000),
-              baseFiles: vfsFiles!,
+              currentFiles: vfsFiles!,
               baseRevisionId: revisionId,
               sourceTargets: [page.filePath],
               routes: [],
@@ -1601,21 +1600,13 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
                 unisonContext,
               ]
                 .filter(Boolean).map((value) => typeof value === 'string' ? value : JSON.stringify(value)).join('\n').slice(0, 12000),
-            });
-            const composer = await runComposerRepairLoop({
-              request: assembled.request,
-              baseFiles: vfsFiles!,
-              baseRevisionId: revisionId ?? undefined,
-              maxAttempts: 3,
               signal: globalAbort.signal,
               timeoutMs: gatewayConfig?.timeoutMs,
-              candidateOrigin: 'builder',
-              candidateIntent: _userContent.slice(0, 240),
             });
-            if (!composer.ok || !composer.prepared) {
-              throw new Error(composer.errors[0] ?? `Canonical Composer stopped: ${composer.reason}`);
+            if (editResult.candidate.status !== 'ready-for-commit' || !editResult.changeSet) {
+              throw new Error(editResult.candidate.diagnostics[0] ?? `App Builder stopped: ${editResult.stopReason}`);
             }
-            const candidate = composer.prepared.build.changeSet;
+            const candidate = editResult.changeSet;
             canonicalCandidate = candidate;
             canonicalRouteOps = candidate.routeOps;
             const files = Object.fromEntries(candidate.fileOps
@@ -1629,7 +1620,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
                 content: JSON.stringify({
                   files,
                   deletions,
-                  explanation: composer.response?.summary ?? 'Canonical Composer prepared this source candidate.',
+                  explanation: editResult.summary ?? 'Unison App Builder prepared this source candidate.',
                 }),
                 actionType: 'canonical-source-edit',
                 filesDetected: Object.keys(files),
