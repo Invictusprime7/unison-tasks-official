@@ -8446,6 +8446,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                   saving={customizerSaving}
                   previewing={customizerPreviewing || (templateCustomizer.isDirty && customizerDraft?.key !== templateCustomizer.draftKey)}
                   error={customizerError}
+                  onVariantCommit={handleSwapSection}
                 />
               ) : (
                 <CollapsiblePropertiesPanel 
