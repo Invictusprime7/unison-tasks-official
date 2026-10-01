@@ -31,12 +31,12 @@ export function digestDocument(doc: Document, route: string): string {
     const dc = el.getAttribute('data-component') || el.id || '';
     const heading = el.querySelector('h1, h2, h3');
     const headingText = heading ? clip((heading as HTMLElement).innerText || heading.textContent || '', 70) : '';
-    lines.push(`- <${tag}${dc ? ` ${dc}` : ''}> ${headingText ? `"${headingText}"` : clip((el as HTMLElement).innerText || '', 60)}`);
+    lines.push(`- <${tag}${dc ? ` ${dc}` : ''}> ${headingText ? `"${headingText}"` : clip((el as HTMLElement).innerText || el.textContent || '', 60)}`);
   }
 
   const ctas = Array.from(doc.querySelectorAll('button, a[href], [data-ut-intent]'))
     .map((el) => {
-      const text = clip((el as HTMLElement).innerText || el.getAttribute('aria-label') || '', 28);
+      const text = clip((el as HTMLElement).innerText || el.textContent || el.getAttribute('aria-label') || '', 28);
       const intent = el.getAttribute('data-ut-intent');
       const target = el.getAttribute('data-ut-target') || el.getAttribute('data-ut-path') || el.getAttribute('href') || '';
       return text ? `${text}${intent ? ` [${intent}${target ? ` → ${target}` : ''}]` : target ? ` → ${target}` : ''}` : '';
