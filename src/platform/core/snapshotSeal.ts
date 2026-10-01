@@ -50,15 +50,24 @@ export interface WizardLaunchAuthorityProof {
   protectedFilePatterns: string[];
 }
 
+export interface AppBuilderLaunchAuthorityProof {
+  version: '3.0';
+  compileArtifactId: string;
+  registeredPageBodyAuthority: 'app-builder';
+  registeredPageFiles: string[];
+  protectedFilePatterns: string[];
+}
+
 type ReadableWizardLaunchAuthorityProof =
   | LegacyWizardLaunchAuthorityProof
-  | WizardLaunchAuthorityProof;
+  | WizardLaunchAuthorityProof
+  | AppBuilderLaunchAuthorityProof;
 
 interface NormalizedWizardLaunchAuthorityProof {
-  version: '1.0' | '2.0';
+  version: '1.0' | '2.0' | '3.0';
   compileArtifactId: string;
-  pipeline: 'lane-a+lane-b+stage-4b' | 'canonical-compiler+stage-4b';
-  registeredPageBodyAuthority: 'lane-b' | 'canonical-compiler';
+  pipeline: 'lane-a+lane-b+stage-4b' | 'canonical-compiler+stage-4b' | 'canonical-plan+app-builder+stage-4b';
+  registeredPageBodyAuthority: 'lane-b' | 'canonical-compiler' | 'app-builder';
   registeredPageFiles: string[];
   protectedFilePatterns: string[];
 }
@@ -248,23 +257,27 @@ function readWizardLaunchAuthorityProof(
     ? sortedUnique(proof.registeredPageFiles.map(normalizeVfsPath))
     : [];
   const expectedProtected = sortedUnique(WIZARD_LANE_A_PROTECTED_FILES);
-  const proofArtifactId = proof.version === '2.0'
+  const proofArtifactId = proof.version === '2.0' || proof.version === '3.0'
     ? proof.compileArtifactId
     : proof.laneAArtifactId;
-  const proofProtectedSource = proof.version === '2.0'
+  const proofProtectedSource = proof.version === '2.0' || proof.version === '3.0'
     ? proof.protectedFilePatterns
     : proof.laneAProtectedFiles;
   const proofProtected = Array.isArray(proofProtectedSource)
     ? sortedUnique(proofProtectedSource)
     : [];
 
-  if (proof.version !== '1.0' && proof.version !== '2.0') {
+  if (proof.version !== '1.0' && proof.version !== '2.0' && proof.version !== '3.0') {
     throw new SnapshotSealError('wizard-launch ownership proof version is invalid.');
   }
   if (proofArtifactId !== artifact.baseline.snapshotId) {
     throw new SnapshotSealError('wizard-launch ownership proof does not match the compile artifact.');
   }
-  const expectedAuthority = proof.version === '2.0' ? 'canonical-compiler' : 'lane-b';
+  const expectedAuthority = proof.version === '3.0'
+    ? 'app-builder'
+    : proof.version === '2.0'
+      ? 'canonical-compiler'
+      : 'lane-b';
   if (proof.registeredPageBodyAuthority !== expectedAuthority) {
     throw new SnapshotSealError(
       `wizard-launch registered page body authority must be ${expectedAuthority}.`,
@@ -286,9 +299,11 @@ function readWizardLaunchAuthorityProof(
   return {
     version: proof.version,
     compileArtifactId: proofArtifactId,
-    pipeline: proof.version === '2.0'
-      ? 'canonical-compiler+stage-4b'
-      : 'lane-a+lane-b+stage-4b',
+    pipeline: proof.version === '3.0'
+      ? 'canonical-plan+app-builder+stage-4b'
+      : proof.version === '2.0'
+        ? 'canonical-compiler+stage-4b'
+        : 'lane-a+lane-b+stage-4b',
     registeredPageBodyAuthority: proof.registeredPageBodyAuthority,
     registeredPageFiles: expectedPages,
     protectedFilePatterns: expectedProtected,

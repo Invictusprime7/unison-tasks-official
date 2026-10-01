@@ -2,14 +2,17 @@ import { validateTwentyFirstGenerationCoverage, summarizeCoverageReport } from '
 /**
  * Launch Orchestrator — Wizard intent → canonical plan → App Builder → Builder.
  *
- * Migration target:
- *   selections → canonical plan/design contracts → AppBuildContract
- *   → isolated application candidate → canonical gates → one initial commit
- *   → sealed SiteBundleSnapshot → Builder handoff.
+ * Fresh-launch flow (implemented):
+ *   plan (resolve selections & IDs)
+ *   → contract (canonical planning, infrastructure only)
+ *   → app-build (App Builder authors complete application as isolated candidate)
+ *   → preflight (validate candidate, seal SiteBundleSnapshot)
+ *   → commit (one initial revision with accepted App Builder application)
+ *   → handoff (Builder/Preview/Publish consume same revision).
  *
- * The current baseline-first implementation remains temporarily below while
- * the App Builder substitution is staged. Do not extend that legacy sequence:
- * fresh-launch page authorship is moving before the initial canonical commit.
+ * All application authorship happens before the initial canonical commit.
+ * Revision 1 is the final accepted App Builder application, not a baseline
+ * to be rewritten. Post-launch editing routes through the same App Builder.
  */
 
 import { supabase } from "@/integrations/supabase/client";
@@ -20,7 +23,6 @@ import {
 } from "@/data/templates/types";
 import type { ThemePreset } from "@/components/onboarding/themePresets";
 import { themePresetToThemeTokens } from "@/components/onboarding/themePresetToTokens";
-import { buildThemedIndexCssFromTokens } from "@/components/onboarding/themePresetToIndexCss";
 import {
   compileContract,
   createBlueprintFromIndustry,
@@ -38,7 +40,6 @@ import {
   buildTemplateLayoutContract,
   TEMPLATE_DESIGN_CONTRACT_PATH,
 } from "@/services/templateLayoutContract";
-import { runWizardStage4b } from "@/services/wizardStage4bRuntime";
 import {
   buildCanonicalLaunchArtifactsAsync,
   type PublishedRuntimeConfig,
@@ -79,7 +80,6 @@ import {
 } from "@/services/launch/launchRun";
 import { resolveVerticalLaunchContract } from "@/services/verticalLaunchContract";
 import { resolveArtDirectionPack, resolveExperienceRequirement } from "@/sections/variants";
-import { readSealedArtDirection } from '@/sections/variants/resolvedArtDirection';
 import { resolveApprovedExperienceCapabilities } from "@/services/experienceCapabilityResolver";
 import { runExperiencePreflight } from "@/services/experiencePreflightGate";
 import type { BuilderIdentity } from "@/types/builderIdentity";
@@ -111,13 +111,16 @@ import {
   resolveWizardIndustryOverlay,
 } from '@/services/wizardMergeContext';
 import { buildWizardBindingGuide } from '@/services/wizardBindingBridge';
-import { runFullPreflight } from "@/services/runFullPreflight";
 import type { CommitMutationResult } from "@/services/vfsCommitService";
 import { compileResolvedSiteDesignContext } from '@/services/launch/resolvedSiteDesignContext';
-import { persistAiCommit } from '@/services/aiApplyGate';
 import { buildAppBuildContract } from '@/services/app-builder/appBuilderContracts';
 import { unisonAppBuilder } from '@/services/app-builder/UnisonAppBuilder';
 import { WIZARD_LANE_B_PROTECTED_PATHS } from '@/services/wizardLaneBEnrichment';
+import {
+  buildCanonicalLaunchPlan,
+  projectCanonicalLaunchCandidateSnapshot,
+} from '@/services/launch/canonicalLaunchPlan';
+import { createWizardCompileArtifact } from '@/platform/core/snapshotSeal';
 
 export interface LaunchOrchestratorInput {
   systemId: BusinessSystemType;
@@ -139,9 +142,17 @@ export interface LaunchOrchestratorCallbacks {
   onReview?: (candidate: { files: Record<string, string>; entryPoint: string }) => Promise<boolean>;
   onStatus?: (status: string) => void;
   onProgress?: (snapshot: LaunchRunSnapshot) => void;
-  /** Set false to skip AI page authoring (deterministic launch only). */
+  /**
+   * @deprecated Fresh launches generate the complete application in the app-build stage.
+   * The author stage that used this callback has been removed. All pages are part of
+   * revision 1; no page-by-page commits occur after the initial launch commit.
+   */
   aiAuthoring?: boolean;
-  /** Fired after each AI-authored page is committed. */
+  /**
+   * @deprecated Fresh launches generate the complete application in the app-build stage.
+   * The author stage that used this callback has been removed. All pages are part of
+   * revision 1; no page-by-page commits occur after the initial launch commit.
+   */
   onAuthoredPage?: (event: { files: Record<string, string>; pageTitle: string }) => void;
 }
 
@@ -406,50 +417,90 @@ export async function runLaunchPipeline(
       .filter((entry): entry is { platform: string; href: string } => !!entry),
   };
 
-  // ── Stage: seed (canonical compile + Stage 4b theme tokens) ───────────────
-  status("Compiling your themed site…");
-  const stage4b = await run.stage("seed", async (signal) => {
+  // ── Stage: contract (canonical planning, no page bodies) ──────────────────
+  status("Planning your application…");
+  const canonicalPlan = await run.stage("contract", async () => {
     const coverage = validateTwentyFirstGenerationCoverage({
       pages: plan.requestedPages.map(role => ({ role, sectionTypes: composition.sections.filter(section => !section.hidden).map(section => section.type) })),
       artDirectionPack: resolveArtDirectionPack({ sealedPackId: input.designSelection?.artDirectionPackId, industry: plan.industryOverlay, themePresetId: input.theme.id, seed: plan.seed }),
     });
-    if (!coverage.ok) run.degrade('seed', 'coverage.21st-incomplete', summarizeCoverageReport(coverage));
-    const result = await runWizardStage4b({
-      selections: plan.selections,
-      existingVfsFiles: {
+    if (!coverage.ok) run.degrade('contract', 'coverage.21st-incomplete', summarizeCoverageReport(coverage));
+    return buildCanonicalLaunchPlan(plan.selections, {
         "/.unison/wizard-seed.json": JSON.stringify(wizardSeedFile, null, 2),
         [TEMPLATE_DESIGN_CONTRACT_PATH]: JSON.stringify(designContract, null, 2),
-      },
-      signal,
-      yieldToHost: yieldToBrowser,
     });
-    if (!result.pipelineResult.sitePlan) {
-      throw new Error("The canonical pipeline returned no topology plan.");
-    }
-    return result;
-  }, { timeoutMs: 180_000 });
+  }, { timeoutMs: 30_000 });
 
-  const {
-    playground: materializedPlayground,
-    compileResult: compiledPlayground,
-    siteBundleSnapshot,
-    runtimeManifest: pipelineManifest,
-    sitePlan,
-    validations: pipelineValidations,
-  } = stage4b.pipelineResult;
+  const materializedPlayground = canonicalPlan.playground;
+  const sitePlan = canonicalPlan.sitePlan;
+  const pipelineValidations = canonicalPlan.validations;
+  if (!sitePlan.pages.length) {
+    throw new LaunchFatalError("The canonical plan returned no application pages.");
+  }
 
-  // Theme tokens are compiler-owned. Repair rather than ship un-themed CSS.
-  const expectedCss = buildThemedIndexCssFromTokens(plan.themeTokens, {
-    presetId: input.theme.id,
-    label: input.theme.label ?? input.theme.id,
-    artDirectionPackId: siteBundleSnapshot?.meta?.artDirection?.storagePackId ?? siteBundleSnapshot?.meta?.artDirectionPackId,
+  const bindingGuide = buildWizardBindingGuide(canonicalPlan.playground, {
+    industry: plan.industryOverlay,
   });
-  if (compiledPlayground?.vfsFiles && compiledPlayground.vfsFiles["/src/index.css"] !== expectedCss) {
-    compiledPlayground.vfsFiles["/src/index.css"] = expectedCss;
+  const designContext = compileResolvedSiteDesignContext({
+    industry: plan.industryOverlay,
+    roles: sitePlan.pages.map((page) => page.role),
+    artDirectionPackId: canonicalPlan.artDirection.storagePackId as never,
+    experience: input.designSelection?.experience,
+    mode: input.designSelection?.mode,
+    designSeed: plan.seed,
+    businessModel: (SYSTEM_TO_BUSINESS_MODEL[input.systemId] || 'general') as never,
+  });
+  const appBuildContract = buildAppBuildContract({
+    identity: {
+      projectId: plan.ids.projectId,
+      businessId: plan.ids.businessId,
+      siteId: plan.ids.siteId,
+      systemType: input.systemId,
+    },
+    sitePlan,
+    pageRegistry: canonicalPlan.playground.pageRegistry,
+    industry: plan.industryOverlay,
+    businessName: brand,
+    goals: [plan.selections.primaryGoal, ...plan.selections.secondaryGoals],
+    intents: plan.canonicalIntents,
+    capabilities: plan.industryProfile?.defaultCapabilities || [],
+    bindingGuide,
+    seed: plan.seed,
+    themePresetId: input.theme.id,
+    themeTokens: plan.themeTokens,
+    artDirection: canonicalPlan.artDirection,
+    designContext,
+    uiFoundation: canonicalPlan.uiFoundationContract,
+    registryContext: canonicalPlan.registryContext,
+    protectedPaths: WIZARD_LANE_B_PROTECTED_PATHS,
+  });
+
+  // ── Stage: app-build (one isolated, whole-site candidate) ─────────────────
+  status("Designing your application…");
+  const appBuild = await run.stage("app-build", async (signal) => unisonAppBuilder.generate({
+    operationId: `launch:${plan.ids.draftId}:app-build`,
+    contract: appBuildContract,
+    initialFiles: canonicalPlan.infrastructureFiles,
+    entryPoint: '/src/App.tsx',
+    baseRevisionId: null,
+    signal,
+    budgetMs: 280_000,
+    onProgress: (event) => {
+      if (event.phase === 'authoring') status(`Designing ${event.page.title}…`);
+    },
+  }), { timeoutMs: 300_000 });
+  if (appBuild.candidate.status !== 'ready-for-commit' || appBuild.stopReason !== 'complete') {
+    const diagnostics = appBuild.candidate.diagnostics.slice(0, 8).join(' ');
+    throw new LaunchFatalError(
+      `App Builder could not produce an acceptable application${diagnostics ? `: ${diagnostics}` : '.'}`,
+    );
   }
-  if (siteBundleSnapshot?.vfsFiles && siteBundleSnapshot.vfsFiles["/src/index.css"] !== expectedCss) {
-    siteBundleSnapshot.vfsFiles["/src/index.css"] = expectedCss;
-  }
+  const candidateFiles = { ...appBuild.candidateFiles };
+  const siteBundleSnapshot = projectCanonicalLaunchCandidateSnapshot(
+    canonicalPlan,
+    plan.selections,
+    candidateFiles,
+  );
 
   const loadedBusinessProfile = input.existingBusinessId
     ? await loadBusinessProfile(input.existingBusinessId)
@@ -490,9 +541,6 @@ export async function runLaunchPipeline(
   for (const { platform, href } of wizardSeedFile.socials) {
     socialLinks.set(platform, href);
   }
-  const bindingGuide = buildWizardBindingGuide(siteBundleSnapshot, {
-    industry: plan.industryOverlay,
-  });
   const contextualWizardSeedFile = {
     ...wizardSeedFile,
     business: {
@@ -550,49 +598,6 @@ export async function runLaunchPipeline(
   const intentBindingsFile = buildIntentBindingsFile(materializedPlayground);
   const intentSurfacesFile = buildIntentSurfacesFile(materializedPlayground);
 
-  // M1 projection only: derive the complete App Builder request from current
-  // canonical launch objects without persisting it or changing VFS output.
-  const designContext = compileResolvedSiteDesignContext({
-    industry: plan.industryOverlay,
-    roles: sitePlan!.pages.map((page) => page.role),
-    artDirectionPackId: siteBundleSnapshot.meta.artDirectionPackId as never,
-    experience: input.designSelection?.experience,
-    mode: input.designSelection?.mode,
-    designSeed: plan.seed,
-    businessModel: (SYSTEM_TO_BUSINESS_MODEL[input.systemId] || 'general') as never,
-  });
-  const artDirection = readSealedArtDirection(siteBundleSnapshot.meta);
-  const registryContext = siteBundleSnapshot.meta.registryContext;
-  const uiFoundationContract = siteBundleSnapshot.meta.uiFoundation;
-  if (!artDirection || !registryContext || !uiFoundationContract) {
-    throw new Error('The canonical launch did not produce complete App Builder design/runtime context.');
-  }
-  const appBuildContract = buildAppBuildContract({
-    identity: {
-      projectId: plan.ids.projectId,
-      businessId: plan.ids.businessId,
-      siteId: plan.ids.siteId,
-      systemType: input.systemId,
-    },
-    sitePlan: sitePlan!,
-    pageRegistry: siteBundleSnapshot.pageRegistry,
-    industry: plan.industryOverlay,
-    businessName: brand,
-    goals: [plan.selections.primaryGoal, ...plan.selections.secondaryGoals],
-    intents: plan.canonicalIntents,
-    capabilities: plan.industryProfile?.defaultCapabilities || [],
-    bindingGuide,
-    seed: plan.seed,
-    themePresetId: input.theme.id,
-    themeTokens: plan.themeTokens,
-    artDirection,
-    designContext,
-    uiFoundation: uiFoundationContract,
-    registryContext,
-    protectedPaths: WIZARD_LANE_B_PROTECTED_PATHS,
-  });
-  void appBuildContract;
-
   // ── Stage: enrich ─────────────────────────────────────────────────────────
   // Launcher enrichment is deterministic compiler work. AI may consume this
   // context after launch, but it never authors or replaces Launcher page files.
@@ -604,13 +609,13 @@ export async function runLaunchPipeline(
   const artifacts = await run.stage("preflight", async (signal) => {
     const built = await buildCanonicalLaunchArtifactsAsync(
       {
-        // Stage 4b's snapshot VFS is the authored source for the deterministic
-        // launcher. Pass it explicitly so merge never treats pages as fallback.
-        generatedFiles: siteBundleSnapshot.vfsFiles,
+        // App Builder's whole-site candidate is finalized once, then sealed as
+        // the only source accepted by Preview, Builder and Publish.
+        generatedFiles: candidateFiles,
         preferredEntryPoint: "/src/App.tsx",
         siteBundleSnapshot,
-        compileArtifact: stage4b.pipelineResult.compileArtifact,
-        compiledPlayground,
+        compileArtifact: createWizardCompileArtifact(siteBundleSnapshot),
+        compiledPlayground: null,
         canonicalPlayground: materializedPlayground,
         mergeWithCanonicalSnapshot: true,
         businessId: plan.selections.businessId,
@@ -631,15 +636,17 @@ export async function runLaunchPipeline(
         businessRuntime,
         enabledCapabilities: plan.industryProfile?.defaultCapabilities || [],
         approvedExperienceCapabilities: resolveApprovedExperienceCapabilities({
-          webgl: siteBundleSnapshot.meta.designIntervention?.envelope?.webgl,
-          foundationCapabilities: siteBundleSnapshot.meta.uiFoundation?.experienceCapabilities,
+          webgl: canonicalPlan.designIntervention.envelope?.webgl,
+          foundationCapabilities: canonicalPlan.uiFoundationContract.experienceCapabilities,
           requiredCapabilities: resolveExperienceRequirement(
-            Object.values(siteBundleSnapshot.meta.designIntervention?.activeVariants ?? {}),
+            Object.values(canonicalPlan.designIntervention.activeVariants),
           ).capabilities,
           reachesExperienceLayer:
-            runExperiencePreflight(siteBundleSnapshot.vfsFiles).manifest.totalInstances > 0,
+            runExperiencePreflight(candidateFiles).manifest.totalInstances > 0,
         }),
-        // Every registered body must be present in the Stage 4b output above.
+        acceptedLaneBPagePaths: sitePlan.pages.map((page) => page.filePath),
+        registeredPageBodyAuthority: 'app-builder',
+        // Every registered body must be present in the App Builder candidate.
         // Missing pages are a real closure failure, never a fallback request.
         allowCanonicalPageFallback: false,
         strictPreflight: false,
@@ -786,61 +793,12 @@ export async function runLaunchPipeline(
     );
   }
 
-  // ── Stage: author (AI Composer, milestone §3/§18) ─────────────────────────
-  // AI authors pages page-by-page on top of the committed deterministic
-  // substrate. Each accepted page is its own canonical commit; a failed page
-  // keeps its last-known-good version. This stage degrades, never fails.
-  if (callbacks.aiAuthoring !== false && import.meta.env.MODE !== 'test') {
-    try {
-      const committed = commit.result;
-      const authored = await run.stage("author", async (signal) => unisonAppBuilder.generate({
-        operationId: `launch:${commit.confirmed.draftId}:author`,
-        contract: appBuildContract,
-        initialFiles: committed.vfsFiles,
-        entryPoint: committed.runtimeManifest!.entryPoint,
-        baseRevisionId: committed.persistedRevisionId,
-        signal,
-        budgetMs: 280_000,
-        preflight: (changed) => runFullPreflight(changed, {
-          siteBundleSnapshot: committed.siteBundleSnapshot ?? null,
-          industry: plan.industryOverlay,
-        }).files,
-        onProgress: (event) => {
-          if (event.phase === 'authoring') status(`Designing ${event.page.title}…`);
-        },
-        acceptPage: async (nextFiles, page, beforeFiles, candidate) => {
-          const result = await persistAiCommit({
-            businessId: commit.confirmed.businessId,
-            projectId: commit.confirmed.projectId,
-            draftId: commit.confirmed.draftId,
-            revisionId: commit.result.persistedRevisionId,
-            beforeFiles,
-            nextFiles,
-            snapshotForPreflight: commit.result.siteBundleSnapshot ?? null,
-            playground: commit.result.playground ?? materializedPlayground ?? null,
-            activePagePath: page.route,
-            candidate,
-          });
-          if (!result.vfsFiles) throw new Error('The authored page commit returned no files.');
-          commit.result = { ...commit.result, ...result, persistedRevisionId: result.persistedRevisionId ?? commit.result.persistedRevisionId };
-          callbacks.onAuthoredPage?.({ files: result.vfsFiles, pageTitle: page.title });
-          return { files: result.vfsFiles, revisionId: result.persistedRevisionId };
-        },
-      }), { timeoutMs: 300_000 });
-      const kept = (authored.outcomes ?? []).filter((o) => o.status !== 'authored');
-      if (kept.length) {
-        console.warn('[launchOrchestrator] AI pages kept baseline:', kept.map((o) => ({ page: o.page.title, status: o.status, reason: o.reason })));
-        run.degrade('author', 'author.kept_baseline',
-          `${kept.map((o) => o.page.title).join(', ')} kept the standard design.`,
-          kept.map((o) => `${o.page.title}: ${o.reason}`).join('; '));
-      }
-    } catch (error) {
-      run.degrade('author', 'author.unavailable', 'AI page design was unavailable; your site uses the standard design.',
-        error instanceof Error ? error.message : String(error));
-    }
-  } else {
-    run.markStage('author', 'done');
-  }
+  // ── Stage: author ────────────────────────────────────────────────────────
+  // The Unison App Builder generates the complete application in the app-build
+  // stage BEFORE the initial commit. Revision 1 contains the final accepted
+  // application; no page-by-page rewriting occurs after commit. Post-launch
+  // AI editing uses the same App Builder via the Web Builder.
+  run.markStage('author', 'done');
 
   // ── Stage: handoff ────────────────────────────────────────────────────────
   status("Opening the builder…");

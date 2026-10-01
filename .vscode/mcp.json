@@ -17,7 +17,7 @@
       "type": "http",
       "url": "https://21st.dev/api/mcp",
       "headers": {
-        "x-api-key": "${input:twentyFirstApiKey}"
+        "x-api-key": "${input:21stApiKey}"
       }
     }
   },
@@ -29,7 +29,7 @@
       "password": true
     },
     {
-      "id": "twentyFirstApiKey",
+      "id": "21stApiKey",
       "type": "promptString",
       "description": "21st.dev API key",
       "password": true

@@ -14,6 +14,8 @@ import type {
   WizardSelections,
 } from '@/types/playground';
 import type { GeneratedSitePlan } from '@/platform/core/siteTopologyPlanner';
+import type { SiteBundleSnapshot } from '@/platform/core/canonicalPipeline';
+import type { NavItem, RouteDef, SiteManifest } from '@/types/siteBundle';
 import { resolveCapabilities } from '@/services/wizardCapabilityResolver';
 import { materializePlayground } from '@/services/wizardPlaygroundMaterializer';
 import { getValidationSummary, validatePlayground } from '@/services/playgroundValidationService';
@@ -46,8 +48,18 @@ import { generateCanonicalRouter } from '@/utils/topologyRouterGenerator';
 import { resolveApprovedExperienceCapabilities } from '@/services/experienceCapabilityResolver';
 import { GENERATED_RUNTIME_PROFILE } from '@/platform/core/generatedRuntimeCapabilities';
 import { TEMPLATE_DESIGN_CONTRACT_PATH } from '@/services/templateLayoutContract';
+import { readTemplateDesignContract } from '@/services/templateLayoutContract';
 import { THEME_OVERRIDES_PATH } from '@/services/theme/themeTokenOverrides';
 import type { AppBuilderUIFoundation } from '@/services/app-builder/appBuilderContracts';
+import {
+  readThemeContract,
+  THEME_CONTRACT_PATH,
+  THEME_CONTRACT_VERSION,
+} from '@/platform/core/themeContract';
+import { buildWizardGenerationBrief } from '@/services/wizardGenerationBrief';
+import { designPlanSignature } from '@/utils/designVariation';
+import { computeRenderHash } from '@/platform/core/generationSeed';
+import { designRegistrySignature } from '@/services/designImplementationRegistry';
 
 export const CANONICAL_LAUNCH_PLAN_VERSION = 'unison-canonical-launch-plan/1' as const;
 
@@ -232,3 +244,139 @@ export function buildCanonicalLaunchPlan(
   };
 }
 
+function candidateSnapshotId(plan: CanonicalLaunchPlan, files: Readonly<Record<string, string>>): string {
+  let hash = 0x811c9dc5;
+  const value = [
+    plan.designIntervention.seed,
+    ...plan.sitePlan.pages.map((page) => `${page.id}:${page.route}:${page.filePath}`),
+    ...Object.keys(files).sort().map((path) => `${path}:${files[path].length}`),
+  ].join('|');
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+  return `candidate_${hash.toString(16).padStart(8, '0')}`;
+}
+
+/**
+ * Project an App Builder candidate into the canonical snapshot shape consumed
+ * by finalization. This object is not accepted or persisted until commitMutation
+ * succeeds; it is the candidate input to the one seal point.
+ */
+export function projectCanonicalLaunchCandidateSnapshot(
+  plan: CanonicalLaunchPlan,
+  selections: WizardSelections,
+  candidateFiles: Record<string, string>,
+): SiteBundleSnapshot {
+  const registry = plan.playground.pageRegistry;
+  const pages = Object.values(registry.pages);
+  const routes: RouteDef[] = pages.map((page) => ({
+    path: page.path,
+    pageId: page.pageId,
+    isHome: page.isHome,
+  }));
+  const nav: NavItem[] = pages
+    .filter((page) => page.showInNav)
+    .sort((left, right) => left.navOrder - right.navOrder)
+    .map((page) => ({ label: page.title, path: page.path, pageId: page.pageId }));
+  const manifest: SiteManifest = {
+    routes,
+    nav,
+    layout: { header: 'minimal', footer: 'minimal' },
+    metadata: {
+      title: selections.businessName || 'My Site',
+      description: `${selections.businessName} — Built with Unison`,
+    },
+  };
+  const generationBrief = buildWizardGenerationBrief({
+    pageRegistry: registry,
+    vfsFiles: candidateFiles,
+    uiFoundation: plan.uiFoundation.manifest,
+    themePresetId: plan.themePresetId,
+    artDirectionPackId: plan.designIntervention.artDirectionPackId,
+    industry: plan.sitePlan.industry,
+    seed: plan.designIntervention.seed,
+    customerGoals: selections.secondaryGoals,
+  });
+  const themeContract = readThemeContract(candidateFiles);
+  const templateDesignContract = readTemplateDesignContract(candidateFiles);
+
+  return {
+    snapshotId: candidateSnapshotId(plan, candidateFiles),
+    businessName: selections.businessName || '',
+    industry: plan.sitePlan.industry,
+    pageRegistry: registry,
+    vfsFiles: { ...candidateFiles },
+    routerFile: {
+      path: '/src/App.tsx',
+      content: candidateFiles['/src/App.tsx'] || '',
+    },
+    manifest,
+    bindings: { ...plan.playground.bindings },
+    calendars: { ...plan.playground.calendars },
+    popups: { ...plan.playground.popups },
+    creatorData: plan.playground.creatorData,
+    componentInstances: plan.playground.creatorData.componentInstances,
+    routes: plan.sitePlan.pages.map((page) => page.route),
+    homeRoute: plan.sitePlan.pages.find((page) => page.isHome)?.route || '/',
+    createdAt: new Date().toISOString(),
+    themeTokens: selections.themeTokens,
+    meta: {
+      source: 'wizard',
+      systemId: selections.systemType ?? null,
+      industry: plan.sitePlan.industry,
+      verticalContractId: selections.systemType ?? null,
+      wizardSeedId: selections.wizardSeedId,
+      generationSeed: plan.designIntervention.seed,
+      designPlanSignature: designPlanSignature(plan.designIntervention.seed),
+      renderHash: computeRenderHash({
+        artDirectionFamilyId: plan.artDirection.familyId,
+        artDirectionQualifiedPackId: plan.artDirection.packId,
+        seed: plan.designIntervention.seed,
+        industry: plan.sitePlan.industry,
+        templateId: selections.templateId ?? null,
+        themePresetId: plan.themePresetId,
+        artDirectionPackId: plan.designIntervention.artDirectionPackId,
+        layoutRecipe: plan.designIntervention.layoutRecipe ?? null,
+        motionRecipes: plan.designIntervention.motionRecipes ?? null,
+        experienceBudget: plan.designIntervention.experienceBudget ?? null,
+        activeVariants: plan.designIntervention.activeVariants,
+        pages: pages.map((page) => `${page.pageId}:${page.path}:${page.pageRole ?? page.pageType}`).sort(),
+        routes: plan.sitePlan.pages.map((page) => page.route).sort(),
+      }),
+      artDirection: plan.artDirection,
+      themePresetId: plan.themePresetId,
+      themeStyleVersion: '2.0',
+      templateId: selections.templateId ?? null,
+      artDirectionPackId: plan.designIntervention.artDirectionPackId,
+      designSelection: selections.designSelection,
+      interactionManifest: selections.interactionManifest,
+      themeInjection: {
+        version: '1.0',
+        stage: '4b',
+        presetId: plan.themePresetId,
+        cssPath: '/src/index.css',
+      },
+      uiFoundation: plan.uiFoundationContract,
+      themeContract: themeContract ? {
+        version: THEME_CONTRACT_VERSION,
+        contractPath: THEME_CONTRACT_PATH,
+        artDirectionPackId: themeContract.artDirectionPackId,
+      } : undefined,
+      templateDesignContract: templateDesignContract ? {
+        version: String(templateDesignContract.version),
+        contractPath: TEMPLATE_DESIGN_CONTRACT_PATH,
+        templateId: templateDesignContract.templateId,
+        implementationId: templateDesignContract.implementationId,
+        variantId: templateDesignContract.variantId,
+        seed: templateDesignContract.seed,
+        layoutSignature: templateDesignContract.signature,
+        contractSignature: templateDesignContract.contractSignature,
+        registrySignature: designRegistrySignature(),
+      } : undefined,
+      generationBrief,
+      designIntervention: plan.designIntervention,
+      registryContext: plan.registryContext,
+    },
+  };
+}

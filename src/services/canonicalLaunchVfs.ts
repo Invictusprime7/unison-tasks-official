@@ -169,6 +169,8 @@ export interface BuildCanonicalLaunchArtifactsInput {
   previewFirst?: boolean;
   /** Throw if internal preflight has to quarantine generated code. */
   strictPreflight?: boolean;
+  /** Fresh App Builder launch stamps v3 page-body authority at the seal. */
+  registeredPageBodyAuthority?: 'canonical-compiler' | 'app-builder';
 }
 
 const GENERATED_MODULE_EXTENSIONS = ['.tsx', '.ts', '.jsx', '.js'] as const;
@@ -461,6 +463,7 @@ export interface CanonicalMergeOptions {
   requireRegisteredPageClosure?: boolean;
   /** Optional sink receiving `pageFilePath -> provenance` for merge auditing. */
   provenanceSink?: Record<string, MergedPageProvenance>;
+  pageBodyAuthority?: 'canonical-compiler' | 'app-builder';
 }
 
 export function mergeGeneratedVfsWithCanonicalSnapshot(
@@ -697,13 +700,22 @@ export function mergeGeneratedVfsWithCanonicalSnapshot(
     .filter((path): path is string => Boolean(path))
     .map(normalizePath)
     .sort();
-  const authorityProof: WizardLaunchAuthorityProof = {
-    version: '2.0',
-    compileArtifactId: snapshot.snapshotId,
-    registeredPageBodyAuthority: 'canonical-compiler',
-    registeredPageFiles,
-    protectedFilePatterns: [...WIZARD_LANE_A_PROTECTED_FILES],
-  };
+  const authorityProof: WizardLaunchAuthorityProof | import('@/platform/core/snapshotSeal').AppBuilderLaunchAuthorityProof =
+    options.pageBodyAuthority === 'app-builder'
+      ? {
+          version: '3.0',
+          compileArtifactId: snapshot.snapshotId,
+          registeredPageBodyAuthority: 'app-builder',
+          registeredPageFiles,
+          protectedFilePatterns: [...WIZARD_LANE_A_PROTECTED_FILES],
+        }
+      : {
+          version: '2.0',
+          compileArtifactId: snapshot.snapshotId,
+          registeredPageBodyAuthority: 'canonical-compiler',
+          registeredPageFiles,
+          protectedFilePatterns: [...WIZARD_LANE_A_PROTECTED_FILES],
+        };
   merged[WIZARD_LAUNCH_AUTHORITY_PATH] = JSON.stringify(authorityProof, null, 2);
 
   return merged;
@@ -906,11 +918,12 @@ function* buildCanonicalLaunchArtifactSteps(
   yield;
   const mergeProvenance: Record<string, MergedPageProvenance> = {};
   const mergedFiles = input.siteBundleSnapshot && mergeWithCanonicalSnapshot
-    ? mergeGeneratedVfsWithCanonicalSnapshot(safeFiles, canonicalFiles, input.siteBundleSnapshot, {
+      ? mergeGeneratedVfsWithCanonicalSnapshot(safeFiles, canonicalFiles, input.siteBundleSnapshot, {
         allowCanonicalPageFallback: input.allowCanonicalPageFallback,
         // M1: a wizard launch may never seal without every registered page.
         requireRegisteredPageClosure: input.allowCanonicalPageFallback !== true,
         provenanceSink: mergeProvenance,
+        pageBodyAuthority: input.registeredPageBodyAuthority,
         // Snapshot topology owns registry/router/bindings and Stage 4b owns
         // /src/index.css. The supplied page set must close the registry.
       })

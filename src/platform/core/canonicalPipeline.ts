@@ -332,9 +332,9 @@ export interface SiteBundleSnapshotMeta {
     compileArtifactId: string;
     fileCount: number;
     /** Canonical Wizard ownership chain consumed from the merge proof. */
-    pipeline?: 'lane-a+lane-b+stage-4b' | 'canonical-compiler+stage-4b';
-    authorityProofVersion?: '1.0' | '2.0';
-    registeredPageBodyAuthority?: 'lane-b' | 'canonical-compiler';
+    pipeline?: 'lane-a+lane-b+stage-4b' | 'canonical-compiler+stage-4b' | 'canonical-plan+app-builder+stage-4b';
+    authorityProofVersion?: '1.0' | '2.0' | '3.0';
+    registeredPageBodyAuthority?: 'lane-b' | 'canonical-compiler' | 'app-builder';
     registeredPageFiles?: string[];
     /** Canonical source and metadata paths protected from launcher overrides. */
     protectedFilePatterns?: string[];
@@ -376,7 +376,12 @@ function readSnapshotDesignIntervention(
 
 /**
  * Execute the full canonical pipeline from wizard selections to preview-ready state.
- * This is the ONLY way to create a valid site configuration.
+ *
+ * @deprecated for fresh launches. Fresh launches now use canonicalLaunchPlan +
+ * UnisonAppBuilder. This function is retained for legacy project compatibility
+ * and non-launch compilation paths. Do NOT use this for new Wizard launches.
+ *
+ * This is the ONLY way to create a valid site configuration for legacy/recompile flows.
  */
 export function executeCanonicalPipeline(
   selections: WizardSelections,

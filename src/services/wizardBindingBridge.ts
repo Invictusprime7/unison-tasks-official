@@ -516,7 +516,9 @@ function applyBindingByIconAffinity(
   return { content: next, applied: appliedCount > 0 };
 }
 
-function describeBindingTarget(binding: PlaygroundBinding, snapshot: SiteBundleSnapshot): string {
+type WizardBindingGuideSource = Pick<SiteBundleSnapshot, 'pageRegistry' | 'bindings'>;
+
+function describeBindingTarget(binding: PlaygroundBinding, snapshot: WizardBindingGuideSource): string {
   if (binding.targetType === 'page') {
     const targetPage = snapshot.pageRegistry.pages[binding.targetId];
     return targetPage ? `${targetPage.title} (${normalizeRoute(targetPage.path)})` : binding.targetId;
@@ -525,7 +527,7 @@ function describeBindingTarget(binding: PlaygroundBinding, snapshot: SiteBundleS
 }
 
 export function buildWizardBindingGuide(
-  snapshot: SiteBundleSnapshot,
+  snapshot: WizardBindingGuideSource,
   options: { industry?: string | null } = {},
 ): string {
   const bindings = Object.values(snapshot.bindings)
