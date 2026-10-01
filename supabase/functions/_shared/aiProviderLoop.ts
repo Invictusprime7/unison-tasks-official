@@ -434,11 +434,70 @@ export async function runProviderLoop(opts: {
     }
   };
 
+  // ── Managed gateway (Lovable AI) — primary provider ─────────────────────
+  // Lovable AI runs first with nearly the whole budget; direct OpenAI/Gemini
+  // keys are only used when it fails. No short slice: large page prompts need
+  // the time, and cutting them off discards billed work.
+  let gatewayTriedFirst = false;
+  const runManagedGatewayAttempt = async (label: string, windowMs: number) => {
+    const gatewayModel: ModelSpec = {
+      id: 'google/gemini-3.6-flash',
+      maxTokens: Math.min(providerPlan.fallbackMaxTokens, 32_000),
+      label,
+    };
+    try {
+      console.log(`[AI-Hybrid] ${label} (window: ${Math.round(windowMs / 1000)}s)...`);
+      const attempt = createAttemptSignal(Math.max(8_000, windowMs));
+      const resp = await createLastResortGatewayChatCompletion(
+        buildPlannedChatCompletionRequest({
+          model: gatewayModel,
+          aiMessages,
+          reasoningEffort,
+          tools: hasTools ? tools : undefined,
+          toolChoice: effectiveToolChoice,
+        }),
+        attempt.signal,
+      );
+      attempt.cleanup();
+      if (resp.ok) {
+        const data = await resp.json();
+        const message = data.choices?.[0]?.message ?? {};
+        const parsedContent = message.content || '';
+        const parsedToolCalls = Array.isArray(message.tool_calls) ? (message.tool_calls as RawToolCall[]) : undefined;
+        if (parsedContent || (parsedToolCalls && parsedToolCalls.length > 0)) {
+          const extracted = extractThinkingTags(parsedContent);
+          content = extracted.content;
+          reasoning = extracted.reasoning || reasoning;
+          modelUsed = gatewayModel.id;
+          providerUsed = 'lovable';
+          if (parsedToolCalls?.length) toolCalls = parsedToolCalls;
+          console.log(`[AI-Hybrid] Success with ${label}`);
+        } else {
+          recordProviderError(label, 'empty response');
+        }
+      } else {
+        const errText = await resp.text().catch(() => '');
+        recordProviderError(label, `${resp.status} ${errText.substring(0, 200)}`);
+        if (resp.status === 402) {
+          deferredEarlyError = { status: 402, error: 'AI credits are exhausted. Please add workspace credits and try again.' };
+        }
+      }
+    } catch (err) {
+      throwIfCancelled();
+      recordProviderError(label, err instanceof Error ? err.message : 'unknown');
+    }
+  };
+
+  if (hasLastResortGateway) {
+    gatewayTriedFirst = true;
+    await runManagedGatewayAttempt('Lovable AI (primary)', budgetRemaining() - 5_000);
+  }
+
   // ── Phase 0: Hybrid race (lead OpenAI model vs managed gateway) ────────
   // Composer tasks start both at once; the first usable answer wins and the
   // other request is aborted. A quick failure on one side leaves the other
   // running, so a dead key never costs a sequential fallback round.
-  if (providerPlan.raceGateway && allowDirectFallbacks && hasLastResortGateway && providerPlan.gatewayModels.length > 0) {
+  if (!hasResponse() && !gatewayTriedFirst && providerPlan.raceGateway && allowDirectFallbacks && hasLastResortGateway && providerPlan.gatewayModels.length > 0) {
     const lead = providerPlan.gatewayModels[0];
     const gatewayModel: ModelSpec = {
       id: 'google/gemini-3.6-flash',
@@ -726,65 +785,10 @@ export async function runProviderLoop(opts: {
     }
   }
 
-  // ── Phase 5: Managed gateway, strictly last resort ───────────────────
-  // This path is intentionally unreachable until all configured direct
-  // provider models (and Anthropic, when present) have failed. It prevents a
-  // temporary direct-provider 429 from blocking the Wizard while preserving
-  // the product rule that the managed gateway is never primary.
-  if (!hasResponse() && hasLastResortGateway) {
+  // ── Phase 5: Managed gateway retry, only if it was not already tried first ──
+  if (!hasResponse() && hasLastResortGateway && !gatewayTriedFirst) {
     const remaining = budgetRemaining();
-    if (remaining >= 8_000) {
-      // The gateway needs ~30 s for large wizard-seed prompts. When the direct
-      // keys are billing-exhausted the gateway is the ONLY provider that can
-      // answer, so it gets the entire remaining budget instead of a 35 s slice.
-      const gatewayCapMs = directQuotaExhausted ? Number.MAX_SAFE_INTEGER : 35_000;
-      const perModelMs = Math.min(gatewayCapMs, Math.max(8_000, remaining - 2_000));
-
-      const gatewayModel: ModelSpec = {
-        id: 'google/gemini-3.6-flash',
-        maxTokens: Math.min(providerPlan.fallbackMaxTokens, 32_000),
-        label: 'Managed gateway fallback',
-      };
-      try {
-        console.log(`[AI-Hybrid] Trying managed gateway as final fallback (timeout: ${perModelMs / 1000}s)...`);
-        const attempt = createAttemptSignal(perModelMs);
-        const resp = await createLastResortGatewayChatCompletion(
-          buildPlannedChatCompletionRequest({
-            model: gatewayModel,
-            aiMessages,
-            reasoningEffort,
-            tools: hasTools ? tools : undefined,
-            toolChoice: effectiveToolChoice,
-          }),
-          attempt.signal,
-        );
-        attempt.cleanup();
-        if (resp.ok) {
-          const data = await resp.json();
-          const message = data.choices?.[0]?.message ?? {};
-          const parsedContent = message.content || '';
-          const parsedToolCalls = Array.isArray(message.tool_calls) ? (message.tool_calls as RawToolCall[]) : undefined;
-          if (parsedContent || (parsedToolCalls && parsedToolCalls.length > 0)) {
-            const extracted = extractThinkingTags(parsedContent);
-            content = extracted.content;
-            reasoning = extracted.reasoning || reasoning;
-            modelUsed = gatewayModel.id;
-            providerUsed = 'lovable';
-            if (parsedToolCalls?.length) toolCalls = parsedToolCalls;
-            console.log('[AI-Hybrid] Success with managed gateway final fallback');
-          }
-        } else {
-          const errText = await resp.text().catch(() => '');
-          recordProviderError(gatewayModel.label, `${resp.status} ${errText.substring(0, 200)}`);
-          if (resp.status === 402) {
-            deferredEarlyError = { status: 402, error: 'AI credits are exhausted. Please add workspace credits and try again.' };
-          }
-        }
-      } catch (err) {
-        throwIfCancelled();
-        recordProviderError(gatewayModel.label, err instanceof Error ? err.message : 'unknown');
-      }
-    }
+    if (remaining >= 8_000) await runManagedGatewayAttempt('Managed gateway fallback', remaining - 2_000);
   }
 
   if (!hasResponse()) {
