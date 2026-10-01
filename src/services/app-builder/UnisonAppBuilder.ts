@@ -26,6 +26,7 @@ import {
   type AppEditResult,
   type AppRepairRequest,
 } from './appBuilderContracts';
+import { orchestrateAppBuild } from './appBuilderOrchestrator';
 
 export interface UnisonAppBuilder {
   generate(input: AppBuildRequest): Promise<AppBuildResult>;
@@ -59,48 +60,7 @@ export function createUnisonAppBuilder(
 
   const service: UnisonAppBuilder = {
     async generate(input) {
-      const pages = input.contract.topology.sitePlan.pages.map((page) => ({
-        pageId: page.id,
-        title: page.title,
-        route: page.route,
-        filePath: page.filePath,
-        role: page.role,
-      }));
-      const authored = await authorSite({
-        pages,
-        homePageId: input.contract.topology.sitePlan.homePageId,
-        designContext: input.contract.design.resolvedSiteDesignContext,
-        businessName: input.contract.business.businessName,
-        files: { ...input.initialFiles },
-        revisionId: input.baseRevisionId,
-        signal: input.signal,
-        budgetMs: input.budgetMs,
-        maxPages: input.maxPages,
-        concurrency: input.concurrency,
-        preflight: input.preflight,
-        onProgress: input.onProgress,
-        commitPage: input.acceptPage ?? (async (nextFiles) => ({
-          files: nextFiles,
-          revisionId: input.baseRevisionId,
-        })),
-      });
-      const diagnostics = authored.outcomes.flatMap((outcome) => outcome.errors);
-      const cancelled = input.signal?.aborted === true;
-      return {
-        operationId: input.operationId,
-        protocolVersion: APP_BUILDER_PROTOCOL_VERSION,
-        candidate: {
-          candidateId: `${input.operationId}:candidate`,
-          status: cancelled ? 'cancelled' : 'ready-for-commit',
-          files: authored.files,
-          entryPoint: input.entryPoint,
-          attempts: authored.outcomes.reduce((total, outcome) => total + outcome.attempts, 0),
-          diagnostics,
-        },
-        stopReason: cancelled ? 'cancelled' : 'complete',
-        outcomes: authored.outcomes,
-        revisionId: authored.revisionId,
-      };
+      return orchestrateAppBuild(input, { authorSite, runComposer });
     },
 
     async edit(input) {
@@ -143,6 +103,7 @@ export function createUnisonAppBuilder(
           attempts: composer.attempts,
           diagnostics: composer.errors,
         },
+        candidateFiles: composer.prepared?.nextFiles ?? input.currentFiles,
         stopReason: stopReason(composer.reason),
         changeSet: composer.prepared?.build.changeSet,
         summary: composer.response?.summary,

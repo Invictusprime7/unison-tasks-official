@@ -51,6 +51,9 @@ describe('UnisonAppBuilder facade', () => {
     expect(builder).toContain('unisonAppBuilder.edit({');
     expect(launcher).not.toContain('authorSitePages({');
     expect(builder).not.toContain('runComposerRepairLoop({');
+    const orchestrator = readFileSync('src/services/app-builder/appBuilderOrchestrator.ts', 'utf8');
+    expect(orchestrator).not.toContain('commitMutation');
+    expect(orchestrator).not.toContain('persistAiCommit');
   });
 
   it('adapts site authoring behind generate and preserves the candidate result', async () => {
@@ -68,7 +71,86 @@ describe('UnisonAppBuilder facade', () => {
     expect(authorSite).toHaveBeenCalledOnce();
     expect(result.candidate.status).toBe('ready-for-commit');
     expect(result.candidate.files['/src/pages/Home.tsx']).toContain('After');
+    expect(result.candidateFiles).toBe(result.candidate.files);
+    expect(result.candidate.closure?.ok).toBe(true);
+    expect(result.candidate.provenance?.strategy).toBe('ai-candidate');
     expect(result.revisionId).toBe('revision-2');
+  });
+
+  it('repairs site-wide closure in memory before returning a candidate', async () => {
+    const brokenFiles = {
+      ...baseFiles,
+      '/src/pages/Home.tsx': 'import Card from "../project-components/Card"; export default function Home(){return <Card />}',
+    };
+    const repairedFiles = {
+      ...brokenFiles,
+      '/src/project-components/Card.tsx': 'export default function Card(){return <section>Card</section>}',
+    };
+    const authorSite = vi.fn(async (input: Parameters<NonNullable<Parameters<typeof createUnisonAppBuilder>[0]['authorSite']>>[0]) => ({
+      files: brokenFiles,
+      revisionId: input.revisionId,
+      outcomes: [{ page: input.pages[0], status: 'authored' as const, reason: 'accepted' as const, attempts: 1, errors: [] }],
+    }));
+    const changeSet = {
+      id: 'cand_closure', provenance: { origin: 'repair' as const, knowledgeVersion: 'test' },
+      fileOps: [{ type: 'create' as const, path: '/src/project-components/Card.tsx', content: repairedFiles['/src/project-components/Card.tsx'] }],
+      routeOps: [], targetPages: ['home'], attempt: 1,
+    };
+    const runComposer = vi.fn(async (): Promise<ComposerLoopResult> => ({
+      ok: true, reason: 'accepted', attempts: 1, errors: [],
+      prepared: {
+        ok: true,
+        build: { changeSet, candidateFiles: repairedFiles, refused: [] },
+        gates: { passed: true, failures: [], advisories: [] },
+        nextFiles: repairedFiles,
+        errors: [],
+      },
+    }));
+    const result = await createUnisonAppBuilder({ authorSite, runComposer }).generate({
+      operationId: 'operation-closure', contract: contract(), initialFiles: baseFiles,
+      entryPoint: '/src/main.tsx', baseRevisionId: null,
+    });
+
+    expect(runComposer).toHaveBeenCalledOnce();
+    expect(result.candidate.status).toBe('ready-for-commit');
+    expect(result.candidateFiles['/src/project-components/Card.tsx']).toContain('Card');
+    expect(result.candidate.closure?.ok).toBe(true);
+    expect(result.candidate.provenance?.strategy).toBe('ai-candidate+closure-repair');
+    expect(result.revisionId).toBeNull();
+  });
+
+  it('generates a complete multi-page candidate without a canonical commit callback', async () => {
+    const multiPage = contract();
+    multiPage.topology.sitePlan.pages.push({
+      id: 'contact', name: 'contact', title: 'Contact', route: '/contact', role: 'contact',
+      filePath: '/src/pages/Contact.tsx', visibleInNav: true, isHome: false, generatedBy: 'wizard',
+    });
+    multiPage.design.resolvedSiteDesignContext = compileResolvedSiteDesignContext({
+      designSeed: 'app-builder-test', businessModel: 'general' as never,
+      industry: 'salon', roles: ['home', 'contact'],
+    });
+    const candidateFiles = {
+      ...baseFiles,
+      '/src/pages/Home.tsx': 'import Mark from "../project-components/Mark"; export default function Home(){return <main><Mark /></main>}',
+      '/src/pages/Contact.tsx': 'export default function Contact(){return <main>Contact us</main>}',
+      '/src/project-components/Mark.tsx': 'export default function Mark(){return <span>Northstar</span>}',
+    };
+    const authorSite = vi.fn(async (input: Parameters<NonNullable<Parameters<typeof createUnisonAppBuilder>[0]['authorSite']>>[0]) => ({
+      files: candidateFiles,
+      revisionId: input.revisionId,
+      outcomes: input.pages.map((page) => ({ page, status: 'authored' as const, reason: 'accepted' as const, attempts: 1, errors: [] })),
+    }));
+    const result = await createUnisonAppBuilder({ authorSite }).generate({
+      operationId: 'operation-multi-page', contract: multiPage, initialFiles: baseFiles,
+      entryPoint: '/src/main.tsx', baseRevisionId: null,
+    });
+
+    expect(authorSite.mock.calls[0][0].commitPage).toBeTypeOf('function');
+    expect(result.candidate.status).toBe('ready-for-commit');
+    expect(result.candidate.closure?.ok).toBe(true);
+    expect(result.candidateFiles['/src/pages/Contact.tsx']).toContain('Contact us');
+    expect(result.candidateFiles['/src/project-components/Mark.tsx']).toContain('Northstar');
+    expect(result.revisionId).toBeNull();
   });
 
   it('routes Builder edits through the existing Composer repair gates', async () => {

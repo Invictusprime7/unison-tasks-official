@@ -165,12 +165,40 @@ export interface AppBuildCandidate {
   entryPoint: string;
   attempts: number;
   diagnostics: readonly string[];
+  provenance?: AppBuildCandidateProvenance;
+  closure?: AppBuildCandidateClosureReport;
+}
+
+export interface AppBuildCandidateProvenance {
+  protocolVersion: typeof APP_BUILDER_PROTOCOL_VERSION;
+  operationId: string;
+  baseRevisionId: string | null;
+  contractSeed: string;
+  sourceHash: string;
+  authoredPageIds: readonly string[];
+  strategy: 'ai-candidate' | 'ai-candidate+closure-repair' | 'legacy-commit-adapter';
+}
+
+export interface AppBuildCandidateClosureIssue {
+  severity: 'blocker' | 'advisory';
+  code: string;
+  message: string;
+  path?: string;
+}
+
+export interface AppBuildCandidateClosureReport {
+  version: '1.0';
+  ok: boolean;
+  sourceHash: string;
+  issues: readonly AppBuildCandidateClosureIssue[];
 }
 
 export interface AppBuildResult {
   operationId: string;
   protocolVersion: typeof APP_BUILDER_PROTOCOL_VERSION;
   candidate: AppBuildCandidate;
+  /** Alias for the one candidate workspace returned by generate(). */
+  candidateFiles: Readonly<Record<string, string>>;
   stopReason: AppBuildCandidateStopReason;
   outcomes?: readonly AppBuildPageOutcome[];
   revisionId?: string | null;
