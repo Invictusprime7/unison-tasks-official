@@ -453,52 +453,80 @@ export async function runProviderLoop(opts: {
   // keys are only used when it fails. No short slice: large page prompts need
   // the time, and cutting them off discards billed work.
   let gatewayTriedFirst = false;
+  // The gateway's own terminal answer (status + safe message). When Lovable AI
+  // is the primary provider, this — not a dead direct key's billing text — is
+  // the error the user must see.
+  let gatewayFailure: ProviderEarlyError | undefined;
   const runManagedGatewayAttempt = async (label: string, windowMs: number) => {
     const gatewayModel: ModelSpec = {
       id: 'google/gemini-3.6-flash',
       maxTokens: Math.min(providerPlan.fallbackMaxTokens, 32_000),
       label,
     };
-    try {
-      console.log(`[AI-Hybrid] ${label} (window: ${Math.round(windowMs / 1000)}s)...`);
-      const attempt = createAttemptSignal(Math.max(8_000, windowMs));
-      const resp = await createLastResortGatewayChatCompletion(
-        buildPlannedChatCompletionRequest({
-          model: gatewayModel,
-          aiMessages,
-          reasoningEffort,
-          tools: hasTools ? tools : undefined,
-          toolChoice: effectiveToolChoice,
-        }),
-        attempt.signal,
-      );
-      attempt.cleanup();
-      if (resp.ok) {
-        const data = await resp.json();
-        const message = data.choices?.[0]?.message ?? {};
-        const parsedContent = message.content || '';
-        const parsedToolCalls = Array.isArray(message.tool_calls) ? (message.tool_calls as RawToolCall[]) : undefined;
-        if (parsedContent || (parsedToolCalls && parsedToolCalls.length > 0)) {
-          const extracted = extractThinkingTags(parsedContent);
-          content = extracted.content;
-          reasoning = extracted.reasoning || reasoning;
-          modelUsed = gatewayModel.id;
-          providerUsed = 'lovable';
-          if (parsedToolCalls?.length) toolCalls = parsedToolCalls;
-          console.log(`[AI-Hybrid] Success with ${label}`);
-        } else {
-          recordProviderError(label, 'empty response');
+    const deadline = Date.now() + Math.max(8_000, windowMs);
+    // Only 429 and 5xx are transient; retry them with bounded backoff
+    // (honouring Retry-After) while the window still fits a real generation.
+    const MAX_GATEWAY_ATTEMPTS = 3;
+    for (let attemptNo = 1; attemptNo <= MAX_GATEWAY_ATTEMPTS; attemptNo++) {
+      throwIfCancelled();
+      const windowLeft = deadline - Date.now();
+      if (windowLeft < 8_000) break;
+      try {
+        console.log(`[AI-Hybrid] ${label} attempt ${attemptNo} (window: ${Math.round(windowLeft / 1000)}s)...`);
+        const attempt = createAttemptSignal(windowLeft);
+        const resp = await createLastResortGatewayChatCompletion(
+          buildPlannedChatCompletionRequest({
+            model: gatewayModel,
+            aiMessages,
+            reasoningEffort,
+            tools: hasTools ? tools : undefined,
+            toolChoice: effectiveToolChoice,
+          }),
+          attempt.signal,
+        );
+        attempt.cleanup();
+        if (resp.ok) {
+          const data = await resp.json();
+          const message = data.choices?.[0]?.message ?? {};
+          const parsedContent = message.content || '';
+          const parsedToolCalls = Array.isArray(message.tool_calls) ? (message.tool_calls as RawToolCall[]) : undefined;
+          if (parsedContent || (parsedToolCalls && parsedToolCalls.length > 0)) {
+            const extracted = extractThinkingTags(parsedContent);
+            content = extracted.content;
+            reasoning = extracted.reasoning || reasoning;
+            modelUsed = gatewayModel.id;
+            providerUsed = 'lovable';
+            gatewayFailure = undefined;
+            if (parsedToolCalls?.length) toolCalls = parsedToolCalls;
+            console.log(`[AI-Hybrid] Success with ${label}`);
+          } else {
+            recordProviderError(label, 'empty response');
+          }
+          return;
         }
-      } else {
         const errText = await resp.text().catch(() => '');
         recordProviderError(label, `${resp.status} ${errText.substring(0, 200)}`);
+        const transient = resp.status === 429 || resp.status >= 500;
+        if (resp.status === 402 || resp.status === 403 || resp.status === 429) {
+          gatewayFailure = { status: resp.status, error: gatewayErrorMessage(errText) };
+        }
         if (resp.status === 402) {
           deferredEarlyError = { status: 402, error: gatewayErrorMessage(errText) };
         }
+        if (!transient || attemptNo === MAX_GATEWAY_ATTEMPTS) return;
+        const retryAfterSec = Number(resp.headers.get('retry-after'));
+        const backoffMs = Number.isFinite(retryAfterSec) && retryAfterSec > 0
+          ? retryAfterSec * 1000
+          : 1_500 * 2 ** (attemptNo - 1) + Math.floor(Math.random() * 750);
+        const waitMs = Math.min(backoffMs, 15_000);
+        if (deadline - Date.now() - waitMs < 20_000) return; // no room left for a real generation
+        console.warn(`[AI-Hybrid] ${label} returned ${resp.status}; retrying in ${Math.round(waitMs / 1000)}s`);
+        await new Promise((resolve) => setTimeout(resolve, waitMs));
+      } catch (err) {
+        throwIfCancelled();
+        recordProviderError(label, err instanceof Error ? err.message : 'unknown');
+        return;
       }
-    } catch (err) {
-      throwIfCancelled();
-      recordProviderError(label, err instanceof Error ? err.message : 'unknown');
     }
   };
 
@@ -812,7 +840,13 @@ export async function runProviderLoop(opts: {
     // different reason (timeout, 500, empty response), the 429 from one
     // provider is misleading — fall through to the detailed "all providers
     // failed" error so the client shows the real failure.
-    if (deferredEarlyError && !hadNonRateLimitError) {
+    // Lovable AI is the primary provider: its own refusal is the real cause.
+    // A dead direct key's billing text (e.g. "add credits to your OpenAI
+    // account") must never mask it.
+    if (gatewayFailure) {
+      return { content: '', reasoning: '', modelUsed: undefined, earlyError: gatewayFailure };
+    }
+    if (deferredEarlyError && !hadNonRateLimitError && !hasLastResortGateway) {
       return { content: '', reasoning: '', modelUsed: undefined, earlyError: deferredEarlyError };
     }
     const configuredProviders = [
