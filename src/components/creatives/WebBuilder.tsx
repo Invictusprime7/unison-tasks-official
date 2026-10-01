@@ -2612,6 +2612,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   // `site_revisions` over the sessionStorage / launch-context VFS. This closes
   // the launcher→builder loop so the canonical revision chain is authoritative.
   const hydratedRevisionRef = useRef<string | null>(null);
+  const hydratedDraftIdentityRef = useRef<string | null>(null);
   const [hydratedRevision, setHydratedRevision] = useState<LoadedRevision | null>(null);
   const [runtimeProjectionRevisionId, setRuntimeProjectionRevisionId] = useState<string | null>(null);
   const [canonicalHydrationError, setCanonicalHydrationError] = useState<string | null>(null);
@@ -2645,14 +2646,26 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     if (!hydrationKey || hydratedRevisionRef.current === hydrationKey) return;
     hydratedRevisionRef.current = hydrationKey;
 
+    // A new revision of the SAME draft (AI edit, theme edit, undo, restore)
+    // must not tear down the hydrated runtime: clearing it unmounts the live
+    // runtime envelope and makes the preview flash/reload. Only a different
+    // draft identity resets hydration state.
+    const draftIdentity = hasCanonicalDraft ? `${durableProjectId}:${currentDraftId}` : null;
+    const sameDraftRehydration = Boolean(
+      draftIdentity && hydratedDraftIdentityRef.current === draftIdentity,
+    );
+    hydratedDraftIdentityRef.current = draftIdentity;
+
     let cancelled = false;
     let settled = false;
     void (async () => {
       try {
         if (hasCanonicalDraft) {
           setCanonicalHydrationError(null);
-          setHydratedRevision(null);
-          setRuntimeProjectionRevisionId(null);
+          if (!sameDraftRehydration) {
+            setHydratedRevision(null);
+            setRuntimeProjectionRevisionId(null);
+          }
         }
         const revision = hasCanonicalDraft
           ? await loadProjectedRevisionForDraft(durableProjectId!, currentDraftId!)
