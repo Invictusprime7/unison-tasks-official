@@ -44,6 +44,17 @@ const providerForRace = (id: string) =>
 
 export const PROVIDER_LOOP_TOTAL_BUDGET_MS = 135_000;
 
+/** The gateway's own 402 message names the remedy (top-up, temporary hold); never replace it with generic text. */
+export function gatewayErrorMessage(errText: string): string {
+  try {
+    const parsed = JSON.parse(errText) as { message?: unknown; error?: { message?: unknown } | unknown };
+    const nested = typeof parsed.error === 'object' && parsed.error ? (parsed.error as { message?: unknown }).message : parsed.error;
+    const msg = typeof parsed.message === 'string' ? parsed.message : typeof nested === 'string' ? nested : '';
+    if (msg.trim()) return `Lovable AI: ${msg.trim().slice(0, 300)}`;
+  } catch { /* not JSON */ }
+  return 'Lovable AI refused the request for credit reasons. Please check workspace credits and try again.';
+}
+
 export function reserveFallbackWindow(attemptMs: number, remainingMs: number, reserveMs: number): number {
   return Math.min(attemptMs, Math.max(1000, remainingMs - reserveMs - 2000));
 }
@@ -143,6 +154,9 @@ export async function runProviderLoop(opts: {
     const message = `${label}: ${detail}`;
     providerErrors.push(message);
     lastError = message;
+    // Failures were previously invisible in function logs; record each one so
+    // a refused launch can be traced to the provider and reason.
+    console.warn(`[AI-Hybrid] Provider failed — ${message.substring(0, 300)}`);
     if (!/429|rate limit|402|payment required/i.test(detail)) {
       hadNonRateLimitError = true;
     }
@@ -479,7 +493,7 @@ export async function runProviderLoop(opts: {
         const errText = await resp.text().catch(() => '');
         recordProviderError(label, `${resp.status} ${errText.substring(0, 200)}`);
         if (resp.status === 402) {
-          deferredEarlyError = { status: 402, error: 'AI credits are exhausted. Please add workspace credits and try again.' };
+          deferredEarlyError = { status: 402, error: gatewayErrorMessage(errText) };
         }
       }
     } catch (err) {
@@ -520,7 +534,7 @@ export async function runProviderLoop(opts: {
           const errText = await resp.text().catch(() => '');
           recordProviderError(a.model.label, `${resp.status} ${errText.substring(0, 200)}`);
           if (a.provider === 'lovable' && resp.status === 402) {
-            deferredEarlyError ??= { status: 402, error: 'AI credits are exhausted. Please add workspace credits and try again.' };
+            deferredEarlyError ??= { status: 402, error: gatewayErrorMessage(errText) };
           }
           if (a.provider === 'openai' && (resp.status === 402 || isQuotaExhausted(errText))) openaiQuotaExhausted = true;
           throw new Error('failed');
