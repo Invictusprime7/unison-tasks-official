@@ -58,7 +58,7 @@ export function prepareThemeEdit(files: Record<string, string>, snapshot: SiteBu
   const themeTokens = edit.presetId ? themePresetToThemeTokens(preset) : snapshot.themeTokens;
   const intervention = snapshot.meta.designIntervention ? { ...snapshot.meta.designIntervention, themePresetId: preset.id, artDirectionPackId: contract.artDirectionPackId } : undefined;
   const artDirection = projectResolvedArtDirection({ ...(intervention ?? {}), themePresetId: preset.id, artDirectionPackId: contract.artDirectionPackId });
-  const next = { ...snapshot, themeTokens, ...(snapshot.appContext ? { appContext: { ...snapshot.appContext, themePresetId: preset.id } } : {}), meta: { ...snapshot.meta, themeStyleVersion: '2.0' as const, themePresetId: preset.id, selectedThemeId: preset.id, artDirectionPackId: contract.artDirectionPackId, artDirection, ...(intervention ? { designIntervention: intervention } : {}) } };
+  const next = { ...snapshot, themeTokens, ...(snapshot.appContext ? { appContext: { ...snapshot.appContext, themePresetId: preset.id } } : {}), meta: { ...snapshot.meta, themeStyleVersion: '2.0' as const, themePresetId: preset.id, selectedThemeId: preset.id, artDirectionPackId: contract.artDirectionPackId, artDirection, ...(snapshot.meta.themeInjection ? { themeInjection: { ...snapshot.meta.themeInjection, presetId: preset.id } } : {}), ...(intervention ? { designIntervention: intervention } : {}) } };
   const nextFiles = { ...files, ...buildThemeContractFiles({ themePresetId: preset.id, artDirectionPackId: contract.artDirectionPackId }), [THEME_OVERRIDES_PATH]: serializeThemeOverrides(overrides) };
   // The live preview renders /src/index.css, so the edit must land there in the
   // same candidate — the override map alone is never read by the runtime.
