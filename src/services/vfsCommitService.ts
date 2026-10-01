@@ -660,6 +660,7 @@ export async function commitMutation(
       }
     } catch (err) {
       const canonicalError = err instanceof Error ? err.message : String(err);
+      if (process.env.DBG_SNAP) console.log("DBGTHREW", canonicalError.slice(0, 600));
       log('canonical', 'error', 'canonical pipeline threw', err instanceof Error ? {
         message: err.message,
         stack: err.stack,
