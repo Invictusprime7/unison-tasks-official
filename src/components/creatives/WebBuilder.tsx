@@ -5603,7 +5603,6 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
         // Prevent re-processing generatedCode when vfsFiles already represent source of truth
         importedRouteStateRef.current = navStateSignature;
         routeHandoffImportedRef.current = navStateSignature;
-      routeHandoffImportedRef.current = navStateSignature;
         // Keep both compact route state and the TTL-bound session handoff as
         // recovery layers. `importedRouteStateRef` prevents this successful
         // import from running repeatedly during the current mount.
