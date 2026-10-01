@@ -39,6 +39,13 @@ export interface RunFullPreflightOptions {
    * changed is reported as a violation instead.
    */
   mode?: 'repair' | 'acceptance';
+  /**
+   * When false, a file that cannot be repaired keeps its authored (broken)
+   * source instead of being swapped for a "could not be compiled" stub, so
+   * the caller's parse gate rejects the edit rather than committing the stub.
+   * Builder AI edits must pass false. Defaults to true (legacy behaviour).
+   */
+  allowQuarantine?: boolean;
 }
 
 export interface RunFullPreflightResult {
@@ -66,7 +73,7 @@ export function runFullPreflight(
   inputFiles: Record<string, string>,
   options: RunFullPreflightOptions = {},
 ): RunFullPreflightResult {
-  const { siteBundleSnapshot = null, industry, brand, mode = 'repair' } = options;
+  const { siteBundleSnapshot = null, industry, brand, mode = 'repair', allowQuarantine } = options;
   const ctx = { industry, brand };
 
 
@@ -74,7 +81,7 @@ export function runFullPreflight(
   let files = inputFiles;
   let earlyRepair: 'ok' | 'skipped' | 'failed' = 'skipped';
   try {
-    const r = runPreflightRepair(files, { context: ctx });
+    const r = runPreflightRepair(files, { context: ctx, allowQuarantine });
     files = r.files;
     earlyRepair = 'ok';
   } catch (e) {
@@ -170,7 +177,7 @@ export function runFullPreflight(
   // 7) Final syntax repair (catches damage from steps 2-4)
   let finalRepair: 'ok' | 'skipped' | 'failed' = 'skipped';
   try {
-    const r = runPreflightRepair(files, { context: ctx });
+    const r = runPreflightRepair(files, { context: ctx, allowQuarantine });
     files = r.files;
     finalRepair = 'ok';
   } catch (e) {

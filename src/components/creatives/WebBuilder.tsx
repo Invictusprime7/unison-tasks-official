@@ -7391,6 +7391,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                     preflight: (changed) => runFullPreflight(changed, {
                       siteBundleSnapshot: snapshotForPreflight,
                       industry: snapshotForPreflight?.industry,
+                      allowQuarantine: false,
                     }).files,
                   });
                   let candidate = firstCandidate;
@@ -7401,7 +7402,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                       baseRevisionId: currentRevisionId ?? undefined,
                       prompt: applyMeta?.prompt,
                       routeOps: applyMeta?.routeOps,
-                      preflight: (changed) => runFullPreflight(changed, { siteBundleSnapshot: snapshotForPreflight, industry: snapshotForPreflight?.industry }).files,
+                      preflight: (changed) => runFullPreflight(changed, { siteBundleSnapshot: snapshotForPreflight, industry: snapshotForPreflight?.industry, allowQuarantine: false }).files,
                     });
                     if (repaired.ok && repaired.prepared) candidate = repaired.prepared;
                   }
@@ -7955,7 +7956,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                     baseRevisionId: currentRevisionId ?? undefined,
                     prompt: applyMeta?.prompt,
                     routeOps: applyMeta?.routeOps,
-                    preflight: (changed) => runFullPreflight(changed, { siteBundleSnapshot: snapshotForPreflight, industry: snapshotForPreflight?.industry }).files,
+                    preflight: (changed) => runFullPreflight(changed, { siteBundleSnapshot: snapshotForPreflight, industry: snapshotForPreflight?.industry, allowQuarantine: false }).files,
                   });
                   if (repaired.ok && repaired.prepared) candidate = repaired.prepared;
                 }
