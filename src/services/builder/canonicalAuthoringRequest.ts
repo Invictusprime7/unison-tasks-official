@@ -176,6 +176,15 @@ function renderComponentRecipes(registry: unknown, pageRole?: string): string {
     lines.push(`  ${type}: ${variantList}`);
   }
 
+  // Add composition guidance (portable recipes)
+  lines.push('');
+  lines.push('COMPOSITION PATTERNS (proven section combinations):');
+  lines.push('  Homepage: hero → features/services → testimonials → cta → footer');
+  lines.push('  Services/Products: hero → features/gallery → testimonials → cta');
+  lines.push('  About/Story: hero → content sections → team/faq → cta');
+  lines.push('  Contact/Booking: hero → form/contact → faq → cta');
+  lines.push('  Landing: hero → unique-content → social-proof → cta');
+
   return lines.join('\n');
 }
 
