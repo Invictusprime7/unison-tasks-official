@@ -44,6 +44,17 @@ const providerForRace = (id: string) =>
 
 export const PROVIDER_LOOP_TOTAL_BUDGET_MS = 135_000;
 
+/** The gateway's own 402 message names the remedy (top-up, temporary hold); never replace it with generic text. */
+export function gatewayErrorMessage(errText: string): string {
+  try {
+    const parsed = JSON.parse(errText) as { message?: unknown; error?: { message?: unknown } | unknown };
+    const nested = typeof parsed.error === 'object' && parsed.error ? (parsed.error as { message?: unknown }).message : parsed.error;
+    const msg = typeof parsed.message === 'string' ? parsed.message : typeof nested === 'string' ? nested : '';
+    if (msg.trim()) return `Lovable AI: ${msg.trim().slice(0, 300)}`;
+  } catch { /* not JSON */ }
+  return 'Lovable AI refused the request for credit reasons. Please check workspace credits and try again.';
+}
+
 export function reserveFallbackWindow(attemptMs: number, remainingMs: number, reserveMs: number): number {
   return Math.min(attemptMs, Math.max(1000, remainingMs - reserveMs - 2000));
 }
