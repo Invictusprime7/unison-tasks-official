@@ -6,7 +6,7 @@ import { themePresetToThemeTokens } from '@/components/onboarding/themePresetToT
 import { resolveArtDirectionPackId } from '@/sections/variants/artDirectionPacks';
 import { projectResolvedArtDirection, readSealedArtDirection } from '@/sections/variants/resolvedArtDirection';
 import { readThemeContract, buildThemeContract, buildThemeContractFiles } from '@/platform/core/themeContract';
-import { isEditableThemeToken, readCompiledTokenValues, validateThemeTypography, isLegalThemeTokenValue, readThemeOverrides, serializeThemeOverrides, THEME_OVERRIDES_PATH } from './themeTokenOverrides';
+import { isEditableThemeToken, readCompiledTokenValues, validateThemeTypography, isLegalThemeTokenValue, readThemeOverrides, serializeThemeOverrides, THEME_OVERRIDES_PATH, applyOverridesToCss } from './themeTokenOverrides';
 
 export const themeEditSchema = z.object({
   version: z.literal('1.0'), snapshotId: z.string().min(1), revisionId: z.string().nullable(),
@@ -58,8 +58,15 @@ export function prepareThemeEdit(files: Record<string, string>, snapshot: SiteBu
   const themeTokens = edit.presetId ? themePresetToThemeTokens(preset) : snapshot.themeTokens;
   const intervention = snapshot.meta.designIntervention ? { ...snapshot.meta.designIntervention, themePresetId: preset.id, artDirectionPackId: contract.artDirectionPackId } : undefined;
   const artDirection = projectResolvedArtDirection({ ...(intervention ?? {}), themePresetId: preset.id, artDirectionPackId: contract.artDirectionPackId });
-  const next = { ...snapshot, themeTokens, ...(snapshot.appContext ? { appContext: { ...snapshot.appContext, themePresetId: preset.id } } : {}), meta: { ...snapshot.meta, themeStyleVersion: '2.0' as const, themePresetId: preset.id, selectedThemeId: preset.id, artDirectionPackId: contract.artDirectionPackId, artDirection, ...(intervention ? { designIntervention: intervention } : {}) } };
+  const next = { ...snapshot, themeTokens, ...(snapshot.appContext ? { appContext: { ...snapshot.appContext, themePresetId: preset.id } } : {}), meta: { ...snapshot.meta, themeStyleVersion: '2.0' as const, themePresetId: preset.id, selectedThemeId: preset.id, artDirectionPackId: contract.artDirectionPackId, artDirection, ...(snapshot.meta.themeInjection ? { themeInjection: { ...snapshot.meta.themeInjection, presetId: preset.id } } : {}), ...(intervention ? { designIntervention: intervention } : {}) } };
   const nextFiles = { ...files, ...buildThemeContractFiles({ themePresetId: preset.id, artDirectionPackId: contract.artDirectionPackId }), [THEME_OVERRIDES_PATH]: serializeThemeOverrides(overrides) };
+  // The live preview renders /src/index.css, so the edit must land there in the
+  // same candidate — the override map alone is never read by the runtime.
+  if (edit.presetId) {
+    nextFiles['/src/index.css'] = applyOverridesToCss(buildThemedIndexCss(preset), overrides);
+  } else if (typeof files['/src/index.css'] === 'string') {
+    nextFiles['/src/index.css'] = applyOverridesToCss(files['/src/index.css'], overrides);
+  }
   if (intervention) nextFiles['/.unison/design-intervention.json'] = JSON.stringify(intervention, null, 2);
   nextFiles['/.unison/site-bundle-snapshot.json'] = JSON.stringify(next, null, 2);
   return { snapshot: next, files: nextFiles };

@@ -5574,7 +5574,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
             setTimeout(() => setShowBusinessSetup(true), 1500);
           }
         } else {
-          setViewMode('code');
+          setViewMode('canvas'); // builder always opens in Canvas
         }
 
         // Prevent re-processing generatedCode when vfsFiles already represent source of truth
@@ -5667,9 +5667,9 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
           setTimeout(() => setShowBusinessSetup(true), 1500);
         }
       } else {
-        setViewMode('code');
+        setViewMode('canvas'); // builder always opens in Canvas
         toast(`${templateName} loaded!`, {
-          description: `${aesthetic} - View and edit in Code Editor`,
+          description: `${aesthetic} - Preview your website`,
         });
       }
       // Clear the state to prevent re-loading on subsequent renders
@@ -5694,9 +5694,9 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       });
       setEditorCode(reactCode);
       setPreviewCode(reactCode);
-      setViewMode('code');
+      setViewMode('canvas'); // builder always opens in Canvas
       toast(`${templateName || generatedTemplate.name} loaded!`, {
-        description: `${aesthetic || generatedTemplate.description} - View and edit in Code Editor`,
+        description: `${aesthetic || generatedTemplate.description} - Preview your website`,
       });
       importedRouteStateRef.current = navStateSignature;
       window.history.replaceState({}, document.title);
