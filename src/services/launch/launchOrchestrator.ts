@@ -79,6 +79,7 @@ import {
 } from "@/services/launch/launchRun";
 import { resolveVerticalLaunchContract } from "@/services/verticalLaunchContract";
 import { resolveArtDirectionPack, resolveExperienceRequirement } from "@/sections/variants";
+import { readSealedArtDirection } from '@/sections/variants/resolvedArtDirection';
 import { resolveApprovedExperienceCapabilities } from "@/services/experienceCapabilityResolver";
 import { runExperiencePreflight } from "@/services/experiencePreflightGate";
 import type { BuilderIdentity } from "@/types/builderIdentity";
@@ -115,6 +116,8 @@ import type { CommitMutationResult } from "@/services/vfsCommitService";
 import { authorSitePages } from '@/services/launch/siteAuthoringOrchestrator';
 import { compileResolvedSiteDesignContext } from '@/services/launch/resolvedSiteDesignContext';
 import { persistAiCommit } from '@/services/aiApplyGate';
+import { buildAppBuildContract } from '@/services/app-builder/appBuilderContracts';
+import { WIZARD_LANE_B_PROTECTED_PATHS } from '@/services/wizardLaneBEnrichment';
 
 export interface LaunchOrchestratorInput {
   systemId: BusinessSystemType;
@@ -487,6 +490,9 @@ export async function runLaunchPipeline(
   for (const { platform, href } of wizardSeedFile.socials) {
     socialLinks.set(platform, href);
   }
+  const bindingGuide = buildWizardBindingGuide(siteBundleSnapshot, {
+    industry: plan.industryOverlay,
+  });
   const contextualWizardSeedFile = {
     ...wizardSeedFile,
     business: {
@@ -508,9 +514,7 @@ export async function runLaunchPipeline(
     uiFoundation,
     generationBrief: siteBundleSnapshot.meta.generationBrief,
     designIntervention: siteBundleSnapshot.meta.designIntervention,
-    bindingGuide: buildWizardBindingGuide(siteBundleSnapshot, {
-      industry: plan.industryOverlay,
-    }),
+    bindingGuide,
   };
   const plannedDataBindings = planSectionDataBindings(siteBundleSnapshot);
   const businessRuntime = buildBusinessRuntimeContract({
@@ -545,6 +549,49 @@ export async function runLaunchPipeline(
   };
   const intentBindingsFile = buildIntentBindingsFile(materializedPlayground);
   const intentSurfacesFile = buildIntentSurfacesFile(materializedPlayground);
+
+  // M1 projection only: derive the complete App Builder request from current
+  // canonical launch objects without persisting it or changing VFS output.
+  const designContext = compileResolvedSiteDesignContext({
+    industry: plan.industryOverlay,
+    roles: sitePlan!.pages.map((page) => page.role),
+    artDirectionPackId: siteBundleSnapshot.meta.artDirectionPackId as never,
+    experience: input.designSelection?.experience,
+    mode: input.designSelection?.mode,
+    designSeed: plan.seed,
+    businessModel: (SYSTEM_TO_BUSINESS_MODEL[input.systemId] || 'general') as never,
+  });
+  const artDirection = readSealedArtDirection(siteBundleSnapshot.meta);
+  const registryContext = siteBundleSnapshot.meta.registryContext;
+  const uiFoundationContract = siteBundleSnapshot.meta.uiFoundation;
+  if (!artDirection || !registryContext || !uiFoundationContract) {
+    throw new Error('The canonical launch did not produce complete App Builder design/runtime context.');
+  }
+  const appBuildContract = buildAppBuildContract({
+    identity: {
+      projectId: plan.ids.projectId,
+      businessId: plan.ids.businessId,
+      siteId: plan.ids.siteId,
+      systemType: input.systemId,
+    },
+    sitePlan: sitePlan!,
+    pageRegistry: siteBundleSnapshot.pageRegistry,
+    industry: plan.industryOverlay,
+    businessName: brand,
+    goals: [plan.selections.primaryGoal, ...plan.selections.secondaryGoals],
+    intents: plan.canonicalIntents,
+    capabilities: plan.industryProfile?.defaultCapabilities || [],
+    bindingGuide,
+    seed: plan.seed,
+    themePresetId: input.theme.id,
+    themeTokens: plan.themeTokens,
+    artDirection,
+    designContext,
+    uiFoundation: uiFoundationContract,
+    registryContext,
+    protectedPaths: WIZARD_LANE_B_PROTECTED_PATHS,
+  });
+  void appBuildContract;
 
   // ── Stage: enrich ─────────────────────────────────────────────────────────
   // Launcher enrichment is deterministic compiler work. AI may consume this
@@ -756,16 +803,6 @@ export async function runLaunchPipeline(
           filePath: page.filePath!,
           role: String(page.pageRole ?? page.pageType ?? 'page'),
         }));
-      const snapshotMeta = committed.siteBundleSnapshot!.meta as { artDirection?: { storagePackId?: string }; artDirectionPackId?: string } | undefined;
-      const designContext = compileResolvedSiteDesignContext({
-        industry: plan.industryOverlay,
-        roles: pages.map((p) => p.role),
-        artDirectionPackId: (snapshotMeta?.artDirection?.storagePackId ?? snapshotMeta?.artDirectionPackId ?? null) as never,
-        experience: input.designSelection?.experience,
-        mode: input.designSelection?.mode,
-        designSeed: plan.seed,
-        businessModel: (SYSTEM_TO_BUSINESS_MODEL[input.systemId] || 'general') as never,
-      });
       const authored = await run.stage("author", async (signal) => authorSitePages({
         pages,
         homePageId: registry.homePageId,

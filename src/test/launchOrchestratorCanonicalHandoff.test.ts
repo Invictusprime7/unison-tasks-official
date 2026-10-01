@@ -75,6 +75,23 @@ describe('launch orchestrator canonical handoff', () => {
     expect(intentSurfaces).toBeLessThan(canonicalBuild);
   });
 
+  it('derives the versioned App Builder contract from canonical launch objects before preflight', () => {
+    const stage4bResult = position('} = stage4b.pipelineResult;');
+    const appBuilderContract = position('const appBuildContract = buildAppBuildContract({');
+    const canonicalBuild = position('await buildCanonicalLaunchArtifactsAsync(');
+
+    expect(source).toContain('sitePlan: sitePlan!');
+    expect(source).toContain('pageRegistry: siteBundleSnapshot.pageRegistry');
+    expect(source).toContain('artDirection,');
+    expect(source).toContain('designContext,');
+    expect(source).toContain('registryContext,');
+    expect(source).toContain('protectedPaths: WIZARD_LANE_B_PROTECTED_PATHS');
+    expect(source).toContain('void appBuildContract;');
+    expect(source).not.toContain('"/.unison/app-build-contract.json"');
+    expect(stage4bResult).toBeLessThan(appBuilderContract);
+    expect(appBuilderContract).toBeLessThan(canonicalBuild);
+  });
+
   it('keeps Launcher authorship deterministic while preserving public context', () => {
     const stage4bResult = position('} = stage4b.pipelineResult;');
     const publicProfile = position('buildPublicBusinessContext(businessProfile)');

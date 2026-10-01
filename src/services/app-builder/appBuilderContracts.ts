@@ -1,0 +1,235 @@
+/**
+ * Derived contracts for the Unison App Builder boundary.
+ *
+ * AppBuildContract is an ephemeral projection of canonical launch objects. It
+ * is safe to serialize for a provider request, but it is never persisted as a
+ * second source of truth. SiteBundleSnapshot remains the accepted state.
+ */
+
+import type { GeneratedSitePlan } from '@/platform/core/siteTopologyPlanner';
+import type { SiteBundleSnapshotMeta } from '@/platform/core/canonicalPipeline';
+import type { ResolvedArtDirection } from '@/sections/variants/resolvedArtDirection';
+import type { ThemeTokens } from '@/sections/types';
+import { planSiteComposition, type SiteCompositionPlan } from '@/services/composition';
+import type { ResolvedSiteDesignContext } from '@/services/launch/resolvedSiteDesignContext';
+import type { WizardAggregatedRegistryContext } from '@/services/launch/wizardRegistryAggregation';
+import type { PageRegistry } from '@/types/pageRegistry';
+
+export const APP_BUILDER_PROTOCOL_VERSION = 'unison-app-builder/1' as const;
+
+export type AppBuildCandidateStatus =
+  | 'planning'
+  | 'generating'
+  | 'validating'
+  | 'repairing'
+  | 'ready-for-commit'
+  | 'rejected'
+  | 'cancelled';
+
+export type AppBuildCandidateStopReason =
+  | 'complete'
+  | 'validation-failed'
+  | 'repair-exhausted'
+  | 'provider-error'
+  | 'timeout'
+  | 'cancelled';
+
+export type AppBuilderUIFoundation = NonNullable<SiteBundleSnapshotMeta['uiFoundation']>;
+
+export interface AppBuildIdentity {
+  projectId: string;
+  businessId: string;
+  siteId: string;
+  systemType: string;
+}
+
+export interface AppBuildContract {
+  protocolVersion: typeof APP_BUILDER_PROTOCOL_VERSION;
+  identity: AppBuildIdentity;
+  /** Existing canonical topology objects; App Builder does not own another route model. */
+  topology: {
+    sitePlan: GeneratedSitePlan;
+    pageRegistry: PageRegistry;
+  };
+  business: {
+    industry: string;
+    businessName: string;
+    goals: readonly string[];
+    intents: readonly string[];
+    capabilities: readonly string[];
+    bindingGuide: string;
+  };
+  design: {
+    seed: string;
+    themePresetId: string;
+    themeTokens: ThemeTokens;
+    artDirection: ResolvedArtDirection;
+    resolvedSiteDesignContext: ResolvedSiteDesignContext;
+    uiFoundation: AppBuilderUIFoundation;
+    registryContext: WizardAggregatedRegistryContext;
+    compositionPlan: SiteCompositionPlan;
+  };
+  runtime: {
+    framework: 'react-vite';
+    language: 'typescript';
+    styling: 'tailwind';
+    protectedPaths: readonly string[];
+    approvedDependencies: readonly string[];
+    approvedExperienceCapabilities: readonly string[];
+  };
+}
+
+export interface BuildAppBuildContractInput {
+  identity: AppBuildIdentity;
+  sitePlan: GeneratedSitePlan;
+  pageRegistry: PageRegistry;
+  industry: string;
+  businessName: string;
+  goals: readonly string[];
+  intents: readonly string[];
+  capabilities: readonly string[];
+  bindingGuide: string;
+  seed: string;
+  themePresetId: string;
+  themeTokens: ThemeTokens;
+  artDirection: ResolvedArtDirection;
+  designContext: ResolvedSiteDesignContext;
+  uiFoundation: AppBuilderUIFoundation;
+  registryContext: WizardAggregatedRegistryContext;
+  protectedPaths: Iterable<string>;
+}
+
+export interface AppBuildRequest {
+  operationId: string;
+  contract: AppBuildContract;
+}
+
+export interface AppEditRequest {
+  operationId: string;
+  contract: AppBuildContract;
+  baseRevisionId: string;
+  currentFiles: Readonly<Record<string, string>>;
+  instruction: string;
+  activePagePath?: string;
+}
+
+export interface AppBuildCandidate {
+  candidateId: string;
+  status: AppBuildCandidateStatus;
+  files: Readonly<Record<string, string>>;
+  entryPoint: string;
+  attempts: number;
+  diagnostics: readonly string[];
+}
+
+export interface AppBuildResult {
+  operationId: string;
+  protocolVersion: typeof APP_BUILDER_PROTOCOL_VERSION;
+  candidate: AppBuildCandidate;
+  stopReason: AppBuildCandidateStopReason;
+}
+
+export interface AppEditResult extends AppBuildResult {
+  baseRevisionId: string;
+}
+
+function stableJsonValue(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(stableJsonValue);
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>)
+        .filter(([, child]) => child !== undefined)
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([key, child]) => [key, stableJsonValue(child)]),
+    );
+  }
+  return value;
+}
+
+function requireNonEmpty(value: string, field: string): void {
+  if (!value.trim()) throw new Error(`AppBuildContract requires ${field}.`);
+}
+
+function assertAppBuildContract(value: unknown): asserts value is AppBuildContract {
+  if (!value || typeof value !== 'object') throw new Error('AppBuildContract must be an object.');
+  const contract = value as Partial<AppBuildContract>;
+  if (contract.protocolVersion !== APP_BUILDER_PROTOCOL_VERSION) {
+    throw new Error(`Unsupported AppBuildContract protocol: ${String(contract.protocolVersion)}.`);
+  }
+  if (!contract.identity || !contract.topology || !contract.business || !contract.design || !contract.runtime) {
+    throw new Error('AppBuildContract is incomplete.');
+  }
+  requireNonEmpty(contract.identity.projectId, 'identity.projectId');
+  requireNonEmpty(contract.identity.businessId, 'identity.businessId');
+  requireNonEmpty(contract.identity.siteId, 'identity.siteId');
+  requireNonEmpty(contract.identity.systemType, 'identity.systemType');
+  if (!contract.topology.sitePlan.pages.length || !Object.keys(contract.topology.pageRegistry.pages).length) {
+    throw new Error('AppBuildContract topology must include at least one page.');
+  }
+  if (!contract.design.resolvedSiteDesignContext.contract) {
+    throw new Error('AppBuildContract requires the canonical site design context.');
+  }
+}
+
+export function buildAppBuildContract(input: BuildAppBuildContractInput): AppBuildContract {
+  const compositionPlan = planSiteComposition(
+    input.industry,
+    input.sitePlan.pages.map((page) => ({ pageId: page.id, role: page.role })),
+    input.seed,
+    {
+      artDirection: input.artDirection.storagePackId,
+      businessTraits: [input.designContext.contract.experience, input.designContext.contract.mode],
+      availableCapabilities: input.capabilities,
+    },
+  );
+  const contract: AppBuildContract = {
+    protocolVersion: APP_BUILDER_PROTOCOL_VERSION,
+    identity: { ...input.identity },
+    topology: {
+      sitePlan: input.sitePlan,
+      pageRegistry: input.pageRegistry,
+    },
+    business: {
+      industry: input.industry,
+      businessName: input.businessName,
+      goals: [...input.goals],
+      intents: [...input.intents],
+      capabilities: [...input.capabilities],
+      bindingGuide: input.bindingGuide,
+    },
+    design: {
+      seed: input.seed,
+      themePresetId: input.themePresetId,
+      themeTokens: input.themeTokens,
+      artDirection: input.artDirection,
+      resolvedSiteDesignContext: input.designContext,
+      uiFoundation: input.uiFoundation,
+      registryContext: input.registryContext,
+      compositionPlan,
+    },
+    runtime: {
+      framework: 'react-vite',
+      language: 'typescript',
+      styling: 'tailwind',
+      protectedPaths: [...new Set(input.protectedPaths)].sort(),
+      approvedDependencies: Object.keys(input.registryContext.runtimeDependencies ?? {}).sort(),
+      approvedExperienceCapabilities: [
+        ...(input.uiFoundation.approvedExperienceCapabilities ?? input.uiFoundation.experienceCapabilities),
+      ].sort(),
+    },
+  };
+  assertAppBuildContract(contract);
+  return contract;
+}
+
+/** Deterministic wire representation for provider calls and reproducibility tests. */
+export function serializeAppBuildContract(contract: AppBuildContract): string {
+  assertAppBuildContract(contract);
+  return JSON.stringify(stableJsonValue(contract));
+}
+
+export function parseAppBuildContract(serialized: string): AppBuildContract {
+  const value: unknown = JSON.parse(serialized);
+  assertAppBuildContract(value);
+  return value;
+}
