@@ -815,6 +815,9 @@ export async function commitMutation(
       industry: input.options?.industry,
       brand: input.options?.businessName,
       mode: 'repair',
+      // Never commit a "could not be compiled" stub in place of an AI page:
+      // an unparseable page must fail acceptance so the edit is rejected.
+      allowQuarantine: false,
     });
     if (repair.stages.earlyRepair !== 'failed' && repair.stages.finalRepair !== 'failed') {
       files = repair.files;
