@@ -719,7 +719,11 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
   // Persist messages so a Preview / page refresh never loses prompt history.
   // Skip while a streaming assistant turn is in progress to avoid thrash —
   // we'll save on the next stable update.
+  // Which draft the in-memory messages belong to. Persisting must never write
+  // one draft's conversation under another draft's id during a switch.
+  const messagesScopeRef = useRef<string | null | undefined>(projectId);
   useEffect(() => {
+    if (messagesScopeRef.current !== projectId) return;
     const isStreaming = messages.some((m) => m.isStreaming);
     if (isStreaming) return;
     const persisted: PersistedMessage[] = messages.map((m) => ({
@@ -742,6 +746,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
   useEffect(() => {
     if (lastProjectRef.current === projectId) return;
     lastProjectRef.current = projectId;
+    messagesScopeRef.current = projectId;
     const persisted = loadAIHistory(projectId).messages;
     setMessages(persisted.map((m) => ({
       id: m.id,
@@ -762,7 +767,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
     let cancelled = false;
     void (async () => {
       const hydrated = await hydrateAIHistoryFromSupabase(projectId);
-      if (cancelled) return;
+      if (cancelled || messagesScopeRef.current !== projectId) return;
       setMessages(hydrated.messages.map((m) => ({
         id: m.id,
         role: m.role,
