@@ -47,7 +47,7 @@ Deno.test('preserves tool-only fallback success after billing exhaustion and a m
     });
     assert(result.modelUsed === 'openai/gpt-4o-mini', 'successful fallback must be returned');
     assert(result.toolCalls?.[0].id === 'call_test', 'tool call must survive');
-    assert(calls.length === 3, 'no further providers after tool-only success');
+    assert(calls[0] === 'google/gemini-3.6-flash' && calls.length === 4, 'Lovable AI first, then no further providers after tool-only success: ' + calls.join(','));
     const body = buildResponseBody(result);
     assert(Array.isArray(body.tool_calls) && body.tool_calls.length === 1, 'HTTP response must forward the tool call');
   } finally {
@@ -160,6 +160,50 @@ Deno.test('continues from Gemini billing exhaustion to the OpenAI fallback in hy
     assert(requestedUrls.length === 2, 'the loop should make one Gemini request and one OpenAI request');
     assert(requestedUrls[0].includes('generativelanguage.googleapis.com'), 'Gemini should remain the lead provider');
     assert(requestedUrls[1].includes('api.openai.com'), 'OpenAI should run after Gemini billing exhaustion');
+  } finally {
+    globalThis.fetch = originalFetch;
+    for (const [name, value] of originalEnv) {
+      if (value === undefined) Deno.env.delete(name);
+      else Deno.env.set(name, value);
+    }
+  }
+});
+
+Deno.test('Lovable AI 429 is retried, and its refusal is never masked by a dead OpenAI key', async () => {
+  const originalFetch = globalThis.fetch;
+  const names = ['AI_PROVIDER_MODE', 'GEMINI_API_KEY', 'GOOGLE_API_KEY', 'UNISONGEMINI_API_KEY', 'OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'LOVABLE_API_KEY'];
+  const originalEnv = new Map(names.map(name => [name, Deno.env.get(name)]));
+  const plan = { gatewayModels: [{ id: 'openai/gpt-4.1', label: 'gpt-4.1', maxTokens: 1000 }], perModelTimeoutMs: 45000, fallbackMaxTokens: 1000 };
+  try {
+    for (const name of names) Deno.env.delete(name);
+    Deno.env.set('AI_PROVIDER_MODE', 'hybrid');
+    Deno.env.set('OPENAI_API_KEY', 'test');
+    Deno.env.set('LOVABLE_API_KEY', 'test');
+    const isGateway = (input: RequestInfo | URL) => String(input instanceof Request ? input.url : input).includes('lovable');
+
+    // 1) Two transient 429s, then success: the page is written by Lovable AI.
+    let gatewayCalls = 0;
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      if (isGateway(input)) {
+        gatewayCalls++;
+        if (gatewayCalls < 3) return new Response('{"message":"Rate limited"}', { status: 429, headers: { 'retry-after': '1' } });
+        return new Response(JSON.stringify({ choices: [{ message: { content: 'page source' } }] }));
+      }
+      throw new Error('direct providers must not run after gateway success');
+    }) as typeof fetch;
+    const ok = await runProviderLoop({ aiMessages: [{ role: 'user', content: 'x' }], navPageGen: false, providerPlan: plan });
+    assert(ok.providerUsed === 'lovable' && ok.content === 'page source', 'gateway retry must recover the page');
+    assert(gatewayCalls === 3, 'two bounded retries');
+
+    // 2) Gateway keeps refusing, OpenAI key is out of credit: surface the gateway's answer.
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      if (isGateway(input)) return new Response('{"message":"Too many requests right now"}', { status: 429, headers: { 'retry-after': '1' } });
+      return new Response('{"error":{"message":"insufficient_quota"}}', { status: 402 });
+    }) as typeof fetch;
+    const failed = await runProviderLoop({ aiMessages: [{ role: 'user', content: 'x' }], navPageGen: false, providerPlan: plan });
+    assert(failed.earlyError?.status === 429, `expected gateway 429, got ${failed.earlyError?.status}`);
+    assert(/Lovable AI: Too many requests/.test(failed.earlyError?.error ?? ''), failed.earlyError?.error ?? 'missing');
+    assert(!/OpenAI account/.test(failed.earlyError?.error ?? ''), 'dead OpenAI key must not mask the real cause');
   } finally {
     globalThis.fetch = originalFetch;
     for (const [name, value] of originalEnv) {
