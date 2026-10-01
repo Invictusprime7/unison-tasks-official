@@ -698,6 +698,9 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   const draftPersistencePromiseRef = useRef<Promise<string | null> | null>(null);
 
   const importedRouteStateRef = useRef<string | null>(null);
+  // Signature of the launch handoff this mount already imported. Written only
+  // by the route-state importer so revision adoptions can never re-arm it.
+  const routeHandoffImportedRef = useRef<string | null>(null);
 
   // The builder is independently usable for blank and restored projects.
   // Opening the launcher here creates a modal backdrop over every direct
@@ -5429,7 +5432,11 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
         })
       : null;
 
-    if (navStateSignature && importedRouteStateRef.current === navStateSignature) {
+    // Dedupe on a ref owned ONLY by this importer. `importedRouteStateRef` is
+    // also written by every committed-revision adoption (AI edit, theme edit,
+    // undo/restore), so using it here made the next re-run of this effect
+    // re-import the original launch handoff over the user's saved edits.
+    if (navStateSignature && routeHandoffImportedRef.current === navStateSignature) {
       return;
     }
 
@@ -5471,6 +5478,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     if (navState?.startInPreview && !launcherSourceFiles) {
       toast.error('Launcher preview requires structured VFS files from the industry pipeline.');
       importedRouteStateRef.current = navStateSignature;
+      routeHandoffImportedRef.current = navStateSignature;
       window.history.replaceState({}, document.title);
       return;
     }
@@ -5594,6 +5602,8 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
 
         // Prevent re-processing generatedCode when vfsFiles already represent source of truth
         importedRouteStateRef.current = navStateSignature;
+        routeHandoffImportedRef.current = navStateSignature;
+      routeHandoffImportedRef.current = navStateSignature;
         // Keep both compact route state and the TTL-bound session handoff as
         // recovery layers. `importedRouteStateRef` prevents this successful
         // import from running repeatedly during the current mount.
@@ -5689,6 +5699,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       }
       // Clear the state to prevent re-loading on subsequent renders
       importedRouteStateRef.current = navStateSignature;
+      routeHandoffImportedRef.current = navStateSignature;
       window.history.replaceState({}, document.title);
     } else if (navState?.generatedTemplate) {
       const { generatedTemplate, templateName, aesthetic } = navState;
@@ -5714,6 +5725,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
         description: `${aesthetic || generatedTemplate.description} - Preview your website`,
       });
       importedRouteStateRef.current = navStateSignature;
+      routeHandoffImportedRef.current = navStateSignature;
       window.history.replaceState({}, document.title);
     }
   }, [effectiveRouteState, activePagePath, activeSystemType, creatorPlayground, launchEntryPoint, replaceCommittedWizardFiles, replaceProjectFiles, virtualFS]);
