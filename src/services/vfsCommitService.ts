@@ -723,9 +723,10 @@ export async function commitMutation(
     }
     assertCandidateSourcePreserved(sourcePreservationBaseline, sourcePreservationOperations, files, 'canonical projection');
   }
-  let snapshotForPersistence = input.source === 'wizard-launch' || projectionRestored
-    ? mergeWizardLaunchSnapshot((snapshot as SiteBundleSnapshot | null) ?? null, files)
-    : snapshot;
+  // The durable revision requires snapshot.vfsFiles to equal the runtime VFS,
+  // so always project the final file map into the snapshot.
+  void projectionRestored;
+  let snapshotForPersistence = mergeWizardLaunchSnapshot((snapshot as SiteBundleSnapshot | null) ?? null, files);
   snapshotForPersistence = stampBusinessSystemState(
     snapshotForPersistence as SiteBundleSnapshot | null,
     presentationSnapshot,
