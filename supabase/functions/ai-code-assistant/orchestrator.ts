@@ -490,7 +490,7 @@ async function runBuilderLane(
     parsed.unisonContext,
   );
   const complexContext = effectiveComplexity === 'complex' || effectiveComplexity === 'advanced';
-  const processedMessages = compactMessages(messages, complexContext ? 10 : 6, complexContext ? 30000 : 15000);
+  const processedMessages = compactMessages(messages.filter(m => m.content !== undefined), complexContext ? 10 : 6, complexContext ? 30000 : 15000);
 
   // Builder-priority VFS compaction (issue-aware)
   const issueHint = detectIssueHint(previewDiagnostics ?? undefined, memory?.goalCategory);
