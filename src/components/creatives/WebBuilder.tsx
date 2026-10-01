@@ -7946,6 +7946,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                   preflight: (changed) => runFullPreflight(changed, {
                     siteBundleSnapshot: snapshotForPreflight,
                     industry: snapshotForPreflight?.industry,
+                    allowQuarantine: false,
                   }).files,
                 });
                 let candidate = firstCandidate;
