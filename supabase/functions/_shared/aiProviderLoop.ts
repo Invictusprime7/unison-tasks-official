@@ -116,7 +116,7 @@ export async function runProviderLoop(opts: {
   const hasLastResortGateway = allowDirectFallbacks && !geminiExclusive && Boolean(Deno.env.get('LOVABLE_API_KEY'));
   // The managed gateway is the final safety net; a 20 s slice is not enough for
   // a real generation, so reserve a usable window for it.
-  const lastResortReserveMs = hasLastResortGateway ? 35_000 : 0;
+  const lastResortReserveMs = 0; // Lovable AI now runs first, so no end-of-budget reserve is needed.
   const providerErrors: string[] = [];
   let deferredEarlyError: ProviderEarlyError | undefined;
   // A 429 whose body says billing/quota is exhausted is not a transient rate
