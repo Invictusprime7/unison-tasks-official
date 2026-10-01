@@ -62,7 +62,9 @@ export function prepareThemeEdit(files: Record<string, string>, snapshot: SiteBu
   const nextFiles = { ...files, ...buildThemeContractFiles({ themePresetId: preset.id, artDirectionPackId: contract.artDirectionPackId }), [THEME_OVERRIDES_PATH]: serializeThemeOverrides(overrides) };
   // The live preview renders /src/index.css, so the edit must land there in the
   // same candidate — the override map alone is never read by the runtime.
-  if (!edit.presetId && typeof files['/src/index.css'] === 'string') {
+  if (edit.presetId) {
+    nextFiles['/src/index.css'] = applyOverridesToCss(buildThemedIndexCss(preset), overrides);
+  } else if (typeof files['/src/index.css'] === 'string') {
     nextFiles['/src/index.css'] = applyOverridesToCss(files['/src/index.css'], overrides);
   }
   if (intervention) nextFiles['/.unison/design-intervention.json'] = JSON.stringify(intervention, null, 2);
