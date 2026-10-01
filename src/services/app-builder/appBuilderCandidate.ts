@@ -34,6 +34,16 @@ function isProtected(path: string, protectedPaths: readonly string[]): boolean {
     path === protectedPath || path.startsWith(`${protectedPath.replace(/\/$/, '')}/`));
 }
 
+/** Generation scope: App Builder can only write to these directories */
+function isAllowedGenerationPath(path: string): boolean {
+  const allowedPrefixes = [
+    '/src/pages/',           // Page implementations
+    '/src/project-components/', // Custom project components
+    '/src/components/generated/', // Generated component stubs (if needed)
+  ];
+  return allowedPrefixes.some((prefix) => path.startsWith(prefix));
+}
+
 export function validateAppBuildCandidate(input: {
   contract: AppBuildContract;
   files: Readonly<Record<string, string>>;
@@ -42,6 +52,19 @@ export function validateAppBuildCandidate(input: {
   const files = { ...input.files };
   const issues: AppBuildCandidateClosureIssue[] = [];
   const pages = input.contract.topology.sitePlan.pages;
+
+  // Validate generation scope: App Builder can only generate in allowed directories
+  const generatedFiles = Object.keys(files).filter((path) => !input.initialFiles[path]);
+  for (const path of generatedFiles) {
+    if (!isAllowedGenerationPath(path)) {
+      issues.push({
+        severity: 'blocker',
+        code: 'generation-scope-violation',
+        path,
+        message: `App Builder generated content outside allowed scope. Only /src/pages/*, /src/project-components/*, and /src/components/generated/* are permitted. Found: ${path}`,
+      });
+    }
+  }
 
   for (const page of pages) {
     if (!files[page.filePath]?.trim()) {
