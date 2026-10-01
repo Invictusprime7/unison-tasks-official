@@ -39,6 +39,8 @@ export async function orchestrateAppBuild(
       files: nextFiles,
       revisionId: input.baseRevisionId,
     })),
+    compositionPlan: input.contract.design.compositionPlan,
+    registryContext: input.contract.design.registryContext,
   });
 
   const compatibilityMode = Boolean(input.acceptPage);

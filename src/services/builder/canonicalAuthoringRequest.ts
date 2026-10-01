@@ -127,6 +127,59 @@ async function hashText(value: string): Promise<string> {
 }
 
 /**
+ * Format component recipes and available sections into actionable brief guidance.
+ * Tells the AI which components are available for each section type and how to compose them.
+ */
+function renderComponentRecipes(registry: unknown, pageRole?: string): string {
+  if (!registry || typeof registry !== 'object') return '';
+
+  const reg = registry as Record<string, unknown>;
+  const sections = Array.isArray(reg.sections) ? reg.sections : [];
+
+  if (!sections.length) return '';
+
+  const lines = ['AVAILABLE COMPONENT RECIPES (use these to compose sections):'];
+
+  const sectionsByType = new Map<string, Array<{ id: string; name: string; description?: string }>>();
+  for (const section of sections) {
+    if (!section || typeof section !== 'object') continue;
+    const s = section as Record<string, unknown>;
+    const type = typeof s.sectionType === 'string' ? s.sectionType : null;
+    if (!type) continue;
+
+    const variants = Array.isArray(s.generationVariants) ? s.generationVariants : [];
+    if (!variants.length) continue;
+
+    const filtered = variants
+      .filter((v: unknown) => v && typeof v === 'object' && typeof (v as Record<string, unknown>).id === 'string')
+      .map((v: unknown) => {
+        const variant = v as Record<string, unknown>;
+        return {
+          id: variant.id as string,
+          name: typeof variant.name === 'string' ? variant.name : variant.id,
+          description: typeof variant.description === 'string' ? variant.description : undefined,
+        };
+      })
+      .slice(0, 6); // Limit to top 6 per type
+
+    if (filtered.length) {
+      sectionsByType.set(type, filtered);
+    }
+  }
+
+  if (sectionsByType.size === 0) return '';
+
+  for (const [type, variants] of sectionsByType) {
+    const variantList = variants
+      .map((v) => `${v.id}${v.description ? ` (${v.description})` : ''}`)
+      .join(', ');
+    lines.push(`  ${type}: ${variantList}`);
+  }
+
+  return lines.join('\n');
+}
+
+/**
  * The one request assembler for Wizard authoring, initial Builder edits and
  * pre-acceptance repair. It selects complete source files and records the
  * exact knowledge/context identities used; it never treats registry metadata
@@ -166,6 +219,7 @@ export async function assembleCanonicalAuthoringRequest(
   if (boundedRegistry && boundedRegistry.length > 60000) {
     throw new Error('[CanonicalAuthoringRequest] bounded registry context exceeds 60000 characters.');
   }
+  const componentRecipeBrief = registryValue ? renderComponentRecipes(registryValue, input.page.role) : '';
   const evidence: CanonicalAuthorshipEvidence = {
     protocolVersion: '1.0',
     baseRevisionId: input.baseRevisionId ?? null,
@@ -180,7 +234,11 @@ export async function assembleCanonicalAuthoringRequest(
     knowledgeEntryIds: knowledgeManifest.entries.map((item) => `${item.id}@${item.version}`),
     availableOperations: [...CANONICAL_AUTHORING_OPERATIONS],
   };
-  const brief = `${input.brief}\n\nCURATED DESIGN KNOWLEDGE (guidance; project source remains authoritative):\n${knowledge.text}`;
+  const brief = [
+    `${input.brief}`,
+    componentRecipeBrief ? `\n${componentRecipeBrief}` : '',
+    `\nCURATED DESIGN KNOWLEDGE (guidance; project source remains authoritative):\n${knowledge.text}`,
+  ].filter(Boolean).join('');
   let routes = input.routes;
   if (routes.length === 0) {
     try {

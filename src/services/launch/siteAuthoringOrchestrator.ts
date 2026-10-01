@@ -34,6 +34,7 @@ import {
   planSiteComposition,
   renderCompositionBrief,
   type RedundancyIssue,
+  type SiteCompositionPlan,
 } from '@/services/composition';
 
 export interface AuthoringPage {
@@ -80,6 +81,10 @@ export interface SiteAuthoringInput {
   signal?: AbortSignal;
   invoke?: ComposerInvoke;
   now?: () => number;
+  /** Site-wide composition plan (hero patterns, geometry allocation, section order). */
+  compositionPlan?: SiteCompositionPlan;
+  /** Registry context for component availability (sections, variants). */
+  registryContext?: unknown;
 }
 
 export interface SiteAuthoringResult {
@@ -190,6 +195,7 @@ export async function authorSitePages(input: SiteAuthoringInput): Promise<SiteAu
       sourceTargets: [page.filePath],
       routes,
       priorPages: priorPages.slice(-20),
+      registryContext: input.registryContext,
       runtimeContext: input.designContext
         ? `Industry ${input.designContext.contract.industry}; experience ${input.designContext.contract.experience}; forbidden implementations ${JSON.stringify(input.designContext.hardLegality.forbiddenImplementations)}.`
         : undefined,
