@@ -31,13 +31,10 @@ import type { CreatorData } from '@/types/creatorData';
 import type { PageRegistry } from '@/types/pageRegistry';
 import type { RuntimeAppContext, RuntimeManifest } from '@/types/runtimeManifest';
 import type { SiteBundle, SiteManifest, RouteDef, NavItem } from '@/types/siteBundle';
-import { resolveCapabilities } from '@/services/wizardCapabilityResolver';
-import { materializePlayground } from '@/services/wizardPlaygroundMaterializer';
 import { validatePlayground, getValidationSummary } from '@/services/playgroundValidationService';
 import { applyOverridesToCss, readThemeOverrides, THEME_OVERRIDES_PATH } from '@/services/theme/themeTokenOverrides';
 import { compilePlayground } from '@/services/playgroundCompiler';
 import { createRuntimeManifest } from '@/types/runtimeManifest';
-import { validateComposition } from '@/services/componentIntelligenceRegistry';
 import { nanoid } from 'nanoid';
 import { assertWithinCommit } from './pipelineGuard';
 import {
@@ -90,6 +87,8 @@ import {
 import { createWizardCompileArtifact, type WizardCompileArtifact } from './snapshotSeal';
 import { isArtDirectionPackId } from '@/sections/variants/artDirectionPacks';
 import { getRequiredRadixPrimitives } from '@/sections/variants';
+import { resolveCanonicalLaunchContracts } from '@/services/launch/canonicalLaunchPlan';
+import { WIZARD_REGISTRY_CONTEXT_PATH } from '@/services/launch/wizardRegistryAggregation';
 
 
 // ============================================================================
@@ -384,94 +383,26 @@ export function executeCanonicalPipeline(
   existingVfsFiles: Record<string, string> = {},
 ): CanonicalPipelineResult {
   assertWithinCommit('executeCanonicalPipeline');
-  const themePresetId = assertThemeSeed(
-    selections.themePresetId,
-    'WizardSelections -> Lane A',
-  );
-  const warnings: string[] = [];
-  const errors: string[] = [];
-
-  // Stage 1: Resolve capabilities
-  const capabilities = resolveCapabilities(selections);
-
-  // Stage 2: Materialize playground
-  const materialization = materializePlayground(selections, capabilities);
-  warnings.push(...materialization.warnings);
-  const playground = materialization.playground;
-  const sitePlan = materialization.sitePlan;
-
-  // Stage 3: Validate structure
-  const validations = validatePlayground(playground, existingVfsFiles);
-  const summary = getValidationSummary(validations);
-  if (!summary.isHealthy) {
-    for (const v of validations.filter(v => v.severity === 'error')) {
-      errors.push(v.message);
-    }
-    for (const v of validations.filter(v => v.severity === 'warning')) {
-      warnings.push(v.message);
-    }
-  }
-
-  // Stage 3b: Validate component composition via intelligence registry
-  const pages = Object.values(playground.pageRegistry.pages);
-  for (const page of pages) {
-    const sectionTypes = (page as any).sectionTypes as string[] | undefined;
-    if (sectionTypes && sectionTypes.length > 0) {
-      const compositionResult = validateComposition(sectionTypes as import('@/sections/types').SectionType[]);
-      for (const issue of compositionResult.issues) {
-        warnings.push(`[${page.title}] ${issue}`);
-      }
-    }
-  }
+  const resolved = resolveCanonicalLaunchContracts(selections, existingVfsFiles);
+  const {
+    capabilities,
+    playground,
+    sitePlan,
+    validations,
+    warnings,
+    errors,
+    themePresetId,
+    themedCss,
+    designIntervention,
+    uiFoundation,
+    registryContext,
+  } = resolved;
 
   // Stage 4: Compile playground → VFS + router + bindings
   // Pass the wizard's Template + Style card selections so subpage scaffolds are
   // real role-filtered themed compositions instead of generic placeholders.
-  const themeTokens = selections.themeTokens;
-  if (!themeTokens) {
-    throw new Error(
-      '[canonicalPipeline] Stage 4b assertion failed: selections.themeTokens is missing. ' +
-      'Every wizard launch must inject the selected Style card HSL tokens.',
-    );
-  }
   // The design brief resolves art direction ONCE (theme-led). It must be built
   // before the stylesheet so /src/index.css can emit that pack's tokens.
-  const designIntervention = buildWizardDesignIntervention({
-    compositionPlan: selections.compositionPlan,
-    businessName: selections.businessName,
-    businessModel: selections.businessModel,
-    industryOverlay: selections.industryOverlay || (selections as { industry?: string }).industry,
-    templateId: selections.templateId,
-    themePresetId,
-    wizardSeedId: selections.wizardSeedId,
-    regenerationNonce: selections.regenerationNonce,
-    // Every wizard dimension feeds the canonical generation seed so goals and
-    // page selections materially change the composition — not just the theme.
-    primaryGoal: selections.primaryGoal,
-    secondaryGoals: selections.secondaryGoals,
-    requestedPages: selections.requestedPages,
-    projectId: selections.businessId,
-    needsBooking: selections.needsBooking,
-    sellsProducts: selections.sellsProducts,
-    wantsLeadCapture: selections.wantsLeadCapture,
-    needsImmersive: selections.needsImmersive,
-    designSelection: selections.designSelection,
-  });
-  const themedCss = buildThemedIndexCssFromTokens(themeTokens, {
-    presetId: themePresetId,
-    label: themePresetId,
-    artDirectionPackId: designIntervention.artDirectionPackId,
-  });
-  if (
-    !themedCss ||
-    typeof themedCss !== 'string' ||
-    !themedCss.includes('--primary') ||
-    !themedCss.includes(SHADCN_LIBRARY_CSS_MARKER)
-  ) {
-    throw new Error(
-      '[canonicalPipeline] Stage 4b assertion failed: theme tokens did not produce the canonical shadcn stylesheet.',
-    );
-  }
   const compileResult = compilePlayground(playground, existingVfsFiles, selections.businessName, {
     selectedTemplateId: selections.templateId,
     selectedThemeId: selections.themeId,
@@ -494,17 +425,6 @@ export function executeCanonicalPipeline(
   // present. Stage 4b consumes that payload directly; theme ids are retained
   // only for traceability and downstream identity.
   compileResult.vfsFiles['/src/index.css'] = themedCss;
-  const uiFoundation = buildGeneratedUiFoundation({
-    industry: selections.industryOverlay || (selections as { industry?: string }).industry,
-    templateId: selections.templateId,
-    themePresetId,
-    needsBooking: selections.needsBooking,
-    wantsLeadCapture: selections.wantsLeadCapture,
-    sellsProducts: selections.sellsProducts,
-    requiredRadixPrimitives: getRequiredRadixPrimitives(
-      Object.values(designIntervention.activeVariants),
-    ),
-  });
   Object.assign(compileResult.vfsFiles, uiFoundation.files);
   compileResult.vfsFiles = ensureGeneratedUiFoundation(compileResult.vfsFiles, {
     industry: selections.industryOverlay || (selections as { industry?: string }).industry,
@@ -518,6 +438,7 @@ export function executeCanonicalPipeline(
     ),
   }).files;
   compileResult.vfsFiles['/.unison/design-intervention.json'] = JSON.stringify(designIntervention, null, 2);
+  compileResult.vfsFiles[WIZARD_REGISTRY_CONTEXT_PATH] = JSON.stringify(registryContext, null, 2);
   // Typed, machine-readable projection of the sealed art-direction pack. This
   // is the single theme context every AI turn reads — never raw compiled CSS.
   Object.assign(
@@ -537,6 +458,7 @@ export function executeCanonicalPipeline(
     uiFoundation.manifest,
     designIntervention,
   );
+  siteBundleSnapshot.meta.registryContext = registryContext;
   assertSnapshotThemeSeed(siteBundleSnapshot, themePresetId, 'Stage 4b -> SiteBundleSnapshot.meta');
 
   // Stage 6: Derive RuntimeManifest from snapshot
