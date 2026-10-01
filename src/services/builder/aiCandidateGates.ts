@@ -16,7 +16,7 @@ import { buildAICandidateChangeSet, type CandidateBuildResult } from './aiCandid
 import { auditSiteAffinity, type HomepageVisualLanguage } from '@/services/launch/homepageFirstContract';
 
 export interface CandidateGateFailure {
-  gate: 'parse' | 'import-graph' | 'empty' | 'affinity';
+  gate: 'parse' | 'import-graph' | 'empty' | 'affinity' | 'design-source';
   path: string;
   message: string;
 }
@@ -27,6 +27,9 @@ export interface CandidateGateResult {
   /** Quality guidance that never changes `passed`. */
   advisories: string[];
 }
+
+/** Optional per-file check run on touched page sources; returns diagnostics. */
+export type PageCheck = (path: string, source: string) => string[];
 
 const CODE_RE = /\.(tsx?|jsx?)$/;
 const EXTENSIONS = ['', '.tsx', '.ts', '.jsx', '.js', '/index.tsx', '/index.ts', '/index.jsx', '/index.js'];
@@ -94,7 +97,7 @@ async function parseFailures(paths: string[], files: Record<string, string>): Pr
 export async function runCandidateGates(build: CandidateBuildResult, affinity?: {
   language?: HomepageVisualLanguage;
   forbiddenImplementations?: Readonly<Record<string, readonly string[] | undefined>>;
-}): Promise<CandidateGateResult> {
+}, pageCheck?: PageCheck): Promise<CandidateGateResult> {
   const files = build.candidateFiles;
   const touched = build.changeSet.fileOps.filter((o) => o.type !== 'delete').map((o) => o.path);
   const deleted = new Set(build.changeSet.fileOps.filter((o) => o.type === 'delete').map((o) => o.path));
@@ -134,6 +137,11 @@ export async function runCandidateGates(build: CandidateBuildResult, affinity?: 
       advisories.push(...audit.advisories);
     }
   }
+  if (pageCheck) {
+    for (const path of touched.filter((p) => /\/src\/pages\/.+\.(?:tsx|jsx)$/.test(p))) {
+      failures.push(...pageCheck(path, files[path]).map((message) => ({ gate: 'design-source' as const, path, message })));
+    }
+  }
   return { passed: failures.length === 0, failures, advisories };
 }
 
@@ -162,6 +170,7 @@ export async function prepareAICandidate(input: {
   evidence?: import('./canonicalAuthoringRequest').CanonicalAuthorshipEvidence;
   attempt?: number;
   resolveDependencies?: boolean;
+  pageCheck?: PageCheck;
   preflight?: (changed: Record<string, string>) => Record<string, string>;
   affinity?: {
     language?: HomepageVisualLanguage;
@@ -201,7 +210,7 @@ export async function prepareAICandidate(input: {
       resolveDependencies: input.resolveDependencies,
     });
   }
-  const gates = await runCandidateGates(build, input.affinity);
+  const gates = await runCandidateGates(build, input.affinity, input.pageCheck);
   const errors = [
     ...gates.failures.map((f) => `${f.path}: ${f.message}`),
     ...(build.changeSet.fileOps.length ? [] : ['The AI response did not change any files.']),

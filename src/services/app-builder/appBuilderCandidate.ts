@@ -63,6 +63,60 @@ function jsxUsages(source: string, name: string): Array<{ names: string[]; raw: 
   return usages;
 }
 
+function attributeValue(raw: string, prop: string): string | undefined {
+  const start = new RegExp(String.raw`(?<![\w-])${prop}\s*=\s*\{`).exec(raw);
+  if (!start) return undefined;
+  let depth = 1;
+  let i = start.index + start[0].length;
+  for (; i < raw.length && depth > 0; i += 1) {
+    if (raw[i] === '{') depth += 1;
+    else if (raw[i] === '}') depth -= 1;
+  }
+  return raw.slice(start.index + start[0].length, i - 1).trim();
+}
+
+/** Design-source usage problems in one page source, checked against the materialized manifest. */
+export function findDesignSourceUsageIssues(manifestSource: string | undefined, source: string | undefined): Array<{ code: string; message: string }> {
+  if (!manifestSource || !source) return [];
+  let implementations: Record<string, { exportName?: string; props?: string }> = {};
+  try { implementations = JSON.parse(manifestSource).implementations ?? {}; } catch { return []; }
+  const issues: Array<{ code: string; message: string }> = [];
+  for (const entry of Object.values(implementations)) {
+    if (!entry.exportName || !entry.props) continue;
+    const name = entry.exportName;
+    const hint = entry.props;
+    if (!new RegExp(String.raw`<${name}(?=[\s/>])`).test(source)) continue;
+    const arrays = hint.split(', ').flatMap((token) => {
+      const parsed = /^(\w+)(\?)?\[\](?:\{(.*)\})?$/.exec(token);
+      if (!parsed || parsed[2]) return [];
+      const required = (parsed[3] ?? '').split('|').filter((field) => field && !field.includes('?'));
+      return [{ prop: parsed[1], required }];
+    });
+    for (const { names, raw } of jsxUsages(source, name)) {
+      const block = (code: string, message: string) => issues.push({ code, message: `<${name}>: ${message} Expected props: ${hint} (name[]{a|b?}: array of objects, ? = optional).` });
+      if (/<\s*(?:h[1-6]|p|div|section)\b/.test(raw)) {
+        block('design-source-nested-block', 'a text prop contains block markup (h1-h6/p/div). Pass plain strings; the section supplies the heading element.');
+      }
+      const missing = arrays.filter(({ prop }) => !names.includes(prop)).map(({ prop }) => prop);
+      if (missing.length && !names.includes('...')) {
+        block('design-source-missing-props', `missing required array props: ${missing.join(', ')}.`);
+        continue;
+      }
+      for (const { prop, required } of arrays) {
+        const value = attributeValue(raw, prop);
+        if (value === undefined) continue;
+        if (/^\[\s*\]$/.test(value)) {
+          block('design-source-empty-array', `${prop} is empty. Provide real items with ${required.join(', ') || 'content'}.`);
+        } else if (value.startsWith('[') && required.length) {
+          const absent = required.filter((field) => !new RegExp(String.raw`(?:^|[\s,{])${field}\s*[:,}]`).test(value));
+          if (absent.length) block('design-source-incomplete-items', `${prop} items are missing required field(s): ${absent.join(', ')}.`);
+        }
+      }
+    }
+  }
+  return issues;
+}
+
 function isProtected(path: string, protectedPaths: readonly string[]): boolean {
   return protectedPaths.some((protectedPath) =>
     path === protectedPath || path.startsWith(`${protectedPath.replace(/\/$/, '')}/`));
@@ -151,59 +205,9 @@ export function validateAppBuildCandidate(input: {
   }
 
   const manifestSource = files['/.unison/design-source-manifest.json'] ?? input.initialFiles['/.unison/design-source-manifest.json'];
-  if (manifestSource) {
-    let implementations: Record<string, { exportName?: string; props?: string }> = {};
-    try { implementations = JSON.parse(manifestSource).implementations ?? {}; } catch { /* manifest is system-owned; ignore if unreadable */ }
-    const contracts = Object.values(implementations)
-      .filter((entry) => entry.exportName && entry.props)
-      .map((entry) => ({
-        name: entry.exportName!,
-        hint: entry.props!,
-        arrays: entry.props!.split(', ').flatMap((token) => {
-          const parsed = /^(\w+)(\?)?\[\](?:\{(.*)\})?$/.exec(token);
-          if (!parsed || parsed[2]) return [];
-          const required = (parsed[3] ?? '').split('|').filter((field) => field && !field.includes('?'));
-          return [{ prop: parsed[1], required }];
-        }),
-      }));
-    const attributeValue = (raw: string, prop: string): string | undefined => {
-      const start = new RegExp(String.raw`(?<![\w-])${prop}\s*=\s*\{`).exec(raw);
-      if (!start) return undefined;
-      let depth = 1;
-      let i = start.index + start[0].length;
-      for (; i < raw.length && depth > 0; i += 1) {
-        if (raw[i] === '{') depth += 1;
-        else if (raw[i] === '}') depth -= 1;
-      }
-      return raw.slice(start.index + start[0].length, i - 1).trim();
-    };
-    for (const page of pages) {
-      const source = files[page.filePath];
-      if (!source) continue;
-      for (const { name, hint, arrays } of contracts) {
-        if (!new RegExp(String.raw`<${name}(?=[\s/>])`).test(source)) continue;
-        for (const { names, raw } of jsxUsages(source, name)) {
-          const block = (code: string, message: string) => issues.push({ severity: 'blocker', code, path: page.filePath, message: `${page.filePath} <${name}>: ${message} Expected props: ${hint} (name[]{a|b?}: array of objects, ? = optional).` });
-          if (/<\s*(?:h[1-6]|p|div|section)\b/.test(raw)) {
-            block('design-source-nested-block', 'a text prop contains block markup (h1-h6/p/div). Pass plain strings; the section supplies the heading element.');
-          }
-          const missing = arrays.filter(({ prop }) => !names.includes(prop)).map(({ prop }) => prop);
-          if (missing.length && !names.includes('...')) {
-            block('design-source-missing-props', `missing required array props: ${missing.join(', ')}.`);
-            continue;
-          }
-          for (const { prop, required } of arrays) {
-            const value = attributeValue(raw, prop);
-            if (value === undefined) continue;
-            if (/^\[\s*\]$/.test(value)) {
-              block('design-source-empty-array', `${prop} is empty. Provide real items with ${required.join(', ') || 'content'}.`);
-            } else if (value.startsWith('[') && required.length) {
-              const absent = required.filter((field) => !new RegExp(String.raw`(?:^|[\s,{])${field}\s*[:,}]`).test(value));
-              if (absent.length) block('design-source-incomplete-items', `${prop} items are missing required field(s): ${absent.join(', ')}.`);
-            }
-          }
-        }
-      }
+  for (const page of pages) {
+    for (const found of findDesignSourceUsageIssues(manifestSource, files[page.filePath])) {
+      issues.push({ severity: 'blocker', code: found.code, path: page.filePath, message: `${page.filePath} ${found.message}` });
     }
   }
 

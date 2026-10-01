@@ -17,7 +17,7 @@ import { AI_AUTHORED_MARKER } from '@/contracts/aiComposerContract';
 import type { ResolvedSiteDesignContext } from '@/services/launch/resolvedSiteDesignContext';
 import { projectSiteDesignContract } from '@/services/launch/siteDesignContract';
 import type { AIComposerRequest } from '@/contracts/aiComposerContract';
-import { runComposerRepairLoop, type ComposerInvoke, type ComposerStopReason } from '@/services/builder/aiRepairLoop';
+import { runComposerRepairLoop, type ComposerInvoke, type ComposerLoopResult, type ComposerStopReason } from '@/services/builder/aiRepairLoop';
 import { buildAICandidateChangeSet, type AICandidateChangeSet } from '@/services/builder/aiCandidateChangeSet';
 import { assembleCanonicalAuthoringRequest } from '@/services/builder/canonicalAuthoringRequest';
 import { selectSourceKnowledge } from '@/services/builder/sourceKnowledgeContext';
@@ -87,8 +87,36 @@ export interface SiteAuthoringInput {
   registryContext?: unknown;
   /** Extra runtime facts for every page turn (e.g. certified design-source modules with prop contracts). */
   runtimeContext?: string;
+  /** Per-page override of runtimeContext (trimmed to the modules that page can use). */
+  runtimeContextForPage?: (pageId: string) => string;
+  /** Per-page design-source check run inside each page's repair loop. */
+  pageCheck?: (path: string, source: string) => string[];
+  /** Reuse pages accepted by an earlier identical authoring run (default off). */
+  reuseAcceptedPages?: boolean;
   /** false keeps /package.json untouched in authored candidates. */
   resolveDependencies?: boolean;
+}
+
+export interface AcceptedPageEntry {
+  changed: Record<string, string>;
+  deleted: string[];
+  routeOps: unknown;
+  evidence: unknown;
+  summary: string;
+}
+
+/** Accepted-page cache: a retry with an identical page contract reuses the page instead of re-authoring. */
+const acceptedPages = new Map<string, AcceptedPageEntry>();
+const MAX_ACCEPTED_PAGES = 64;
+
+function hashKey(value: string): string {
+  let h = 5381;
+  for (let i = 0; i < value.length; i += 1) h = ((h * 33) ^ value.charCodeAt(i)) >>> 0;
+  return h.toString(36) + ':' + value.length;
+}
+
+export function clearAcceptedPageCache(): void {
+  acceptedPages.clear();
 }
 
 export interface SiteAuthoringResult {
@@ -205,7 +233,7 @@ export async function authorSitePages(input: SiteAuthoringInput): Promise<SiteAu
         input.designContext
           ? `Industry ${input.designContext.contract.industry}; experience ${input.designContext.contract.experience}; forbidden implementations ${JSON.stringify(input.designContext.hardLegality.forbiddenImplementations)}.`
           : '',
-        input.runtimeContext ?? '',
+        input.runtimeContextForPage?.(page.pageId) ?? input.runtimeContext ?? '',
       ].filter(Boolean).join('\n').slice(0, 12000) || undefined,
     })).request;
     const runLoop = (request: AIComposerRequest) => runComposerRepairLoop({
@@ -223,10 +251,36 @@ export async function authorSitePages(input: SiteAuthoringInput): Promise<SiteAu
       candidateOrigin: 'wizard',
       candidateIntent: `author:${page.role}`,
       resolveDependencies: input.resolveDependencies,
+      pageCheck: input.pageCheck,
     });
-    let loop = await runLoop(await buildRequest(null));
+    const firstRequest = await buildRequest(null);
+    const cacheKey = input.reuseAcceptedPages
+      ? hashKey(JSON.stringify([page, input.businessName, input.designContext?.fingerprint, firstRequest.brief, firstRequest.runtimeContext, firstRequest.files, firstRequest.routes]))
+      : undefined;
+    const cached = cacheKey ? acceptedPages.get(cacheKey) : undefined;
+    let loop: ComposerLoopResult;
+    if (cached) {
+      const reused: Record<string, string> = { ...baseFiles, ...cached.changed };
+      for (const path of cached.deleted) delete reused[path];
+      loop = {
+        ok: true,
+        reason: 'accepted',
+        attempts: 0,
+        response: { summary: cached.summary } as ComposerLoopResult['response'],
+        prepared: {
+          ok: true,
+          nextFiles: reused,
+          errors: [],
+          build: { changeSet: { routeOps: cached.routeOps, provenance: { evidence: cached.evidence } } },
+          gates: { passed: true, failures: [], advisories: [] },
+        } as unknown as ComposerLoopResult['prepared'],
+        errors: [],
+      };
+    } else {
+      loop = await runLoop(firstRequest);
+    }
     // Redundancy check: one targeted recomposition when this page repeats another page's topology.
-    if (loop.ok && loop.prepared && now() < deadline) {
+    if (!cached && loop.ok && loop.prepared && now() < deadline) {
       const issue = findRedundancy(page.pageId, extractCompositionSignature(loop.prepared.nextFiles[page.filePath]), visualMemory.entries());
       if (issue) {
         const retry = await runLoop(await buildRequest(issue));
@@ -275,6 +329,18 @@ export async function authorSitePages(input: SiteAuthoringInput): Promise<SiteAu
         revisionId = committed.revisionId ?? revisionId;
         const summary = loop.response?.summary ?? '';
         priorPages.push({ role: page.role, summary: summary.slice(0, 2000) });
+        if (cacheKey && !cached) {
+          const changed: Record<string, string> = {};
+          for (const [path, content] of Object.entries(candidate)) if (baseFiles[path] !== content) changed[path] = content;
+          if (acceptedPages.size >= MAX_ACCEPTED_PAGES) acceptedPages.delete(acceptedPages.keys().next().value as string);
+          acceptedPages.set(cacheKey, {
+            changed,
+            deleted: Object.keys(baseFiles).filter((path) => !(path in candidate)),
+            routeOps: prepared.build.changeSet.routeOps,
+            evidence: prepared.build.changeSet.provenance.evidence,
+            summary,
+          });
+        }
         outcomeSlots[index] = { page, status: 'authored', reason: 'accepted', attempts: loop.attempts, summary, errors: [], revisionId: committed.revisionId };
         input.onProgress?.({ page, index, total: ordered.length, phase: 'committed' });
       } catch (error) {

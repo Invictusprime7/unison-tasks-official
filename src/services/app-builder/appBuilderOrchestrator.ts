@@ -4,7 +4,7 @@ import { assembleCanonicalAuthoringRequest } from '@/services/builder/canonicalA
 import type { ComposerLoopInput, ComposerLoopResult } from '@/services/builder/aiRepairLoop';
 import type { SiteAuthoringInput, SiteAuthoringResult } from '@/services/launch/siteAuthoringOrchestrator';
 import { APP_BUILDER_PROTOCOL_VERSION, type AppBuildRequest, type AppBuildResult } from './appBuilderContracts';
-import { validateAppBuildCandidate } from './appBuilderCandidate';
+import { findDesignSourceUsageIssues, validateAppBuildCandidate } from './appBuilderCandidate';
 import { evaluateDesignQuality } from './design/designQualityClosure';
 import { applyDesignSources } from './design/designSourceMaterializer';
 import { buildAppBuilderGenerationContext, reportDesignSourceUsage } from './appBuilderGenerationContext';
@@ -27,6 +27,8 @@ export async function orchestrateAppBuild(
   }));
   const generation = buildAppBuilderGenerationContext(input.contract);
   const baseFiles = applyDesignSources(input.initialFiles, generation.materialization);
+  const manifestSource = baseFiles['/.unison/design-source-manifest.json'];
+  const pageCheck = (_path: string, source: string) => findDesignSourceUsageIssues(manifestSource, source).map((issue) => issue.message);
   const authored = await dependencies.authorSite({
     pages,
     homePageId: input.contract.topology.sitePlan.homePageId,
@@ -47,6 +49,9 @@ export async function orchestrateAppBuild(
     compositionPlan: input.contract.design.compositionPlan,
     registryContext: input.contract.design.registryContext,
     runtimeContext: generation.runtimeContext,
+    runtimeContextForPage: generation.runtimeContextForPage,
+    pageCheck,
+    reuseAcceptedPages: true,
     resolveDependencies: false,
   });
 
@@ -98,6 +103,7 @@ export async function orchestrateAppBuild(
         preflight: input.preflight,
         candidateOrigin: 'repair',
         candidateIntent: 'site-wide-closure',
+        pageCheck,
         resolveDependencies: false,
       });
       closureRepairAttempts = repaired.attempts;

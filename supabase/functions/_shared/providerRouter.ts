@@ -136,6 +136,7 @@ const MODELS = {
   geminiFlashLite: { id: "google/gemini-2.5-flash-lite", label: "Gemini 2.5 Flash Lite" },
   geminiPro: { id: "google/gemini-2.5-pro", label: "Gemini 2.5 Pro" },
   gpt41: { id: "openai/gpt-4.1", label: "GPT-4.1" },
+  gpt41Mini: { id: "openai/gpt-4.1-mini", label: "GPT-4.1 Mini" },
   gpt4oMini: { id: "openai/gpt-4o-mini", label: "GPT-4o Mini" },
   gpt4o: { id: "openai/gpt-4o", label: "GPT-4o" },
 } as const;
@@ -205,8 +206,22 @@ export function buildProviderPlan(
   let plan: ProviderPlan;
 
   switch (task.type) {
-    case "site_page_author":
+    // Repair turns apply targeted diagnostics to existing files: a smaller model leads, full models back it up.
     case "site_page_repair":
+      plan = {
+        gatewayModels: [
+          m(MODELS.gpt41Mini, 16_384),
+          m(MODELS.gpt41, 16_384),
+          m(MODELS.geminiFlash, 48_000),
+        ],
+        perModelTimeoutMs: 110_000,
+        fallbackMaxTokens: 32_000,
+        preferLongLeadAttempt: true,
+        fallbackReserveMs: 60_000,
+        raceGateway: true,
+      };
+      break;
+    case "site_page_author":
     case "builder_source_edit":
       plan = {
         gatewayModels: [

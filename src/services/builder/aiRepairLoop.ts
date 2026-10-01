@@ -15,7 +15,7 @@ import {
   type AIComposerRequest,
   type AIComposerResponse,
 } from '@/contracts/aiComposerContract';
-import { prepareAICandidate, type PreparedCandidate } from './aiCandidateGates';
+import { prepareAICandidate, type PageCheck, type PreparedCandidate } from './aiCandidateGates';
 import type { HomepageVisualLanguage } from '@/services/launch/homepageFirstContract';
 import type { TopologyChange } from '@/services/pageTopologyOrchestrator';
 import { assembleCanonicalAuthoringRequest } from './canonicalAuthoringRequest';
@@ -59,6 +59,8 @@ export interface ComposerLoopInput {
   initialRouteOps?: readonly TopologyChange[];
   /** false keeps /package.json out of the candidate (App Builder owns dependencies via its contract). */
   resolveDependencies?: boolean;
+  /** Per-page check run inside every attempt so a bad page is repaired in its own loop. */
+  pageCheck?: PageCheck;
 }
 
 function classifyError(error: unknown): ComposerStopReason {
@@ -158,6 +160,7 @@ export async function runComposerRepairLoop(input: ComposerLoopInput): Promise<C
       preflight: input.preflight,
       affinity: input.affinity,
       resolveDependencies: input.resolveDependencies,
+      pageCheck: input.pageCheck,
     });
     lastPrepared = prepared;
     if (prepared.ok) {

@@ -10,39 +10,44 @@ export interface AppBuilderGenerationContext {
   designSources: DesignSourceBundle;
   materialization: DesignSourceMaterialization;
   runtimeContext: string;
+  /** Same facts with design-source modules trimmed to what one page may use. */
+  runtimeContextForPage: (pageId: string) => string;
 }
 
 export function buildAppBuilderGenerationContext(contract: AppBuildContract): AppBuilderGenerationContext {
   const { business, runtime } = contract;
   const designSources = resolveDesignSourceBundle(contract);
   const materialization = materializeDesignSources(designSources);
+  const compose = (modules: string) => [
+    `Industry ${business.industry}; goals ${business.goals.join(', ') || 'none'}.`,
+    `Intents: ${business.intents.join(', ') || 'none'}; capabilities: ${business.capabilities.join(', ') || 'none'}.`,
+    business.bindingGuide ? `Binding guide: ${business.bindingGuide}` : '',
+    `Protected paths: ${runtime.protectedPaths.join(', ')}.`,
+    `Approved dependencies: ${runtime.approvedDependencies.join(', ')}.`,
+    modules,
+    `Approved experience capabilities: ${runtime.approvedExperienceCapabilities.join(', ') || 'none'}.`,
+  ].filter(Boolean).join('\n');
   return {
     contract,
     designSources,
     materialization,
-    runtimeContext: [
-      `Industry ${business.industry}; goals ${business.goals.join(', ') || 'none'}.`,
-      `Intents: ${business.intents.join(', ') || 'none'}; capabilities: ${business.capabilities.join(', ') || 'none'}.`,
-      business.bindingGuide ? `Binding guide: ${business.bindingGuide}` : '',
-      `Protected paths: ${runtime.protectedPaths.join(', ')}.`,
-      `Approved dependencies: ${runtime.approvedDependencies.join(', ')}.`,
-      renderDesignSourceModules(materialization),
-      `Approved experience capabilities: ${runtime.approvedExperienceCapabilities.join(', ') || 'none'}.`,
-    ].filter(Boolean).join('\n'),
+    runtimeContext: compose(renderDesignSourceModules(materialization)),
+    runtimeContextForPage: (pageId) => compose(renderDesignSourceModules(materialization, new Set(designSources.eligibleByPage[pageId] ?? []))),
   };
 }
 
 const MAX_IDS_PER_MODULE = 12;
 
-function renderDesignSourceModules(materialization: DesignSourceMaterialization): string {
+function renderDesignSourceModules(materialization: DesignSourceMaterialization, only?: ReadonlySet<string>): string {
   const byModule = new Map<string, string[]>();
   const exports = new Map<string, string>();
   for (const [id, entry] of Object.entries(materialization.manifest.implementations)) {
+    if (only && only.size > 0 && !only.has(id)) continue;
     if (entry.exportName) exports.set(id, entry.props ? entry.exportName + '(' + entry.props + ')' : entry.exportName);
     byModule.set(entry.modulePath, [...(byModule.get(entry.modulePath) ?? []), id]);
   }
   const lines = [...byModule].sort(([a], [b]) => a.localeCompare(b)).map(([modulePath, ids]) =>
-    `- ${modulePath.replace(/^\/src\//, '@/').replace(/\.tsx$/, '')} (props, variantId): ${ids.sort().slice(0, MAX_IDS_PER_MODULE).map((id) => (exports.has(id) ? `${id}={ ${exports.get(id)} }` : id)).join(', ')}`);
+    `- ${modulePath.replace(/^\/src\//, '@/').replace(/\.tsx$/, '')} (props, variantId): ${ids.sort().slice(0, only ? ids.length : MAX_IDS_PER_MODULE).map((id) => (exports.has(id) ? `${id}={ ${exports.get(id)} }` : id)).join(', ')}`);
   return lines.length
     ? `Certified design-source modules (read-only; import the named export and pass the listed props directly, e.g. import { Name } from '@/unison/design-sources/<Family>'; <Name headline=".." items={[..]} />; props marked [] are required, non-empty arrays (name?[] is optional and may be omitted) and {a|b|c?} lists the fields every item needs (? = optional; fill each non-? field with real business copy, never leave items empty); headline/subheadline are plain strings, never nested <h1>/<h2>; never import from recipes/ or REGISTERED_VARIANTS):\n${lines.join('\n')}`
     : '';
