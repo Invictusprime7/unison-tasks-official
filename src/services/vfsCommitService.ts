@@ -2,6 +2,7 @@ import { updateResolvedCompositionVariants } from '@/sections/compositionToFileS
 import { isCustomizerPageEdit } from '@/services/builder/customizerDraft';
 import {
   normalizeAuthoredPath,
+  restoreAuthoredSource,
   verifyAuthoredSourcePreservation,
   type AuthoredSourceOperation,
 } from '@/services/builder/authoredSourcePreservation';
@@ -698,10 +699,31 @@ export async function commitMutation(
   // Capture before preflight can mutate even the input map in place. Protect
   // hooks, styles, assets and original components as well as registered pages.
   const reviewedSourceBaseline = reviewedArtifact ? { ...files } : null;
+  let projectionRestored = false;
   if (sourcePreservationBaseline) {
+    // The projection may refresh compiler-owned files but must not author user
+    // source. Restore the exact candidate bytes instead of rejecting the edit;
+    // every downstream gate still validates the restored map.
+    const reconciled = restoreAuthoredSource({
+      acceptedFiles: sourcePreservationBaseline,
+      operations: sourcePreservationOperations,
+      finalizedFiles: files,
+      compilerOwnedPaths: [
+        '/.unison/**', '/src/unison/**', '/src/integrations/**',
+        ...compilerOwnedGeneratedPaths(files),
+      ],
+      stage: 'canonical projection',
+    });
+    if (reconciled.restored.length) {
+      files = reconciled.files;
+      projectionRestored = true;
+      log('canonical', 'warn', `projection rewrote ${reconciled.restored.length} authored file(s); restored the exact candidate source`, {
+        paths: reconciled.restored.map((item) => `${item.path} (${item.kind})`),
+      });
+    }
     assertCandidateSourcePreserved(sourcePreservationBaseline, sourcePreservationOperations, files, 'canonical projection');
   }
-  let snapshotForPersistence = input.source === 'wizard-launch'
+  let snapshotForPersistence = input.source === 'wizard-launch' || projectionRestored
     ? mergeWizardLaunchSnapshot((snapshot as SiteBundleSnapshot | null) ?? null, files)
     : snapshot;
   snapshotForPersistence = stampBusinessSystemState(
@@ -1569,7 +1591,18 @@ async function finalize(args: {
         fileProvenance,
       },
     };
-    const { data, error } = await (supabase.rpc as any)('commit_canonical_site_revision', {
+    const breakerKey = input.identity.draftId || input.identity.projectId || 'anonymous';
+    const breakerSignature = `${parentRevisionId ?? ''}:${vfsHash}`;
+    const blockedReason = persistCircuitBlockReason(breakerKey, breakerSignature, input.source);
+    if (blockedReason) {
+      diagnostics.push({ stage: 'persist', level: 'error', message: 'canonical revision transaction throttled', detail: blockedReason });
+      recordCommitOutcome({ source: input.source, outcome: 'threw', vfsHash, revisionId: null, draftId: input.identity.draftId || null, dryRun });
+      throw new Error(`[VFSCommitService] canonical revision transaction failed: ${blockedReason}`);
+    }
+    PERSIST_IN_FLIGHT.add(breakerKey);
+    let rpcResult: { data: unknown; error: { message?: string } | null };
+    try {
+      rpcResult = await (supabase.rpc as any)('commit_canonical_site_revision', {
       p_project_id: input.identity.projectId,
       p_business_id: input.identity.businessId,
       p_draft_id: input.identity.draftId,
@@ -1589,7 +1622,14 @@ async function finalize(args: {
       p_vfs_hash: vfsHash,
       p_active_page_path: input.current.activePagePath ?? null,
     });
+    } catch (rpcError) {
+      rpcResult = { data: null, error: { message: rpcError instanceof Error ? rpcError.message : String(rpcError) } };
+    } finally {
+      PERSIST_IN_FLIGHT.delete(breakerKey);
+    }
+    const { data, error } = rpcResult;
     if (error || typeof data !== 'string' || !data) {
+      recordPersistFailure(breakerKey, breakerSignature);
       const detail = error?.message || 'atomic commit returned no revision id';
       diagnostics.push({
         stage: 'persist',
@@ -1608,6 +1648,7 @@ async function finalize(args: {
       throw new Error(`[VFSCommitService] canonical revision transaction failed: ${detail}`);
     }
 
+    PERSIST_FAILURES.delete(breakerKey);
     persistedRevisionId = data;
     fileProvenance = stampAcceptedRevision(fileProvenance, persistedRevisionId);
 
@@ -1741,6 +1782,40 @@ export interface LoadedRevision {
  * vfs_hash; every summary column is always taken from the fresh read, so
  * status/readiness changes are never served stale.
  */
+// Persist circuit breaker. Every durable write funnels through one RPC, so a
+// caller that re-fires a permanently failing save (feedback loop, stale tab)
+// must be stopped here: identical failed payloads cool down with backoff and a
+// draft never has overlapping writes queued against its row lock.
+const PERSIST_IN_FLIGHT = new Set<string>();
+const PERSIST_FAILURES = new Map<string, { signature: string; count: number; until: number }>();
+const PERSIST_BACKOFF_BASE_MS = 2_000;
+const PERSIST_BACKOFF_MAX_MS = 60_000;
+const USER_INITIATED_SOURCES = new Set<string>(['ai-builder', 'wizard-launch', 'theme-change', 'zip-import', 'restore']);
+
+function persistCircuitBlockReason(key: string, signature: string, source: string): string | null {
+  if (PERSIST_IN_FLIGHT.has(key) && !USER_INITIATED_SOURCES.has(source)) {
+    return 'another save for this project is still in progress';
+  }
+  const failure = PERSIST_FAILURES.get(key);
+  if (failure && failure.signature === signature && Date.now() < failure.until) {
+    return `the same save just failed; retry in ${Math.ceil((failure.until - Date.now()) / 1000)}s`;
+  }
+  return null;
+}
+
+function recordPersistFailure(key: string, signature: string): void {
+  const previous = PERSIST_FAILURES.get(key);
+  const count = previous && previous.signature === signature ? previous.count + 1 : 1;
+  const wait = Math.min(PERSIST_BACKOFF_MAX_MS, PERSIST_BACKOFF_BASE_MS * 2 ** (count - 1));
+  PERSIST_FAILURES.set(key, { signature, count, until: Date.now() + wait });
+}
+
+/** Test seam: clears persist breaker state between cases. */
+export function __resetPersistCircuitForTests(): void {
+  PERSIST_IN_FLIGHT.clear();
+  PERSIST_FAILURES.clear();
+}
+
 const REVISION_ROW_CACHE = new Map<string, Record<string, unknown>>();
 const REVISION_ROW_CACHE_MAX = 16;
 

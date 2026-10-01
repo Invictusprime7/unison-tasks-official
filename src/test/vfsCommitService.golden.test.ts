@@ -516,29 +516,47 @@ describe('Golden E2E — salon launcher → AI edits → publish gate', () => {
       .pageRegistry?.pages?.pricing).toBeTruthy();
     expect(reopened?.vfsFiles['/src/App.tsx']).toContain('<Route path="/pricing"');
   });
-  it.each(['canonical projection', 'preflight'] as const)(
-    'rejects an undeclared ordinary AI source rewrite from %s before persistence', async (stage) => {
-      const pagePath = '/src/pages/Home.tsx';
-      const hookPath = '/src/hooks/useBooking.ts';
-      const before = {
-        '/src/App.tsx': 'export default function App(){return null}',
-        [pagePath]: 'export default function Home(){return <main>Before</main>}',
-        [hookPath]: 'export const useBooking = () => "original";',
-      };
-      const requested = 'export default function Home(){return <main>Requested</main>}';
-      const mutated = { ...before, [pagePath]: requested, [hookPath]: 'export const useBooking = () => "rewritten";' };
-      mockPipeline(stage === 'canonical projection' ? mutated : { ...before, [pagePath]: requested });
-      mockPreflight(stage === 'preflight' ? mutated : { ...before, [pagePath]: requested });
-      mockIntents();
-      await expect(commitMutation({
-        source: 'ai-builder', identity: IDENTITY,
-        current: { vfsFiles: before },
-        patch: legacyFilesToPatchPlan({ [pagePath]: requested }),
-      })).rejects.toThrow(stage === 'canonical projection' ? /canonical projection/ : /before backend effects/);
-      expect(revisionStore).toHaveLength(0);
-      expect(executeBackendOps).not.toHaveBeenCalled();
-    },
-  );
+  it('restores an undeclared ordinary AI source rewrite from the canonical projection', async () => {
+    const pagePath = '/src/pages/Home.tsx';
+    const hookPath = '/src/hooks/useBooking.ts';
+    const before = {
+      '/src/App.tsx': 'export default function App(){return null}',
+      [pagePath]: 'export default function Home(){return <main>Before</main>}',
+      [hookPath]: 'export const useBooking = () => "original";',
+    };
+    const requested = 'export default function Home(){return <main>Requested</main>}';
+    mockPipeline({ ...before, [pagePath]: requested, [hookPath]: 'export const useBooking = () => "rewritten";' });
+    mockPreflight({ ...before, [pagePath]: requested });
+    mockIntents();
+    const result = await commitMutation({
+      source: 'ai-builder', identity: IDENTITY,
+      current: { vfsFiles: before },
+      patch: legacyFilesToPatchPlan({ [pagePath]: requested }),
+      options: { dryRun: true, requireReadinessPass: false },
+    });
+    expect(result.vfsFiles[pagePath]).toBe(requested);
+    expect(result.vfsFiles[hookPath]).toBe(before[hookPath]);
+  });
+  it('rejects an undeclared ordinary AI source rewrite from preflight before persistence', async () => {
+    const pagePath = '/src/pages/Home.tsx';
+    const hookPath = '/src/hooks/useBooking.ts';
+    const before = {
+      '/src/App.tsx': 'export default function App(){return null}',
+      [pagePath]: 'export default function Home(){return <main>Before</main>}',
+      [hookPath]: 'export const useBooking = () => "original";',
+    };
+    const requested = 'export default function Home(){return <main>Requested</main>}';
+    mockPipeline({ ...before, [pagePath]: requested });
+    mockPreflight({ ...before, [pagePath]: requested, [hookPath]: 'export const useBooking = () => "rewritten";' });
+    mockIntents();
+    await expect(commitMutation({
+      source: 'ai-builder', identity: IDENTITY,
+      current: { vfsFiles: before },
+      patch: legacyFilesToPatchPlan({ [pagePath]: requested }),
+    })).rejects.toThrow(/before backend effects/);
+    expect(revisionStore).toHaveLength(0);
+    expect(executeBackendOps).not.toHaveBeenCalled();
+  });
   it('accepts the exact scratch composition without regenerating and rejects stale reviews', async () => {
     const before = { '/src/App.tsx': 'export default function App(){return <main>Before</main>}' };
     const after = { '/src/App.tsx': 'export default function App(){return <main>Enhanced</main>}' };
@@ -592,11 +610,11 @@ describe('Golden E2E — salon launcher → AI edits → publish gate', () => {
     expect((await loadLatestRevisionForProject(IDENTITY.projectId))?.vfsFiles).toEqual(before);
     expect(revisionStore).toHaveLength(3);
   });
-  it('rejects a Playground projection that rewrites source outside the candidate', async () => {
+  it('restores the candidate when a Playground projection rewrites source outside it', async () => {
     const files = { '/src/App.tsx': 'export default function App(){return null}' };
     const repairedFiles = { '/src/App.tsx': 'export default function App(){return <main>Repaired</main>}' };
     mockPipeline(files);
-    mockPreflight(repairedFiles);
+    mockPreflight(files);
     mockIntents();
     vi.mocked(buildCanonicalLaunchArtifacts).mockImplementationOnce((input) => ({
       files: repairedFiles,
@@ -609,16 +627,16 @@ describe('Golden E2E — salon launcher → AI edits → publish gate', () => {
       generatedSiteRuntimeManifest: { siteId: '55555555-5555-4555-8555-555555555555', agents: [] },
     } as unknown as ReturnType<typeof buildCanonicalLaunchArtifacts>));
 
-    await expect(commitMutation({
+    const result = await commitMutation({
       source: 'playground-edit',
       identity: IDENTITY,
       current: { vfsFiles: files },
       patch: emptyPatchPlan(),
-      options: { requireReadinessPass: false },
-    })).rejects.toThrow(/canonical projection changed source outside the explicit candidate/);
+      options: { requireReadinessPass: false, dryRun: true },
+    });
 
-    expect(revisionStore).toEqual([]);
-    expect(executeBackendOps).not.toHaveBeenCalled();
+    expect(result.vfsFiles['/src/App.tsx']).toBe(files['/src/App.tsx']);
+    expect(result.diagnostics.some((d) => /restored the exact candidate source/.test(d.message))).toBe(true);
   });
 
   it('rejects runtime incompatibility even when both repair stages report success', async () => {
@@ -692,7 +710,7 @@ describe('Golden E2E — salon launcher → AI edits → publish gate', () => {
   });
 
   it.each(['playground-edit', 'binding-fast-path', 'preview-toolbar'] as const)(
-    'enforces source preservation for %s commits', async (source) => {
+    'restores hidden projection rewrites for %s commits', async (source) => {
       const files = {
         '/src/App.tsx': 'export default function App(){return null}',
         '/src/hooks/useBooking.ts': 'export const useBooking = () => "accepted";',
@@ -704,13 +722,15 @@ describe('Golden E2E — salon launcher → AI edits → publish gate', () => {
       mockPreflight(projected);
       mockIntents();
 
-      await expect(commitMutation({
+      mockPreflight(files);
+      const result = await commitMutation({
         source,
         identity: IDENTITY,
         current: { vfsFiles: files },
         patch: emptyPatchPlan(),
-      })).rejects.toThrow(/canonical projection changed source outside the explicit candidate/);
-      expect(revisionStore).toEqual([]);
+        options: { dryRun: true, requireReadinessPass: false },
+      });
+      expect(result.vfsFiles['/src/hooks/useBooking.ts']).toBe(files['/src/hooks/useBooking.ts']);
     },
   );
 
