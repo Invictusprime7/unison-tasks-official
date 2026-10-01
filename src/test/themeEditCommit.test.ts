@@ -57,7 +57,8 @@ import { readThemeOverrides } from '@/services/theme/themeTokenOverrides';
 describe('Theme edit canonical closure', () => {
   it('classifies appearance requests without taking over composition requests', () => {
     for (const text of ['make it darker', 'use Bold', 'soften the typography', 'Use Bold. Keep all text, pages, images, sections and layout unchanged.']) expect(isThemeOnlyRequest(text)).toBe(true);
-    for (const text of ['add a dark gallery section', 'change the grid layout']) expect(isThemeOnlyRequest(text)).toBe(false);
+    for (const text of ['add a dark gallery section', 'change the grid layout', "Change the main heading on the Home page to 'Timeless Craft, Modern Lines'", 'update the hero title to read Welcome']) expect(isThemeOnlyRequest(text)).toBe(false);
+    for (const text of ['Change color scheme to Gold and black', 'change the heading font to a serif']) expect(isThemeOnlyRequest(text)).toBe(true);
     expect(decodeThemeEdit({ version: '1.0', snapshotId: 's', revisionId: null, presetId: null, set: {}, reset: [] }).presetId).toBeNull();
     expect(() => decodeThemeEdit({ version: '1.0', snapshotId: 's', revisionId: null, files: {} })).toThrow();
   });

@@ -60,3 +60,35 @@ export function verifyAuthoredSourcePreservation(input: {
   }
   return violations;
 }
+
+/**
+ * Projection reconciliation for Builder commits. The canonical projection may
+ * add or refresh compiler-owned files, but it may never author user source.
+ * Instead of rejecting the whole edit when a projection rewrote authored
+ * bytes, restore exactly the accepted bytes plus the candidate's operations.
+ * The result is still validated by every downstream gate (preflight, preview,
+ * durable-revision preservation), so nothing unverified is persisted.
+ */
+export function restoreAuthoredSource(input: {
+  acceptedFiles: Record<string, string>;
+  operations: readonly AuthoredSourceOperation[];
+  finalizedFiles: Record<string, string>;
+  compilerOwnedPaths: readonly string[];
+  stage: string;
+}): { files: Record<string, string>; restored: SourcePreservationViolation[] } {
+  const restored = verifyAuthoredSourcePreservation(input);
+  if (!restored.length) return { files: input.finalizedFiles, restored };
+  const expected = normalizeFiles(input.acceptedFiles);
+  for (const operation of input.operations) {
+    const path = normalizeAuthoredPath(operation.path);
+    if (operation.type === 'delete') expected.delete(path);
+    else expected.set(path, operation.contents);
+  }
+  const files: Record<string, string> = {};
+  for (const [raw, contents] of Object.entries(input.finalizedFiles)) files[normalizeAuthoredPath(raw)] = contents;
+  for (const violation of restored) {
+    if (violation.kind === 'unexpected') delete files[violation.path];
+    else files[violation.path] = expected.get(violation.path)!;
+  }
+  return { files, restored };
+}
