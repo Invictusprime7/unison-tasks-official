@@ -233,6 +233,15 @@ export function buildCanonicalLaunchPlan(
   });
   infrastructureFiles['/src/index.css'] = resolved.themedCss;
 
+  // Ensure component stubs exist so App Builder's generated imports resolve.
+  // These are minimal stubs; App Builder will generate actual component content.
+  const componentStubFiles: Record<string, string> = {
+    '/src/components/index.ts': '// Re-exports for generated page imports\nexport * from \'./generated\';\n',
+    '/src/components/generated/index.ts': '// Placeholder for generated components\n',
+    '/src/project-components/index.ts': '// Project-local components\nexport * from \'./site\';\n',
+    '/src/project-components/site/index.ts': '// Site components\nexport const SiteNav = () => null;\nexport const SiteFooter = () => null;\n',
+  };
+
   const pageBodies = Object.keys(infrastructureFiles).filter((path) => /^\/src\/pages\//.test(path));
   if (pageBodies.length) {
     throw new Error(`[canonicalLaunchPlan] Plan-only projection emitted page bodies: ${pageBodies.join(', ')}`);
@@ -240,7 +249,7 @@ export function buildCanonicalLaunchPlan(
   return {
     version: CANONICAL_LAUNCH_PLAN_VERSION,
     ...resolved,
-    infrastructureFiles,
+    infrastructureFiles: { ...componentStubFiles, ...infrastructureFiles },
   };
 }
 
