@@ -1438,10 +1438,15 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
       let canonicalRouteOps: TopologyChange[] = [];
       let canonicalCandidate: AICandidateChangeSet | undefined;
       
-      // Global timeout: abort the entire request after 150s. Aligned with
-      // server-side TOTAL_BUDGET_MS (135s) + buffer for network/packaging.
+      // Global timeout for the whole turn. A source edit runs the Composer
+      // write → check → repair loop (up to 3 provider calls), so 150s cut
+      // healthy edits off mid-repair with a reason-less abort. Give the loop
+      // its full budget and always abort with a readable reason.
       const globalAbort = new AbortController();
-      const globalTimeout = setTimeout(() => globalAbort.abort(), 150_000);
+      const globalTimeout = setTimeout(
+        () => globalAbort.abort(new DOMException('The AI edit took longer than 7 minutes and was stopped. Try a smaller, more specific change.', 'TimeoutError')),
+        420_000,
+      );
       
       for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
         if (globalAbort.signal.aborted) {
