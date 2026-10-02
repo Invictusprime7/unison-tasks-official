@@ -104,6 +104,14 @@ export async function runComposerRepairLoop(input: ComposerLoopInput): Promise<C
     }, { timeoutMs: input.timeoutMs ?? 130_000, signal: input.signal });
 
     if (error || !data) {
+      const errName = (error as { name?: string } | null)?.name;
+      if (input.signal?.aborted || errName === 'AbortError' || errName === 'TimeoutError') {
+        const why = (input.signal?.reason as { message?: string } | undefined)?.message
+          || (errName === 'TimeoutError' || !input.signal?.aborted
+            ? 'The AI took too long to answer and the edit was stopped. Try a smaller, more specific change.'
+            : 'The edit was cancelled.');
+        return { ok: false, reason: 'aborted', attempts: attempt, errors: [why], response: lastResponse, prepared: lastPrepared };
+      }
       const reason = classifyError(error);
       // Only transient failures would be retryable; the client already retried
       // them. Everything here is terminal for this request (gateway semantics).
