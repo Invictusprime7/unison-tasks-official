@@ -669,7 +669,7 @@ function OverviewPanel({
                     <div className="min-w-0">
                       <p className="truncate font-medium text-white">{project.name}</p>
                       <p className="text-sm text-white/40">
-                        Saved {formatRelativeDate((project as { updated_at?: string | null }).updated_at || null)}
+                        Saved {formatRelativeDate(project.updated_at)}
                       </p>
                     </div>
                     <Badge variant="outline" className="border-white/10 text-white/45">
