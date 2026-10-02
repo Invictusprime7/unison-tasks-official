@@ -95,7 +95,10 @@ const Index = () => {
           .select('id, name, project_id, last_revision_id, updated_at, created_at, previewCode:metadata->>previewCode, metaName:metadata->>name, metaDescription:metadata->>description')
           .eq('user_id', user.id)
           .order('updated_at', { ascending: false })
-          .limit(4);
+          // 9 sites + the "New Site" tile fill two rows. A limit of 4 hid
+          // sites saved earlier the same day (e.g. Spark, DreamFashion)
+          // whenever a few newer launches existed.
+          .limit(9);
 
         if (error) {
           console.error('Error loading recent projects:', error);

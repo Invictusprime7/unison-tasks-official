@@ -668,7 +668,9 @@ function OverviewPanel({
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0">
                       <p className="truncate font-medium text-white">{project.name}</p>
-                      <p className="text-sm text-white/40">/{project.slug || project.id}</p>
+                      <p className="text-sm text-white/40">
+                        Saved {formatRelativeDate(project.updated_at)}
+                      </p>
                     </div>
                     <Badge variant="outline" className="border-white/10 text-white/45">
                       {project.publish_status || project.status || 'draft'}
@@ -936,7 +938,7 @@ export default function CloudDashboard() {
       const { data: projectData, count: projectCount, error: projectError } = await listProjectsCompat({
         ownerId: user.id,
         businessIds: accessibleBusinessIds,
-        limit: 6,
+        limit: 10,
         withCount: true,
       });
       if (projectError) {
