@@ -1638,7 +1638,7 @@ export function applySandpackRuntimeShims(files: Record<string, string>): Record
 }
 
 // ── Industry-contextual fallback images ──────────────────────────────────────
-const CONTEXTUAL_IMAGES: Record<string, string[]> = {
+export const CONTEXTUAL_IMAGES: Record<string, string[]> = {
   restaurant: [
     'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&q=80',
     'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&q=80',
@@ -1708,7 +1708,7 @@ const CONTEXTUAL_IMAGES: Record<string, string[]> = {
   ],
 };
 
-const PORTRAIT_IMAGES = [
+export const PORTRAIT_IMAGES = [
   'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&q=80',
   'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&q=80',
   'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&q=80',
