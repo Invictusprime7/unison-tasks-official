@@ -131,6 +131,7 @@ interface Business {
   notification_email?: string;
   notification_phone?: string;
   settings?: Json;
+  last_activity_at?: string | null;
 }
 
 function isMissingBusinessMembersTable(error: unknown): boolean {
@@ -168,6 +169,18 @@ const transformBusiness = (data: Record<string, unknown>): Business => ({
   notification_phone: data.notification_phone as string | undefined,
   settings: data.settings as Json | undefined,
 });
+
+function formatSavedAt(value?: string | null): string {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
 
 type ViewMode = 'grid' | 'list';
 type BusinessSection = 'projects' | 'crm' | 'automations' | 'team' | 'settings' | 'database';
@@ -230,6 +243,10 @@ export function CloudProjects({ userId, businessId: propBusinessId, onProjectSel
   const location = useLocation();
   const businessCacheKey = `${BUSINESS_CACHE_KEY_PREFIX}:${userId}`;
   const selectedBusinessKey = `${SELECTED_BUSINESS_KEY_PREFIX}:${userId}`;
+  const rememberSelectedBusiness = (businessId: string) => {
+    window.localStorage.setItem(selectedBusinessKey, businessId);
+    window.localStorage.setItem(`${selectedBusinessKey}:at`, new Date().toISOString());
+  };
 
   useEffect(() => {
     if (!userId) return;
@@ -260,6 +277,29 @@ export function CloudProjects({ userId, businessId: propBusinessId, onProjectSel
   // Load businesses on mount
   useEffect(() => {
     if (userId) loadBusinesses();
+  }, [userId]);
+
+  // Re-rank workspaces when the user returns from the builder or a save lands,
+  // so the most recently saved site surfaces without a manual reload.
+  useEffect(() => {
+    if (!userId) return;
+    let timer: number | null = null;
+    const refresh = () => {
+      if (timer !== null) window.clearTimeout(timer);
+      timer = window.setTimeout(() => void loadBusinesses(), 300);
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') refresh();
+    };
+    window.addEventListener('focus', refresh);
+    window.addEventListener('unison:project-draft-saved', refresh);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      if (timer !== null) window.clearTimeout(timer);
+      window.removeEventListener('focus', refresh);
+      window.removeEventListener('unison:project-draft-saved', refresh);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
   }, [userId]);
 
   useEffect(() => {
@@ -454,27 +494,61 @@ export function CloudProjects({ userId, businessId: propBusinessId, onProjectSel
           .filter(Boolean)
           .map(transformBusiness);
         
-        const allBusinesses = [...owned];
+        const merged = [...owned];
         memberOf.forEach(b => {
-          if (!allBusinesses.find(ob => ob.id === b.id)) {
-            allBusinesses.push(b);
+          if (!merged.find(ob => ob.id === b.id)) {
+            merged.push(b);
           }
         });
+
+        // Order workspaces by their latest saved draft so the site the user
+        // just edited is always on top (each wizard launch creates its own
+        // business, so creation order hides recent saves).
+        const lastActivity = new Map<string, string>();
+        if (merged.length > 0) {
+          const { data: activityRows } = await supabase
+            .from('builder_drafts')
+            .select('business_id, updated_at')
+            .in('business_id', merged.map((b) => b.id))
+            .order('updated_at', { ascending: false })
+            .limit(500);
+          for (const row of activityRows || []) {
+            if (row.business_id && row.updated_at && !lastActivity.has(row.business_id)) {
+              lastActivity.set(row.business_id, row.updated_at);
+            }
+          }
+        }
+        const allBusinesses = merged
+          .map((b) => ({ ...b, last_activity_at: lastActivity.get(b.id) || null }))
+          .sort((a, b) =>
+            String(b.last_activity_at || b.created_at || '').localeCompare(
+              String(a.last_activity_at || a.created_at || ''),
+            ),
+          );
         
         setBusinesses(allBusinesses);
         writeSessionCache(businessCacheKey, allBusinesses);
         
-        // Prefer explicit navigation state, then the user's last workspace.
+        // Explicit navigation wins. Otherwise keep the user's last pick unless
+        // another workspace was saved after that pick — then open the newest.
         const routeState = (location.state as CloudProjectsLocationState | null) ?? null;
-        const preferredBusinessId =
-          routeState?.businessId ||
-          propBusinessId ||
-          window.localStorage.getItem(selectedBusinessKey);
-        if (preferredBusinessId) {
-          const found = allBusinesses.find(b => b.id === preferredBusinessId);
-          if (found) setSelectedBusiness(found);
-        } else if (allBusinesses.length > 0) {
-          setSelectedBusiness(allBusinesses[0]);
+        const explicitBusinessId = routeState?.businessId || propBusinessId;
+        const newest = allBusinesses[0] || null;
+        let next: Business | null = null;
+        if (explicitBusinessId) {
+          next = allBusinesses.find(b => b.id === explicitBusinessId) || null;
+        } else {
+          const storedId = window.localStorage.getItem(selectedBusinessKey);
+          const storedAt = window.localStorage.getItem(`${selectedBusinessKey}:at`) || '';
+          const stored = storedId ? allBusinesses.find(b => b.id === storedId) : undefined;
+          const newerSaveElsewhere =
+            !!newest?.last_activity_at &&
+            newest.id !== stored?.id &&
+            newest.last_activity_at > storedAt;
+          next = stored && !newerSaveElsewhere ? stored : newest;
+        }
+        if (next) {
+          setSelectedBusiness((current) => (current?.id === next!.id ? current : next));
         }
       }
     } catch (error) {
@@ -1130,7 +1204,7 @@ export function CloudProjects({ userId, businessId: propBusinessId, onProjectSel
                   <div className="min-w-0">
                     <p className="truncate font-medium text-white">{project.name}</p>
                     <p className="mt-1 text-xs text-white/40">
-                      Updated {new Date(project.updated_at || project.created_at).toLocaleDateString()}
+                      Updated {formatSavedAt(project.updated_at || project.created_at)}
                     </p>
                   </div>
                   {project.preview_ready ? (
@@ -1243,7 +1317,7 @@ export function CloudProjects({ userId, businessId: propBusinessId, onProjectSel
                     toggleBusinessSelection(business.id);
                     return;
                   }
-                  window.localStorage.setItem(selectedBusinessKey, business.id);
+                  rememberSelectedBusiness(business.id);
                   setSelectedBusiness(business);
                   setActiveSection('projects');
                 }}
@@ -1255,7 +1329,7 @@ export function CloudProjects({ userId, businessId: propBusinessId, onProjectSel
                     toggleBusinessSelection(business.id);
                     return;
                   }
-                  window.localStorage.setItem(selectedBusinessKey, business.id);
+                  rememberSelectedBusiness(business.id);
                   setSelectedBusiness(business);
                   setActiveSection('projects');
                 }}
@@ -1292,6 +1366,11 @@ export function CloudProjects({ userId, businessId: propBusinessId, onProjectSel
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium truncate text-sm">{business.name}</p>
+                  {business.last_activity_at && (
+                    <p className="truncate text-[10px] text-white/30">
+                      Saved {formatSavedAt(business.last_activity_at)}
+                    </p>
+                  )}
                 </div>
                 {!businessSelectionMode && business.owner_id === userId && (
                   <button
@@ -1512,7 +1591,7 @@ export function CloudProjects({ userId, businessId: propBusinessId, onProjectSel
                             
                             <div className="flex items-center gap-2 mt-3 text-xs text-white/30">
                               <Clock className="h-3 w-3" />
-                              {new Date(project.updated_at || project.created_at).toLocaleDateString()}
+                              {formatSavedAt(project.updated_at || project.created_at)}
                             </div>
 
                             {/* Actions */}
@@ -1624,7 +1703,7 @@ export function CloudProjects({ userId, businessId: propBusinessId, onProjectSel
                                 </Badge>
                               </td>
                               <td className="px-4 py-3 text-sm text-white/40">
-                                {new Date(project.updated_at || project.created_at).toLocaleDateString()}
+                                {formatSavedAt(project.updated_at || project.created_at)}
                               </td>
                               <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                                 <div className="flex items-center justify-end gap-1">
