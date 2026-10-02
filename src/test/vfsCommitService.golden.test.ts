@@ -153,7 +153,7 @@ vi.mock('@/integrations/supabase/client', () => {
       },
       functions: { invoke: runtimeReconcileInvoke },
       rpc: async (functionName: string, payload: Record<string, unknown>) => {
-        if (functionName !== 'commit_canonical_site_revision') {
+        if (functionName !== 'commit_canonical_site_revision_v2') {
           return { data: null, error: { message: `Unexpected RPC ${functionName}` } };
         }
         if (canonicalCommitRpcError) return { data: null, error: canonicalCommitRpcError };

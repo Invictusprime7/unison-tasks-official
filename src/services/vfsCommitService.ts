@@ -1628,7 +1628,7 @@ async function finalize(args: {
     PERSIST_IN_FLIGHT.add(breakerKey);
     let rpcResult: { data: unknown; error: { message?: string } | null };
     try {
-      rpcResult = await (supabase.rpc as any)('commit_canonical_site_revision', {
+      rpcResult = await (supabase.rpc as any)('commit_canonical_site_revision_v2', {
       p_project_id: input.identity.projectId,
       p_business_id: input.identity.businessId,
       p_draft_id: input.identity.draftId,

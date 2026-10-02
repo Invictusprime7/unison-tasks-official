@@ -23,7 +23,7 @@ vi.mock('@/integrations/supabase/client', () => ({
     },
     functions: { invoke: reconcile },
     rpc: async (name: string, payload: Record<string, unknown>) => {
-      expect(name).toBe('commit_canonical_site_revision');
+      expect(name).toBe('commit_canonical_site_revision_v2');
       const snapshot = payload.p_site_bundle_snapshot as { vfsFiles: Record<string, string> };
       const runtimeFiles = Object.fromEntries(Object.entries(payload.p_vfs_files as Record<string, string>)
         .filter(([path]) => !path.startsWith('/.unison/')));

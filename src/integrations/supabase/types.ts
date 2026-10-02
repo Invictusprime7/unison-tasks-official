@@ -5109,7 +5109,7 @@ export type Database = {
       }
     }
     Functions: {
-      commit_canonical_site_revision: {
+      commit_canonical_site_revision_v2: {
         Args: {
           p_active_page_path: string
           p_backend_ops_applied: Json
