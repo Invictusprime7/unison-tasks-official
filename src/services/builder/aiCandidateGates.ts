@@ -13,6 +13,7 @@
  */
 
 import { buildAICandidateChangeSet, type CandidateBuildResult } from './aiCandidateChangeSet';
+import { repairAuthoredImages } from './authoredImageRepair';
 import { auditSiteAffinity, type HomepageVisualLanguage } from '@/services/launch/homepageFirstContract';
 
 export interface CandidateGateFailure {
@@ -177,6 +178,8 @@ export async function prepareAICandidate(input: {
     forbiddenImplementations?: Readonly<Record<string, readonly string[] | undefined>>;
   };
 }): Promise<PreparedCandidate> {
+  // Dead placeholder image hosts never reach a committed revision.
+  input = { ...input, aiFiles: repairAuthoredImages(input.aiFiles) };
   let build = buildAICandidateChangeSet({
     aiFiles: input.aiFiles,
     deletions: input.deletions,
