@@ -243,6 +243,10 @@ export function CloudProjects({ userId, businessId: propBusinessId, onProjectSel
   const location = useLocation();
   const businessCacheKey = `${BUSINESS_CACHE_KEY_PREFIX}:${userId}`;
   const selectedBusinessKey = `${SELECTED_BUSINESS_KEY_PREFIX}:${userId}`;
+  const rememberSelectedBusiness = (businessId: string) => {
+    window.localStorage.setItem(selectedBusinessKey, businessId);
+    window.localStorage.setItem(`${selectedBusinessKey}:at`, new Date().toISOString());
+  };
 
   useEffect(() => {
     if (!userId) return;
@@ -273,6 +277,29 @@ export function CloudProjects({ userId, businessId: propBusinessId, onProjectSel
   // Load businesses on mount
   useEffect(() => {
     if (userId) loadBusinesses();
+  }, [userId]);
+
+  // Re-rank workspaces when the user returns from the builder or a save lands,
+  // so the most recently saved site surfaces without a manual reload.
+  useEffect(() => {
+    if (!userId) return;
+    let timer: number | null = null;
+    const refresh = () => {
+      if (timer !== null) window.clearTimeout(timer);
+      timer = window.setTimeout(() => void loadBusinesses(), 300);
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') refresh();
+    };
+    window.addEventListener('focus', refresh);
+    window.addEventListener('unison:project-draft-saved', refresh);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      if (timer !== null) window.clearTimeout(timer);
+      window.removeEventListener('focus', refresh);
+      window.removeEventListener('unison:project-draft-saved', refresh);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
   }, [userId]);
 
   useEffect(() => {
@@ -1177,7 +1204,7 @@ export function CloudProjects({ userId, businessId: propBusinessId, onProjectSel
                   <div className="min-w-0">
                     <p className="truncate font-medium text-white">{project.name}</p>
                     <p className="mt-1 text-xs text-white/40">
-                      Updated {new Date(project.updated_at || project.created_at).toLocaleDateString()}
+                      Updated {formatSavedAt(project.updated_at || project.created_at)}
                     </p>
                   </div>
                   {project.preview_ready ? (
@@ -1564,7 +1591,7 @@ export function CloudProjects({ userId, businessId: propBusinessId, onProjectSel
                             
                             <div className="flex items-center gap-2 mt-3 text-xs text-white/30">
                               <Clock className="h-3 w-3" />
-                              {new Date(project.updated_at || project.created_at).toLocaleDateString()}
+                              {formatSavedAt(project.updated_at || project.created_at)}
                             </div>
 
                             {/* Actions */}
@@ -1676,7 +1703,7 @@ export function CloudProjects({ userId, businessId: propBusinessId, onProjectSel
                                 </Badge>
                               </td>
                               <td className="px-4 py-3 text-sm text-white/40">
-                                {new Date(project.updated_at || project.created_at).toLocaleDateString()}
+                                {formatSavedAt(project.updated_at || project.created_at)}
                               </td>
                               <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                                 <div className="flex items-center justify-end gap-1">
