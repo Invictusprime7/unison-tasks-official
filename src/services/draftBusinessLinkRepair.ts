@@ -150,7 +150,7 @@ async function backfillCommittedRevision(
     fn: string,
     args: Record<string, unknown>,
   ) => Promise<{ data: unknown; error: { message: string } | null }>)(
-    'commit_canonical_site_revision',
+    'commit_canonical_site_revision_v2',
     {
       p_project_id: projectId,
       p_business_id: businessId,
