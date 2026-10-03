@@ -229,11 +229,74 @@ RULES:
 
 // ── VFS files context ────────────────────────────────────────────────────────
 
-export function buildVfsFilesContext(surgicalEdit: boolean, vfsFiles?: Record<string, string>): string {
+function normalizeVfsPath(path: string): string {
+  const parts: string[] = [];
+  for (const part of path.split('/')) {
+    if (!part || part === '.') continue;
+    if (part === '..') parts.pop();
+    else parts.push(part);
+  }
+  return `/${parts.join('/')}`;
+}
+
+function resolveVfsImport(fromFile: string, specifier: string, files: Record<string, string>): string | null {
+  if (!specifier.startsWith('.') && !specifier.startsWith('@/')) return null;
+  const base = specifier.startsWith('@/')
+    ? `/src/${specifier.slice(2)}`
+    : normalizeVfsPath(`${fromFile.slice(0, fromFile.lastIndexOf('/'))}/${specifier}`);
+  const candidates = [base, `${base}.tsx`, `${base}.ts`, `${base}.jsx`, `${base}.js`, `${base}/index.tsx`, `${base}/index.ts`];
+  return candidates.find((candidate) => candidate in files) ?? null;
+}
+
+function collectScopedVfsPaths(targetFile: string, files: Record<string, string>): Set<string> {
+  const target = normalizeVfsPath(targetFile);
+  if (!(target in files)) return new Set(Object.keys(files));
+
+  const selected = new Set<string>([target]);
+  const pending = [target];
+  while (pending.length > 0) {
+    const current = pending.pop();
+    if (!current) continue;
+    const imports = files[current].matchAll(/(?:\bfrom\s*|\bimport\s*(?:\(\s*)?)['"]([^'"]+)['"]/g);
+    for (const match of imports) {
+      const imported = resolveVfsImport(current, match[1], files);
+      if (imported && !selected.has(imported)) {
+        selected.add(imported);
+        pending.push(imported);
+      }
+    }
+  }
+
+  // Include direct callers as contract context, but do not recursively widen
+  // the edit surface to the whole project.
+  for (const [path, content] of Object.entries(files)) {
+    if (selected.has(path)) continue;
+    const imports = content.matchAll(/(?:\bfrom\s*|\bimport\s*(?:\(\s*)?)['"]([^'"]+)['"]/g);
+    for (const match of imports) {
+      const imported = resolveVfsImport(path, match[1], files);
+      if (imported && selected.has(imported)) {
+        selected.add(path);
+        break;
+      }
+    }
+  }
+
+  return selected;
+}
+
+export function buildVfsFilesContext(
+  surgicalEdit: boolean,
+  vfsFiles?: Record<string, string>,
+  targetFile?: string,
+): string {
   if (!surgicalEdit || !vfsFiles || Object.keys(vfsFiles).length === 0) return '';
   
-  const vfsEntries = Object.entries(vfsFiles);
+  const scopedPaths = targetFile ? collectScopedVfsPaths(targetFile, vfsFiles) : new Set(Object.keys(vfsFiles));
+  const normalizedTarget = targetFile ? normalizeVfsPath(targetFile) : null;
+  const vfsEntries = Object.entries(vfsFiles).filter(([path]) => scopedPaths.has(path));
   const sorted = vfsEntries.sort(([a], [b]) => {
+    if (a === normalizedTarget) return -1;
+    if (b === normalizedTarget) return 1;
     const aReact = /\.(tsx|jsx)$/.test(a) ? 0 : 1;
     const bReact = /\.(tsx|jsx)$/.test(b) ? 0 : 1;
     return aReact - bReact;
@@ -247,7 +310,10 @@ export function buildVfsFilesContext(surgicalEdit: boolean, vfsFiles?: Record<st
     totalChars += content.length;
   }
   if (included.length === 0) return '';
-  return `\n\n📁 CURRENT PROJECT FILES (${included.length} files):\n${included.join('\n\n')}`;
+  const targetNote = normalizedTarget
+    ? `\n🎯 RESOLVED EDIT TARGET: ${normalizedTarget}\nOnly this target may be modified unless the request explicitly requires a directly related caller. Do not infer a different target from nearby files.`
+    : '';
+  return `\n\n📁 CURRENT EDIT CONTEXT (${included.length} directly related files):${targetNote}\n${included.join('\n\n')}`;
 }
 
 // ── Fast-path wizard prompt ──────────────────────────────────────────────────

@@ -74,6 +74,7 @@ type RevisionRow = {
 const revisionStore: RevisionRow[] = [];
 const draftProjectionUpdates: Array<{ id: unknown; userId: unknown; revisionId: unknown }> = [];
 let canonicalCommitRpcError: { message: string } | null = null;
+let lastCanonicalCommitPayload: Record<string, unknown> | null = null;
 
 vi.mock('@/integrations/supabase/client', () => {
   const insert = (payload: Record<string, unknown>) => ({
@@ -156,6 +157,7 @@ vi.mock('@/integrations/supabase/client', () => {
         if (functionName !== 'commit_canonical_site_revision_v2') {
           return { data: null, error: { message: `Unexpected RPC ${functionName}` } };
         }
+        lastCanonicalCommitPayload = payload;
         if (canonicalCommitRpcError) return { data: null, error: canonicalCommitRpcError };
         const seq = String(revisionStore.length + 1).padStart(12, '0');
         const id = `00000000-0000-0000-0000-${seq}`;
@@ -169,6 +171,17 @@ vi.mock('@/integrations/supabase/client', () => {
         const stampedProvenance = Object.fromEntries(Object.entries(commitMetadata.fileProvenance ?? {}).map(
           ([path, record]) => [path, record.authoredRevisionId ? record : { ...record, authoredRevisionId: id }],
         ));
+        const vfsDelta = (commitMetadata as { vfsDelta?: { files?: Record<string, string>; deletedPaths?: string[] } }).vfsDelta;
+        const previousFiles = [...revisionStore].reverse().find((revision) => revision.status === 'committed')?.vfs_files ?? {};
+        const fullVfs = vfsDelta
+          ? {
+              ...previousFiles,
+              ...vfsDelta.files,
+            }
+          : (payload.p_vfs_files ?? {}) as Record<string, unknown>;
+        for (const path of vfsDelta?.deletedPaths ?? []) delete fullVfs[path];
+        const runtimeVfs = Object.fromEntries(Object.entries(fullVfs)
+          .filter(([path]) => !path.startsWith('/.unison/') && !path.startsWith('.unison/')));
         const row: RevisionRow = {
           id,
           project_id: String(payload.p_project_id),
@@ -179,7 +192,10 @@ vi.mock('@/integrations/supabase/client', () => {
           status: payload.p_status as RevisionRow['status'],
           patch_json: patchJson,
           vfs_files: (payload.p_vfs_files ?? {}) as Record<string, unknown>,
-          site_bundle_snapshot: (payload.p_site_bundle_snapshot ?? {}) as Record<string, unknown>,
+          site_bundle_snapshot: {
+            ...((payload.p_site_bundle_snapshot ?? {}) as Record<string, unknown>),
+            vfsFiles: runtimeVfs,
+          },
           runtime_manifest: (payload.p_runtime_manifest ?? {}) as Record<string, unknown>,
           playground_state: (payload.p_playground_state ?? {}) as Record<string, unknown>,
           readiness_report: (payload.p_readiness_report ?? {}) as Record<string, unknown>,
@@ -217,6 +233,7 @@ import {
   loadLatestPublishReadyRevisionForProject,
   hashVfsFiles,
   restoreRevision,
+  __resetPersistCircuitForTests,
 } from '@/services/vfsCommitService';
 import { commitToPipeline } from '@/platform/core/commitToPipeline';
 import { runFullPreflight } from '@/services/runFullPreflight';
@@ -267,6 +284,8 @@ beforeEach(() => {
   revisionStore.length = 0;
   draftProjectionUpdates.length = 0;
   canonicalCommitRpcError = null;
+  lastCanonicalCommitPayload = null;
+  __resetPersistCircuitForTests();
   vi.clearAllMocks();
   vi.mocked(buildCanonicalLaunchArtifacts).mockImplementation((input) => ({
     files: input.generatedFiles,
@@ -924,6 +943,54 @@ describe('Golden E2E — salon launcher → AI edits → publish gate', () => {
 
     expect(revisionStore).toEqual([]);
     expect(draftProjectionUpdates).toEqual([]);
+  });
+
+  it('recovers a committed revision when the RPC response times out after commit', async () => {
+    const files = { '/src/App.tsx': 'export default function App(){return null}' };
+    mockPipeline(files);
+    mockPreflight(files);
+    mockIntents(0, 0);
+    canonicalCommitRpcError = { message: 'upstream request timeout' };
+    const vfsHash = await hashVfsFiles(files);
+    const recoveredRevisionId = '00000000-0000-0000-0000-999999999999';
+    revisionStore.push({
+      id: recoveredRevisionId,
+      project_id: IDENTITY.projectId,
+      business_id: IDENTITY.businessId,
+      draft_id: IDENTITY.draftId,
+      parent_revision_id: null,
+      source: 'ai-builder',
+      status: 'committed',
+      patch_json: {},
+      vfs_files: files,
+      site_bundle_snapshot: {},
+      runtime_manifest: {},
+      playground_state: {},
+      readiness_report: {},
+      diagnostics: [],
+      candidate_id: null,
+      operation_ids: [],
+      file_provenance: {},
+      created_by: IDENTITY.userId,
+      created_at: new Date().toISOString(),
+      vfs_hash: vfsHash,
+    } as RevisionRow);
+
+    const result = await commitMutation({
+      source: 'ai-builder',
+      identity: IDENTITY,
+      current: { vfsFiles: {}, activePagePath: '/src/App.tsx' },
+      patch: legacyFilesToPatchPlan(files, 'recover timed out commit'),
+      options: { selections: { industry: 'portfolio' } as never },
+    });
+
+    expect(result.status).toBe('committed');
+    expect(result.persistedRevisionId).toBe(recoveredRevisionId);
+    expect(revisionStore).toHaveLength(1);
+    const persistedPatch = lastCanonicalCommitPayload?.p_patch_json as {
+      fileOps?: Array<Record<string, unknown>>;
+    } | undefined;
+    expect(persistedPatch?.fileOps?.[0]).not.toHaveProperty('contents');
   });
 
   it('chains five commits across sources and persists a revision per step', async () => {

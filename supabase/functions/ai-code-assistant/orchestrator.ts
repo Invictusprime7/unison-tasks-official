@@ -378,7 +378,7 @@ async function runBuilderLane(
     userDesignProfile, systemsBuildContext, navPageGen = false, navPageName, navLabel,
     siteElementsLibraryContext, registryContext, surgicalEdit = false,
     componentBehaviorContext, vfsFiles, gatewayOptions,
-    previewDiagnostics, previewSnapshot, recentChangedFiles,
+    previewDiagnostics, previewSnapshot, recentChangedFiles, targetFile,
   } = parsed;
   const editScope = (parsed as { editScope?: import("./reviewScope.ts").EditScopeInput }).editScope;
   const wizardSeed = (parsed as { wizardSeed?: WizardSeedShape }).wizardSeed;
@@ -518,7 +518,7 @@ async function runBuilderLane(
   // For surgical edits, use old-style VFS context (byte-for-byte preservation)
   // For ALL edit tasks, provide VFS context for structure preservation (not just surgical)
   const isEditTask = ['surgical_edit', 'behavioral_edit', 'single_file_edit', 'multi_file_edit', 'template_react_edit'].includes(task.type);
-  const vfsFilesContext = buildVfsFilesContext(surgicalEdit || isEditTask, vfsFiles);
+  const vfsFilesContext = buildVfsFilesContext(surgicalEdit || isEditTask, vfsFiles, targetFile);
   const surgicalEditReinforcement = buildSurgicalEditReinforcement(surgicalEdit || isEditTask, vfsFilesContext);
 
   const imageContext = imageResult.generatedImageUrl
@@ -751,11 +751,12 @@ async function runBuilderLane(
       // ── Scope enforcement for scoped edits ──────────────────────────
       const scopeResult = checkEditScope({
         patchFiles: reviewResult.cleanedFiles,
-        targetFile: payload.targetFile ?? editScope?.componentPath ?? null,
+        targetFile: targetFile ?? payload.targetFile ?? editScope?.componentPath ?? null,
         taskType: task.type,
         existingFiles,
         editScope: editScope ?? null,
         originalFiles: vfsFiles ?? {},
+        userPrompt: userPromptText,
       });
       if (!scopeResult.inScope) {
         console.warn(`[orchestrator] SCOPE VIOLATION: ${scopeResult.reason}`);

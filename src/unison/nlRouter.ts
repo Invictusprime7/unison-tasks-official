@@ -163,6 +163,11 @@ const ROUTE_PATTERNS: RoutePattern[] = [
  */
 export function routePrompt(prompt: string): NLRouteResult {
   const lower = prompt.toLowerCase().trim();
+  const explicitlyNonOperational = /\b(?:do not|don't|without|never|no)\b[^.!?]{0,80}\b(?:routes?|paths?|capabilit(?:y|ies)|backend|workflows?|database)\b/.test(lower);
+  const isUiSourceEdit = /\b(?:ui[- ]?only|source edit|visual only|copy only|text only|hero|component|page)\b/.test(lower);
+  if (explicitlyNonOperational && isUiSourceEdit) {
+    return { route: 'builder.edit', confidence: 0.98, secondaryRoutes: [] };
+  }
   // Page-design instructions often refer to existing navigation collectively.
   if (/\b(?:design|redesign|build|finish|complete)\b[^.!?]{0,70}\b(?:(?:other|remaining|rest of the|all)\s+(?:nav(?:igation)?\s+)?pages|nav(?:igation)?\s+pages)\b/.test(lower)) {
     return { route: 'page.edit', confidence: 0.95, secondaryRoutes: [] };

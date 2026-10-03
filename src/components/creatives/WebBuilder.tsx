@@ -8325,8 +8325,17 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                             const next = prev.length >= 20 ? prev.slice(-19) : prev;
                             const errorType = err.includes('SyntaxError') || err.includes('Unexpected token') ? 'syntax' as const
                               : err.includes('fetch') || err.includes('network') || err.includes('CORS') ? 'network' as const
+                              : /supabase|postgres|row-level security|edge function/i.test(err) ? 'supabase' as const
                               : 'runtime' as const;
-                            return [...next, { type: errorType, message: err, timestamp: new Date() }];
+                            const location = err.match(/(?:\(|\s)([^()\s]+\.(?:tsx?|jsx?|css|json)):(\d+)(?::(\d+))?\)?/);
+                            return [...next, {
+                              type: errorType,
+                              message: err,
+                              file: location?.[1],
+                              line: location ? Number(location[2]) : undefined,
+                              column: location?.[3] ? Number(location[3]) : undefined,
+                              timestamp: new Date(),
+                            }];
                           });
                         }}
                       />

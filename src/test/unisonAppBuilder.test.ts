@@ -182,6 +182,7 @@ describe('UnisonAppBuilder facade', () => {
     });
 
     expect(runComposer).toHaveBeenCalledOnce();
+    expect(runComposer).toHaveBeenCalledWith(expect.objectContaining({ resolveDependencies: false }));
     expect(result.stopReason).toBe('complete');
     expect(result.changeSet).toBe(changeSet);
     expect(result.candidate.files).toEqual(nextFiles);

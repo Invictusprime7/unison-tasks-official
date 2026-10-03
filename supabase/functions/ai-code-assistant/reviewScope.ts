@@ -20,6 +20,56 @@ function normalizeVfsPath(p: string): string {
   return p.startsWith("/") ? p : `/${p}`;
 }
 
+const IMPORT_PATTERN = /^\s*import\s[\s\S]*?;?$/gm;
+const COMPONENT_DECLARATION_PATTERN = /(?:function|const)\s+([A-Z][A-Za-z0-9_]*)/g;
+const JSX_TAG_PATTERN = /<\s*([A-Za-z][A-Za-z0-9_.-]*)\b/g;
+const SIDE_EFFECT_TAGS = new Set([
+  "form", "input", "textarea", "select", "option", "button", "dialog",
+  "nav", "header", "footer", "section", "article", "aside", "table",
+  "video", "audio", "iframe",
+]);
+
+function collectMatches(content: string, pattern: RegExp): Set<string> {
+  return new Set([...content.matchAll(pattern)].map((match) => match[1]));
+}
+
+function promptAllows(prompt: string, token: string): boolean {
+  const lower = prompt.toLowerCase();
+  if (["form", "input", "textarea", "select", "option"].includes(token.toLowerCase())) {
+    return /\b(form|contact|signup|sign up|register|checkout|booking|appointment|submit|field|input|textarea|select)\b/.test(lower);
+  }
+  if (token.toLowerCase() === "button") return /\b(button|cta|call to action|submit|action|form|contact|signup|checkout|booking)\b/.test(lower);
+  if (/^[A-Z]/.test(token)) return /\b(add|create|introduce|new|component|form|widget|section|block)\b/.test(lower);
+  return false;
+}
+
+function findUnrequestedScopedSideEffects(original: string, candidate: string, prompt: string): string[] {
+  const reasons: string[] = [];
+  const originalImports = new Set([...original.matchAll(IMPORT_PATTERN)].map((match) => match[0].trim()));
+  const candidateImports = new Set([...candidate.matchAll(IMPORT_PATTERN)].map((match) => match[0].trim()));
+  const addedImports = [...candidateImports].filter((value) => !originalImports.has(value));
+  if (addedImports.length > 0 && !/\b(add|create|introduce|import|use|icon|motion|animate|form|button|component)\b/i.test(prompt)) {
+    reasons.push(`new imports (${addedImports.length})`);
+  }
+
+  const originalTags = collectMatches(original, JSX_TAG_PATTERN);
+  const candidateTags = collectMatches(candidate, JSX_TAG_PATTERN);
+  for (const tag of [...candidateTags].filter((value) => !originalTags.has(value))) {
+    const normalizedTag = tag.toLowerCase();
+    if ((SIDE_EFFECT_TAGS.has(normalizedTag) || /^[A-Z]/.test(tag)) && !promptAllows(prompt, tag)) {
+      reasons.push(`new <${tag}> element`);
+    }
+  }
+
+  const originalDeclarations = collectMatches(original, COMPONENT_DECLARATION_PATTERN);
+  const candidateDeclarations = collectMatches(candidate, COMPONENT_DECLARATION_PATTERN);
+  for (const name of [...candidateDeclarations].filter((value) => !originalDeclarations.has(value))) {
+    if (!promptAllows(prompt, name)) reasons.push(`new ${name} component`);
+  }
+
+  return [...new Set(reasons)];
+}
+
 export interface EditScopeInput {
   scopeType?: "element" | "block" | "section" | "page";
   componentPath?: string;
@@ -39,8 +89,9 @@ export function checkEditScope(opts: {
   existingFiles?: string[];
   editScope?: EditScopeInput | null;
   originalFiles?: Record<string, string>;
+  userPrompt?: string;
 }): ScopeCheckResult {
-  const { patchFiles, taskType, existingFiles = [], editScope, originalFiles = {} } = opts;
+  const { patchFiles, taskType, existingFiles = [], editScope, originalFiles = {}, userPrompt = "" } = opts;
   // editScope.componentPath overrides targetFile when present
   const targetFile = editScope?.componentPath || opts.targetFile;
 
@@ -57,13 +108,6 @@ export function checkEditScope(opts: {
   }
 
   const patchPaths = Object.keys(patchFiles).map(normalizeVfsPath);
-
-  // Freeform Builder edits may span page files, local components, and shared
-  // navigation. Without an explicit toolbar range, file-count and target-file
-  // heuristics are advisory only; syntax/import validation remains mandatory.
-  if (!editScope) {
-    return { inScope: true, reason: null, outOfScopeFiles: [], blockAutoApply: false };
-  }
 
   // Rule 1: If we have a resolved target file, patch MUST include it
   if (targetFile) {
@@ -116,6 +160,22 @@ export function checkEditScope(opts: {
           inScope: false,
           reason: `Target file ${normTarget} reduced to ${content.length} chars — likely a stub.`,
           outOfScopeFiles: [],
+          blockAutoApply: true,
+        };
+      }
+    }
+
+    const newKey = Object.keys(patchFiles).find((k) => normalizeVfsPath(k) === normTarget);
+    const origKey = Object.keys(originalFiles).find((k) => normalizeVfsPath(k) === normTarget);
+    const newContent = newKey ? patchFiles[newKey] : null;
+    const origContent = origKey ? originalFiles[origKey] : null;
+    if (newContent && origContent) {
+      const sideEffects = findUnrequestedScopedSideEffects(origContent, newContent, userPrompt);
+      if (sideEffects.length > 0) {
+        return {
+          inScope: false,
+          reason: `Scoped edit introduced unrequested side effects: ${sideEffects.join(", ")}.`,
+          outOfScopeFiles: [normTarget],
           blockAutoApply: true,
         };
       }

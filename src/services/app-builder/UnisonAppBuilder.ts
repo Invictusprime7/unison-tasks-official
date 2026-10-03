@@ -86,6 +86,7 @@ export function createUnisonAppBuilder(
         signal: input.signal,
         timeoutMs: input.timeoutMs,
         preflight: input.preflight,
+        resolveDependencies: false,
         initialRouteOps: input.initialRouteOps,
         candidateOrigin: input.diagnostics?.length ? 'repair' : 'builder',
         candidateIntent: input.instruction.slice(0, 240),

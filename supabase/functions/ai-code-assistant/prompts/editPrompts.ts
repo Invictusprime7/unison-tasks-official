@@ -322,6 +322,7 @@ NEVER respond with only text/reasoning — ALWAYS include the actual code with t
 
 FOR REACT/TSX PROJECTS:
 - If the user's prompt targets a specific component or section, output ONLY the modified file(s) using JSON format: {"files": {"/path/file.tsx": "...content..."}}
+- Treat the resolved edit target in the supplied CURRENT EDIT CONTEXT as authoritative. Do not fall back to an entry file or the nearest file when the target is a child component.
 - Preserve ALL imports, hooks, state declarations, and component structure in the file — only change the targeted JSX, logic, or styles.
 - If the edit targets a child component in a separate file, output only that child file — not the parent.
 - Keep all React patterns intact: hooks order, conditional rendering, map calls, event handlers.
@@ -335,6 +336,8 @@ EVERY other section, element, style, script, text, image, color, font, and data 
 Think of this as applying a minimal diff — if a line wasn't mentioned by the user, it MUST NOT change.
 DO NOT "improve", reorganize, or modernize unmentioned parts of the code.
 DO NOT add new sections or components unless explicitly asked.
+- A visual request such as a navbar layout change does not authorize forms, fields, dialogs, CTAs, or other new interactive components. If the request does not mention them, do not add them.
+- For visual arrangement requests, change only the properties necessary for the requested arrangement. Preserve existing typography, scale, spacing, margins, responsive breakpoints, and component conventions unless the user explicitly asks to change them.
 DO NOT remove any sections, scripts, components, or styles.
 If the user asks to change ONE element's color, ONLY that element's color class changes. Nothing else.
 

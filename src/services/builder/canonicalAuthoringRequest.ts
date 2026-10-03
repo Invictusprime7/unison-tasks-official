@@ -31,11 +31,13 @@ export function shouldUseCanonicalComposer(input: {
   isCatalogMutationRequest: boolean;
   hasAttachments: boolean;
   hasVfs: boolean;
+  isScopedEdit?: boolean;
 }): boolean {
   return input.isReactProject
     && !input.isLaunchPlanningRequest
     && !input.isCatalogMutationRequest
     && !input.hasAttachments
+    && !input.isScopedEdit
     && input.hasVfs;
 }
 

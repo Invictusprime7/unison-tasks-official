@@ -59,6 +59,54 @@ export interface SiteAnalysis {
   sectionMap: string; // human-readable summary for the AI prompt
 }
 
+interface ResolveEditTargetOptions {
+  /** Active page source used to prefer components actually rendered by that page. */
+  preferredFile?: string | null;
+  files?: Readonly<Record<string, string>>;
+}
+
+function normalizeImportPath(path: string): string {
+  const segments: string[] = [];
+  for (const segment of path.split('/')) {
+    if (!segment || segment === '.') continue;
+    if (segment === '..') segments.pop();
+    else segments.push(segment);
+  }
+  return `/${segments.join('/')}`;
+}
+
+function resolveImportedFile(
+  fromFile: string,
+  specifier: string,
+  files: Readonly<Record<string, string>>,
+): string | null {
+  if (!specifier.startsWith('.') && !specifier.startsWith('@/')) return null;
+  const base = specifier.startsWith('@/')
+    ? `/src/${specifier.slice(2)}`
+    : normalizeImportPath(`${fromFile.slice(0, fromFile.lastIndexOf('/'))}/${specifier}`);
+  const candidates = [base, `${base}.tsx`, `${base}.ts`, `${base}.jsx`, `${base}.js`, `${base}/index.tsx`, `${base}/index.ts`];
+  return candidates.find((candidate) => candidate in files) ?? null;
+}
+
+function collectReachableFiles(
+  rootFile: string,
+  files: Readonly<Record<string, string>>,
+): Set<string> {
+  const reachable = new Set<string>();
+  const pending = [rootFile];
+  while (pending.length) {
+    const current = pending.pop();
+    if (!current || reachable.has(current) || !files[current]) continue;
+    reachable.add(current);
+    const imports = files[current].matchAll(/(?:\bfrom\s*|\bimport\s*(?:\(\s*)?)['"]([^'"]+)['"]/g);
+    for (const match of imports) {
+      const imported = resolveImportedFile(current, match[1], files);
+      if (imported && !reachable.has(imported)) pending.push(imported);
+    }
+  }
+  return reachable;
+}
+
 /** Identify section label from a component name or its JSX */
 function classifySection(name: string, content: string): string | null {
   for (const { pattern, label } of SECTION_PATTERNS) {
@@ -291,25 +339,43 @@ function buildSectionMap(
 export function resolveEditTarget(
   userPrompt: string,
   analysis: SiteAnalysis,
+  options: ResolveEditTargetOptions = {},
 ): { file: string; component: string; section: string | null; confidence: 'high' | 'medium' | 'low' } | null {
   const lower = userPrompt.toLowerCase();
+  const reachable = options.preferredFile && options.files
+    ? collectReachableFiles(options.preferredFile, options.files)
+    : null;
+  const prioritizeRendered = (components: ComponentInfo[]): ComponentInfo[] => [...components].sort((a, b) => {
+    const aRendered = reachable?.has(a.file) ? 0 : 1;
+    const bRendered = reachable?.has(b.file) ? 0 : 1;
+    return aRendered - bRendered || a.file.localeCompare(b.file);
+  });
+
+  const sectionRequested = (sectionLabel: string | null): boolean => {
+    if (!sectionLabel) return false;
+    if (lower.includes(sectionLabel.toLowerCase())) return true;
+    if (sectionLabel === 'Navigation') return /\b(?:nav|navbar|navigation|menu)\b/i.test(lower);
+    return false;
+  };
   
+  // Section label match (hero, footer, etc.)
+  for (const c of prioritizeRendered(analysis.components)) {
+    if (sectionRequested(c.sectionLabel)) {
+      return { file: c.file, component: c.name, section: c.sectionLabel, confidence: 'high' };
+    }
+  }
+
   // Direct component name match
-  for (const c of analysis.components) {
+  for (const c of prioritizeRendered(analysis.components).filter((candidate) => (
+    candidate.name.toLowerCase() !== candidate.sectionLabel?.toLowerCase()
+  ))) {
     if (lower.includes(c.name.toLowerCase())) {
       return { file: c.file, component: c.name, section: c.sectionLabel, confidence: 'high' };
     }
   }
 
-  // Section label match (hero, footer, etc.)
-  for (const c of analysis.components) {
-    if (c.sectionLabel && lower.includes(c.sectionLabel.toLowerCase())) {
-      return { file: c.file, component: c.name, section: c.sectionLabel, confidence: 'high' };
-    }
-  }
-
   // Content-based match — check headings
-  for (const c of analysis.components) {
+  for (const c of prioritizeRendered(analysis.components)) {
     for (const heading of c.headings) {
       if (lower.includes(heading.toLowerCase().slice(0, 30))) {
         return { file: c.file, component: c.name, section: c.sectionLabel, confidence: 'medium' };
@@ -327,7 +393,7 @@ export function resolveEditTarget(
 
   for (const { keywords, check } of elementTargets) {
     if (keywords.test(lower)) {
-      const match = analysis.components.find(check);
+      const match = prioritizeRendered(analysis.components.filter(check))[0];
       if (match) {
         return { file: match.file, component: match.name, section: match.sectionLabel, confidence: 'low' };
       }

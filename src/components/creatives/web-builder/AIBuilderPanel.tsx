@@ -46,14 +46,14 @@ import {
   FileCode2,
   X,
   MessageSquare,
+  CircleDot,
+  Settings2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AIConversationMessage } from './ai-chat/AIConversationMessage';
 import { AIConversationWelcome } from './ai-chat/AIConversationWelcome';
 import { LaunchReadinessCard } from './ai-chat/LaunchReadinessCard';
 import { AIConversationInput } from './ai-chat/AIConversationInput';
-import { supabase as supabaseClient } from '@/integrations/supabase/client';
-const supabase = supabaseClient as any;
 import { toast } from 'sonner';
 import type { BusinessSystemType } from '@/data/templates/types';
 import type { SystemsBuildContext } from '@/types/systemsBuildContext';
@@ -97,6 +97,7 @@ import { sanitizeGeneratedFiles, sanitizeTsxFile } from '@/utils/tsxSanitizer';
 import {
   applyAIBuilderFiles,
   type AIBuilderApplyCallback,
+  type AIBuilderApplyMeta,
 } from '@/services/aiBuilderApply';
 import {
   CANDIDATE_GENERATED_NOTICE,
@@ -114,6 +115,8 @@ import {
 import type { TopologyChange } from '@/services/pageTopologyOrchestrator';
 import type { AICandidateChangeSet } from '@/services/builder/aiCandidateChangeSet';
 import { unisonAppBuilder } from '@/services/app-builder/UnisonAppBuilder';
+import { buildSequentialAiTasks } from '@/services/builder/sequentialAiTasks';
+import { findUnrequestedScopedSideEffects } from '@/services/builder/scopedEditContentGuard';
 
 import {
   planBusinessCapabilities,
@@ -127,6 +130,13 @@ import {
   requiresRenderableUiPatch,
 } from '@/services/builderRequestInterpreter';
 import { extractMultiFileOutput, extractStylesheetOutput } from '@/utils/aiResponseParser';
+import {
+  AIPermissionControl,
+  AI_EDIT_PERMISSION_STORAGE_KEY,
+  loadAIEditPermissions,
+  type AIEditPermissionCategory,
+  type AIEditPermissions,
+} from './AIPermissionControl';
 
 import {
   resolveCapabilityIntentBindings,
@@ -239,26 +249,31 @@ function wrapHtmlInReactComponent(html: string): string {
  */
 function getScopedEditAutoApplyBlockReason(opts: {
   files: Record<string, string>;
+  originalFiles: Record<string, string>;
+  prompt: string;
   resolvedTargetFile: string | null;
   existingFileKeys: string[];
 }): string | null {
   const normalizePath = (p: string) => (p.startsWith('/') ? p : `/${p}`);
   const paths = Object.keys(opts.files).map(normalizePath);
 
-  // NOTE: We intentionally do NOT hard-block when the AI omitted the
-  // heuristically-resolved target file. The resolver is a best-effort
-  // hint, and topology-driven multi-page sites frequently route a
-  // surgical edit to a sibling/child file (e.g. a section component
-  // imported by the page). Blocking those silently was the root cause
-  // of "AI builder surgical/behavioral edits no longer apply". Surface
-  // a console warning instead and let the apply proceed.
+  // A resolved target is a hard boundary for scoped auto-apply. The
+  // resolver now follows the active page's imports so sibling section
+  // components are resolved before this boundary is enforced.
   if (opts.resolvedTargetFile) {
     const normTarget = normalizePath(opts.resolvedTargetFile);
     if (!paths.includes(normTarget)) {
-      console.warn(
-        `[AIBuilderPanel] Scoped edit did not touch resolved target ${normTarget}; ` +
-          `applying anyway against: ${paths.join(', ')}`,
-      );
+      return `Scoped edit resolved to ${normTarget} but the AI returned: ${paths.join(', ') || 'no files'}.`;
+    }
+
+    const candidatePath = Object.keys(opts.files).find((path) => normalizePath(path) === normTarget);
+    const original = opts.originalFiles[normTarget] ?? opts.originalFiles[opts.resolvedTargetFile];
+    const candidate = candidatePath ? opts.files[candidatePath] : undefined;
+    if (original && candidate) {
+      const sideEffects = findUnrequestedScopedSideEffects(original, candidate, opts.prompt);
+      if (sideEffects.length > 0) {
+        return `Scoped edit introduced unrequested side effects: ${sideEffects.join(', ')}.`;
+      }
     }
   }
 
@@ -539,6 +554,13 @@ interface DroppedFile {
   size: number;
 }
 
+interface PendingPermissionAction {
+  category: AIEditPermissionCategory;
+  title: string;
+  description: string;
+  apply: () => Promise<boolean>;
+}
+
 // ============================================================================
 // Helper Functions
 // ============================================================================
@@ -607,6 +629,9 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [isFixing, setIsFixing] = useState(false);
   const [activeTab, setActiveTab] = useState<'code' | 'debug' | 'backend'>('code');
+  const [aiPermissions, setAIPermissions] = useState<AIEditPermissions>(() => loadAIEditPermissions());
+  const [pendingPermissionAction, setPendingPermissionAction] = useState<PendingPermissionAction | null>(null);
+  const [isApplyingPermissionAction, setIsApplyingPermissionAction] = useState(false);
   // Files the auto-apply guard held back. Without this the AI "resolved" a
   // rewrite that never materialized anywhere — now the user can still apply it.
   const [heldFiles, setHeldFiles] = useState<{ files: Record<string, string>; deletions?: string[]; routeOps?: TopologyChange[]; candidate?: AICandidateChangeSet; reason: string } | null>(null);
@@ -621,6 +646,53 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pendingPromptRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(AI_EDIT_PERMISSION_STORAGE_KEY, JSON.stringify(aiPermissions));
+    } catch {
+      // Permission state remains usable when storage is unavailable.
+    }
+  }, [aiPermissions]);
+
+  const canAutoApply = useCallback((category: AIEditPermissionCategory) => aiPermissions[category], [aiPermissions]);
+
+  const queuePermissionReview = useCallback((action: PendingPermissionAction) => {
+    setPendingPermissionAction(action);
+    setActiveTab('code');
+    toast.info(`${action.title} is ready for review`, {
+      description: 'Change the AI permission to Auto or approve this patch below.',
+    });
+  }, []);
+
+  const approvePendingPermissionAction = useCallback(async () => {
+    if (!pendingPermissionAction || isApplyingPermissionAction) return;
+    setIsApplyingPermissionAction(true);
+    try {
+      const applied = await pendingPermissionAction.apply();
+      if (!applied) throw new Error('The change was rejected by the active VFS gate.');
+      setPendingPermissionAction(null);
+      toast.success('Reviewed AI change applied');
+    } catch (error) {
+      toast.error('Reviewed AI change was not applied', {
+        description: error instanceof Error ? error.message : 'The VFS rejected the change.',
+      });
+    } finally {
+      setIsApplyingPermissionAction(false);
+    }
+  }, [isApplyingPermissionAction, pendingPermissionAction]);
+
+  const queueDebugPatchReview = useCallback((files: Record<string, string>, meta: AIBuilderApplyMeta) => {
+    queuePermissionReview({
+      category: 'behavioral',
+      title: 'Debug patch',
+      description: meta.summary || 'A debug patch is ready to apply to the project.',
+      apply: async () => (await applyAIBuilderFiles(onApplyToVFS, files, {
+        ...meta,
+        origin: 'debug-patch-reviewed',
+      })).success,
+    });
+  }, [onApplyToVFS, queuePermissionReview]);
 
   // Auto-send when a welcome prompt is selected
   useEffect(() => {
@@ -849,6 +921,22 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
     setDroppedFiles([]);
     setIsLoading(true);
     if (!isLaunchPlanningRequest && droppedFiles.length === 0 && onThemeEdit && isThemeOnlyRequest(userContent)) {
+      if (!canAutoApply('ui')) {
+        queuePermissionReview({
+          category: 'ui',
+          title: 'Theme edit',
+          description: userContent,
+          apply: async () => onThemeEdit(userContent),
+        });
+        setMessages(prev => [...prev, {
+          id: generateId(),
+          role: 'assistant',
+          content: 'Theme edit prepared. Review it below before it changes the project.',
+          timestamp: new Date(),
+        }]);
+        setIsLoading(false);
+        return;
+      }
       try {
         if (!await onThemeEdit(userContent)) throw new Error('The theme could not be saved. Your current site is unchanged.');
         setMessages(prev => [...prev, { id: generateId(), role: 'assistant', content: 'Updated the theme while preserving your content and composition.', timestamp: new Date() }]);
@@ -882,19 +970,40 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
       capabilityInterpretation.envelope,
       userContent,
     );
+    let backendAutoApplied = false;
     if (capabilityPlan.requestedCapabilities.length > 0) {
       const resolution = resolveCapabilityIntentBindings(
         capabilityPlan.proposal.intentBindings,
         vfsFiles ?? {},
       );
-      setPendingCapabilityProposal({ plan: capabilityPlan, resolution, isApplying: false });
+      const canApplyBackend = canAutoApply('backend')
+        && resolution.unresolved.length === 0
+        && !!onApproveCapabilityPlan;
+      if (canApplyBackend) {
+        setPendingCapabilityProposal({ plan: capabilityPlan, resolution, isApplying: true });
+        const outcome = await onApproveCapabilityPlan!(capabilityPlan, resolution);
+        if (outcome.success) {
+          backendAutoApplied = true;
+          toast.success('Backend capability applied automatically');
+          setPendingCapabilityProposal(null);
+        } else {
+          setPendingCapabilityProposal({ plan: capabilityPlan, resolution, isApplying: false });
+          toast.error('Backend capability needs review', { description: outcome.error });
+        }
+      } else {
+        setPendingCapabilityProposal({ plan: capabilityPlan, resolution, isApplying: false });
+      }
       if (needsRenderableUiPatch) {
-        toast.info('Backend setup requires approval. Building the requested UI now.');
+        toast.info(canApplyBackend
+          ? 'Backend setup applied. Building the requested UI now.'
+          : 'Backend setup is waiting for review. Building the requested UI now.');
       } else {
         setMessages((prev) => [...prev, {
           id: generateId(),
           role: 'assistant',
-          content: capabilityPlan.proposal.summary,
+          content: backendAutoApplied
+            ? `${capabilityPlan.proposal.summary}\n\nBackend permission allowed this change to run automatically.`
+            : capabilityPlan.proposal.summary,
           timestamp: new Date(),
         }]);
         setIsLoading(false);
@@ -925,6 +1034,22 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
             if (stamp.ok) {
               const summary = `Wire <${iconIntent.iconName}/> → ${iconIntent.coreIntent}` +
                 (iconIntent.placement ? ` (${iconIntent.placement})` : '');
+              if (!canAutoApply('ui')) {
+                queuePermissionReview({
+                  category: 'ui',
+                  title: 'Icon interaction edit',
+                  description: summary,
+                  apply: async () => layoutOps.applyLayoutCode(stamp.nextSource, summary),
+                });
+                setMessages((prev) => [...prev, {
+                  id: generateId(),
+                  role: 'assistant',
+                  content: `${summary}\n\nReady for review. No source was changed.`,
+                  timestamp: new Date(),
+                }]);
+                setIsLoading(false);
+                return;
+              }
               const applied = layoutOps.applyLayoutCode(stamp.nextSource, summary);
               const badge = applied ? '✓' : '⚠';
               const details = [
@@ -975,6 +1100,31 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
             (layoutOps?.selectionSelector as string | undefined) ||
             (wire.elementHint ? `hint:${wire.elementHint}` : null);
           if (elementKey) {
+            const reviewSummary = `Wire ${wire.elementHint ?? 'selected element'} to the GHL workflow.`;
+            if (!canAutoApply('backend')) {
+              queuePermissionReview({
+                category: 'backend',
+                title: 'Backend workflow binding',
+                description: reviewSummary,
+                apply: async () => Boolean(await wireGhlBinding({
+                  businessId,
+                  projectId,
+                  pagePath: '/',
+                  elementKey,
+                  elementLabel: wire.elementHint ?? layoutOps?.selectionSection ?? null,
+                  intent: 'button.click',
+                  workflowId: wire.workflowRef,
+                })),
+              });
+              setMessages((prev) => [...prev, {
+                id: generateId(),
+                role: 'assistant',
+                content: `${reviewSummary}\n\nReady for review. No backend binding was written.`,
+                timestamp: new Date(),
+              }]);
+              setIsLoading(false);
+              return;
+            }
             const binding = await wireGhlBinding({
               businessId,
               projectId,
@@ -1024,6 +1174,35 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
         // summary so they can revert from history.
         if (intent && intent.confidence >= 0.75) {
           let summary = intent.operation.describe;
+          if (!canAutoApply('ui')) {
+            queuePermissionReview({
+              category: 'ui',
+              title: 'Layout edit',
+              description: summary,
+              apply: async () => {
+                if (intent.operation.kind === 'element-move') {
+                  if (intent.operation.direction === 'up') layoutOps.moveElementUp();
+                  else layoutOps.moveElementDown();
+                  return true;
+                }
+                const reviewResult = executeLayoutIntent(intent, {
+                  previewCode: layoutOps.getPreviewCode(),
+                  findBounds: layoutOps.findBounds,
+                  selectionSelector: layoutOps.selectionSelector,
+                });
+                if (!reviewResult.ok || !reviewResult.nextCode) return false;
+                return layoutOps.applyLayoutCode(reviewResult.nextCode, reviewResult.summary);
+              },
+            });
+            setMessages((prev) => [...prev, {
+              id: generateId(),
+              role: 'assistant',
+              content: `${summary}\n\nReady for review. No layout was changed.`,
+              timestamp: new Date(),
+            }]);
+            setIsLoading(false);
+            return;
+          }
           let success = false;
 
           if (intent.operation.kind === 'element-move') {
@@ -1105,7 +1284,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
       const rawInput = _userContent;
       const { enhancedPrompt: intelligentPrompt, analysis: promptAnalysis, isSurgical: detectedSurgical, isBehavioral: detectedBehavioral, isFullGen: isFullGeneration, isDebug: detectedDebug } = enhancePromptForAI(rawInput);
       const isSurgicalEdit = detectedSurgical && !!currentCode;
-      const isRouteWiringRequest = /\b(?:nav(?:igation)?|menu|route(?:s|r)?|hashrouter|link(?:s|ing)?|redirect)\b/i.test(rawInput);
+      const isRouteWiringRequest = /\b(?:route|routing|router|navigate|redirect|href|active\s+(?:nav|menu|link)|nav(?:bar)?\s+(?:link|item)s?|menu\s+(?:link|item)s?)\b/i.test(rawInput);
       const isBehavioralEdit = (detectedBehavioral || isRouteWiringRequest) && !!currentCode;
       const isDebugMode = detectedDebug && !!currentCode;
       const isThemeEdit = promptAnalysis.intent === 'restyle' || promptAnalysis.secondaryIntents.includes('restyle');
@@ -1197,7 +1376,10 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
           }
           // For surgical edits, resolve which component/file the user is targeting
           if (isSurgicalEdit) {
-            const target = resolveEditTarget(rawInput, analysis);
+            const target = resolveEditTarget(rawInput, analysis, {
+              preferredFile: defaultTargetFile,
+              files: vfsFiles,
+            });
             if (target) {
               resolvedTargetFile = target.file;
               liveStep('planning', `🎯 Edit target: ${target.component} in ${target.file}`, `Confidence: ${target.confidence}`);
@@ -1511,6 +1693,9 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
               totalSize += content.length;
             }
           }
+          const scopedCurrentCode = isSurgicalEdit && resolvedTargetFile && vfsFiles?.[resolvedTargetFile]
+            ? vfsFiles[resolvedTargetFile]
+            : truncatedCode;
 
           // Rendered site context: live DOM of the current route, cached
           // digests of routes viewed this session, source digests otherwise.
@@ -1577,6 +1762,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
             isCatalogMutationRequest: isCatalogMutationRequest(_userContent),
             hasAttachments: _attachments.length > 0,
             hasVfs: !!vfsFiles,
+            isScopedEdit: isSurgicalEdit || isBehavioralEdit,
           });
           if (useCanonicalComposer) {
             const page = canonicalPageContext!;
@@ -1656,7 +1842,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
             // their established transport. Ordinary React source authorship is
             // handled above by the canonical Composer protocol.
             mode: isLaunchPlanningRequest ? 'launch-desk' : (isSurgicalEdit && !isReactProject ? 'code' : 'template-react'),
-            currentCode: isLaunchPlanningRequest ? undefined : truncatedCode,
+            currentCode: isLaunchPlanningRequest ? undefined : scopedCurrentCode,
             editMode: isLaunchPlanningRequest ? false : !!currentCode,
             debugMode: isLaunchPlanningRequest ? false : isDebugMode,
             surgicalEdit: isLaunchPlanningRequest ? false : isSurgicalEdit,
@@ -2065,8 +2251,15 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
 
         // Client-side scope enforcement for scoped edits
         const isScopedTask = isSurgicalEdit || isBehavioralEdit;
+        const permissionCategory: AIEditPermissionCategory = isBehavioralEdit
+          ? 'behavioral'
+          : isSurgicalEdit
+            ? 'surgical'
+            : 'ui';
         const scopeBlockReason = isScopedTask ? getScopedEditAutoApplyBlockReason({
           files: normalizedFiles,
+          originalFiles: vfsFiles ?? {},
+          prompt: rawInput,
           resolvedTargetFile,
           existingFileKeys: vfsFiles ? Object.keys(vfsFiles) : [],
         }) : null;
@@ -2076,6 +2269,11 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
           setHeldFiles({ files: normalizedFiles, deletions: multiFileDeletions, routeOps: canonicalRouteOps, candidate: canonicalCandidate, reason: `Edit held back: ${scopeBlockReason}` });
           toast.warning(`⚠️ Edit held for review: ${scopeBlockReason}`);
           transactionVerdict = transactionVerdictLine('held-for-review', scopeBlockReason);
+        } else if (!canAutoApply(permissionCategory)) {
+          const permissionReason = `${permissionCategory[0].toUpperCase()}${permissionCategory.slice(1)} edits are set to review before apply.`;
+          setHeldFiles({ files: normalizedFiles, deletions: multiFileDeletions, routeOps: canonicalRouteOps, candidate: canonicalCandidate, reason: permissionReason });
+          toast.info('AI patch held for review', { description: permissionReason });
+          transactionVerdict = transactionVerdictLine('held-for-review', permissionReason);
         } else if (shouldBlock) {
           void recordRunOutcome(envelopeRunId, 'rejected', { note: 'requires-approval' });
           console.warn('[AIBuilderPanel] Patch requires approval — NOT auto-applying');
@@ -2090,37 +2288,64 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
             console.log('[AIBuilderPanel] Applying candidate to VFS:', Object.keys(normalizedFiles));
             vfsEventBus.emit('ai:apply:start', { source: 'multi-file' });
             markPreviewPending();
-            const applyOutcome = await applyAIBuilderFiles(onApplyToVFS, normalizedFiles, {
-              prompt: userContent,
-              model: modelUsed,
-              summary: responseMeta?.reviewSummary,
-              actionType: responseMeta?.actionType,
-              origin: 'multi-file',
-              deletions: multiFileDeletions,
-              routeOps: canonicalRouteOps,
-              candidate: canonicalCandidate,
-              requiresApproval: responseMeta?.requiresApproval,
-              warnings: responseMeta?.warnings,
-            });
+            const sequentialTasks = buildSequentialAiTasks(
+              normalizedFiles,
+              multiFileDeletions,
+              canonicalCandidate,
+            );
+            let applyOutcome: Awaited<ReturnType<AIBuilderApplyCallback>> = {
+              success: false,
+              errors: ['The AI candidate did not produce an executable task.'],
+            };
+            const appliedPaths: string[] = [];
+            for (const [taskIndex, task] of sequentialTasks.entries()) {
+              liveStep('validating', `Applying task ${taskIndex + 1}/${sequentialTasks.length}`, task.paths.join(', '));
+              const taskOutcome = await applyAIBuilderFiles(onApplyToVFS, task.files, {
+                prompt: userContent,
+                model: modelUsed,
+                summary: responseMeta?.reviewSummary,
+                actionType: responseMeta?.actionType,
+                origin: `multi-file-task-${taskIndex + 1}`,
+                deletions: task.deletions,
+                routeOps: taskIndex === sequentialTasks.length - 1 ? canonicalRouteOps : [],
+                candidate: canonicalCandidate,
+                requiresApproval: responseMeta?.requiresApproval,
+                warnings: responseMeta?.warnings,
+              });
+              applyOutcome = taskOutcome;
+              if (!taskOutcome.success) break;
+              appliedPaths.push(...task.paths);
+            }
             void recordRunOutcome(
               envelopeRunId,
               applyOutcome.success ? 'applied' : 'failed',
               {
-                appliedPaths: [...Object.keys(normalizedFiles), ...multiFileDeletions],
+                appliedPaths,
                 error: applyOutcome.success ? undefined : applyOutcome.errors?.[0],
-                note: 'multi-file',
+                note: `multi-file-sequential:${sequentialTasks.length}`,
               },
             );
             if (applyOutcome.success) {
-              vfsEventBus.emit('ai:apply:complete', { filesWritten: [...Object.keys(normalizedFiles), ...multiFileDeletions], source: 'multi-file' });
+              vfsEventBus.emit('ai:apply:complete', { filesWritten: appliedPaths, source: 'multi-file' });
               // P0.4: the commit is not the verdict — the preview is.
               const verification = await awaitPreviewVerification();
               if (verification.verified) {
-                liveStep('complete', `✓ Applied ${Object.keys(normalizedFiles).length} files to project`);
+                advancePlanStep(taskPlan, 'patch', 'done');
+                advancePlanStep(taskPlan, 'bind_intent', 'done');
+                advancePlanStep(taskPlan, 'create_route', 'done');
+                advancePlanStep(taskPlan, 'install_workflow', 'done');
+                advancePlanStep(taskPlan, 'enable_capability', 'done');
+                advancePlanStep(taskPlan, 'update_registry', 'done');
+                advancePlanStep(taskPlan, 'refresh_preview', 'done');
+                advancePlanStep(taskPlan, 'validate', 'done');
+                advancePlanStep(taskPlan, 'report', 'done');
+                liveStep('complete', `✓ Applied ${sequentialTasks.length} sequential tasks to project`);
                 const approvalNote = responseMeta?.requiresApproval ? ' (review recommended)' : '';
                 toast.success(`✓ Multi-file project applied${approvalNote}`);
                 transactionVerdict = transactionVerdictLine('verified');
               } else {
+                advancePlanStep(taskPlan, 'patch', 'failed');
+                advancePlanStep(taskPlan, 'refresh_preview', 'failed');
                 liveStep('error', 'Saved, but the preview did not confirm the change', verification.reason);
                 toast.warning('Saved, but the preview did not confirm the change', {
                   description: verification.reason,
@@ -2130,6 +2355,8 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
               }
             } else {
               const applyError = applyOutcome.errors?.[0] ?? 'The VFS rejected the generated files.';
+              advancePlanStep(taskPlan, 'patch', 'failed');
+              advancePlanStep(taskPlan, 'refresh_preview', 'failed');
               liveStep('error', 'AI edit was not applied', applyError);
               vfsEventBus.emit('ai:apply:error', { message: applyError, source: 'multi-file' });
               toast.error('AI edit was not applied', { description: applyError, duration: 8000 });
@@ -2207,15 +2434,9 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
       if (structuredContractExtractionFailed || executionFailed) {
         advancePlanStep(taskPlan, 'patch', 'failed');
         advancePlanStep(taskPlan, 'refresh_preview', 'failed');
-      } else {
-        // Mark all remaining plan steps as done
-        advancePlanStep(taskPlan, 'patch', 'done');
-        advancePlanStep(taskPlan, 'bind_intent', 'done');
-        advancePlanStep(taskPlan, 'create_route', 'done');
-        advancePlanStep(taskPlan, 'install_workflow', 'done');
-        advancePlanStep(taskPlan, 'enable_capability', 'done');
-        advancePlanStep(taskPlan, 'update_registry', 'done');
-        advancePlanStep(taskPlan, 'refresh_preview', 'running');
+      } else if (!multiFileOutput && !generatedCode) {
+        advancePlanStep(taskPlan, 'patch', 'failed');
+        advancePlanStep(taskPlan, 'refresh_preview', 'failed');
       }
 
       // Update message — show ONLY the explanation text, NOT raw code
@@ -2273,7 +2494,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
             void recordRunOutcome(envelopeRunId, 'rejected', { note: 'single-file requires-approval' });
             console.warn('[AIBuilderPanel] Single-file patch flagged — not auto-applying');
             toast.warning('⚠️ Patch flagged for review — check warnings');
-          } else if (!multiFileOutput) {
+          } else if (!multiFileOutput && canAutoApply(isBehavioralEdit ? 'behavioral' : isSurgicalEdit ? 'surgical' : 'ui')) {
             console.log('[AIBuilderPanel] Auto-applying to VFS:', { targetPath: singleFilePath, codeLength: generatedCode.length });
             vfsEventBus.emit('ai:apply:start', { source: 'single-file' });
             markPreviewPending();
@@ -2300,6 +2521,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
               // P0.4: the preview — not the commit — decides the verdict.
               const verification = await awaitPreviewVerification();
               if (verification.verified) {
+                advancePlanStep(taskPlan, 'patch', 'done');
                 advancePlanStep(taskPlan, 'refresh_preview', 'done');
                 advancePlanStep(taskPlan, 'validate', 'done');
                 advancePlanStep(taskPlan, 'report', 'done');
@@ -2310,6 +2532,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
                   ? { ...m, content: `${m.content}\n\n${transactionVerdictLine('verified')}` }
                   : m));
               } else {
+                advancePlanStep(taskPlan, 'patch', 'failed');
                 advancePlanStep(taskPlan, 'refresh_preview', 'failed');
                 liveStep('error', 'Saved, but the preview did not confirm the change', verification.reason);
                 toast.warning('Saved, but the preview did not confirm the change', {
@@ -2331,6 +2554,18 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
                 ? { ...m, content: `${m.content}\n\n${transactionVerdictLine('failed', applyError)}` }
                 : m));
             }
+          } else if (!multiFileOutput) {
+            const permissionCategory: AIEditPermissionCategory = isBehavioralEdit
+              ? 'behavioral'
+              : isSurgicalEdit
+                ? 'surgical'
+                : 'ui';
+            const permissionReason = `${permissionCategory[0].toUpperCase()}${permissionCategory.slice(1)} edits are set to review before apply.`;
+            setHeldFiles({ files: { [singleFilePath]: generatedCode }, reason: permissionReason });
+            toast.info('AI edit held for review', { description: permissionReason });
+            setMessages(prev => prev.map(m => m.id === streamingId
+              ? { ...m, content: `${m.content}\n\n${transactionVerdictLine('held-for-review', permissionReason)}` }
+              : m));
           }
 
           // Notify about removed/blocked files from review
@@ -2524,6 +2759,15 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
         debugMode: true,
         systemType,
         templateName,
+        targetFile: error.file || defaultTargetFile || undefined,
+        runContext: {
+          draftId: projectId ?? null,
+          projectId: projectId ?? null,
+          businessId: businessId ?? null,
+          prompt: errorPrompt.slice(0, 8000),
+        },
+        backendStateContext: backendStateContext ?? undefined,
+        businessDataContext: businessDataContext ?? undefined,
         systemsBuildContext: systemsBuildContext ?? undefined,
         wizardSeed: uiFoundation || designIntervention
           ? { ...(wizardSeed ?? {}), ...(uiFoundation ? { uiFoundation } : {}), ...(designIntervention ? { designIntervention } : {}) }
@@ -2618,8 +2862,15 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
         }
       }
 
-      // Auto-apply fix to VFS
-      if (onApplyToVFS) {
+      const debugPermissionCategory: AIEditPermissionCategory = error.type === 'supabase' ? 'backend' : 'behavioral';
+      const debugCanAutoApply = canAutoApply(debugPermissionCategory);
+      const debugTargetPath = error.file
+        ? (error.file.startsWith('/') ? error.file : `/${error.file}`)
+        : (defaultTargetFile || '/src/App.tsx');
+      const debugNeedsReview = !debugCanAutoApply && Boolean(fixFiles || fixCode);
+
+      // Auto-apply fix to VFS only when this error category is permitted.
+      if (onApplyToVFS && debugCanAutoApply) {
         if (fixFiles) {
           const normalized: Record<string, string> = {};
           for (const [p, c] of Object.entries(fixFiles)) {
@@ -2641,9 +2892,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
             toast.error('Debug fix was not applied', { description: applyError, duration: 8000 });
           }
         } else if (fixCode) {
-          const targetPath = error.file
-            ? (error.file.startsWith('/') ? error.file : `/${error.file}`)
-            : (defaultTargetFile || '/src/App.tsx');
+          const targetPath = debugTargetPath;
           fixCode = sanitizeTsxFile(targetPath, fixCode).code || fixCode;
           vfsEventBus.emit('ai:apply:start', { source: 'debug-fix' });
           const applyOutcome = await applyAIBuilderFiles(onApplyToVFS, { [targetPath]: fixCode }, {
@@ -2660,12 +2909,28 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
             toast.error('Debug fix was not applied', { description: applyError, duration: 8000 });
           }
         }
+      } else if (debugNeedsReview) {
+        const reviewFiles: Record<string, string> = {};
+        if (fixFiles) {
+          const normalized: Record<string, string> = {};
+          for (const [p, c] of Object.entries(fixFiles)) {
+            normalized[p.startsWith('/') ? p : `/${p}`] = c;
+          }
+          Object.assign(reviewFiles, sanitizeGeneratedFiles(normalized).files);
+        } else if (fixCode) {
+          reviewFiles[debugTargetPath] = sanitizeTsxFile(debugTargetPath, fixCode).code || fixCode;
+        }
+        const permissionReason = `${debugPermissionCategory[0].toUpperCase()}${debugPermissionCategory.slice(1)} debug fixes are set to review before apply.`;
+        setHeldFiles({ files: reviewFiles, reason: permissionReason });
+        toast.info('Debug fix held for review', { description: permissionReason });
       }
 
       setMessages(prev => [...prev, {
         id: generateId(),
         role: 'assistant',
-        content: fixExplanation || '✅ Fix applied! Check the preview for changes.',
+        content: fixExplanation || (debugNeedsReview
+          ? 'Fix prepared. Review the candidate below before changing the project.'
+          : 'Fix applied. Check the preview for changes.'),
         timestamp: new Date(),
         code: fixCode || undefined,
         error,
@@ -2713,42 +2978,54 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
       className
     )}>
       {/* Header */}
-      <div className="flex items-center gap-2.5 px-4 py-3 border-b border-border bg-card/50">
-        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-primary/20 to-accent/20 border border-border flex items-center justify-center shadow-sm">
-          <Sparkles className="w-4 h-4 text-primary" />
+      <div className="border-b border-border">
+        <div className="flex items-center gap-2 px-3 py-2.5">
+        <div className="flex h-7 w-7 items-center justify-center text-primary">
+          <Sparkles className="w-4 h-4" />
         </div>
         <div className="flex-1 min-w-0">
-          <h2 className="text-sm font-semibold text-foreground">AI Builder</h2>
-          <p className="text-[11px] text-muted-foreground truncate">
-            {templateName || 'New Project'}{systemType ? ` · ${systemType}` : ''}
+          <div className="flex items-center gap-1.5">
+            <h2 className="text-xs font-semibold text-foreground">AI Builder</h2>
+            <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+              <CircleDot className="h-2.5 w-2.5 text-emerald-500" /> Ready
+            </span>
+          </div>
+          <p className="truncate text-[10px] text-muted-foreground/70">
+            {templateName || 'New Project'}{systemType ? ` / ${systemType}` : ''}
           </p>
         </div>
+        <AIPermissionControl permissions={aiPermissions} onChange={setAIPermissions} />
         {onClose && (
           <Button
             variant="ghost"
             size="icon"
             onClick={onClose}
-            className="h-7 w-7 text-muted-foreground hover:text-foreground rounded-lg"
+            className="h-7 w-7 text-muted-foreground hover:text-foreground"
             title="Close"
           >
             <ChevronLeft className="w-4 h-4" />
           </Button>
         )}
+        </div>
+        <div className="flex h-6 items-center justify-between px-3 text-[10px] text-muted-foreground/70">
+          <span className="font-mono tracking-wide">UNISON AI</span>
+          <span>{isLoading ? 'Working...' : pendingPermissionAction ? 'Review required' : 'Workspace edits'}</span>
+        </div>
       </div>
 
       {/* Tab bar */}
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'code' | 'debug' | 'backend')} className="flex-1 flex flex-col min-h-0">
-        <TabsList className="w-full grid grid-cols-3 rounded-none h-9 bg-card/30 border-b border-border px-1">
+        <TabsList className="w-full grid grid-cols-3 rounded-none h-9 bg-transparent border-b border-border px-1">
           <TabsTrigger
             value="code"
-            className="text-xs gap-1.5 rounded-lg h-7 data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-foreground text-muted-foreground transition-all"
+            className="text-xs gap-1.5 rounded-none h-8 border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground text-muted-foreground transition-colors"
           >
             <MessageSquare className="w-3.5 h-3.5" />
             Chat
           </TabsTrigger>
           <TabsTrigger
             value="debug"
-            className="text-xs gap-1.5 rounded-lg h-7 data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-foreground text-muted-foreground transition-all"
+            className="text-xs gap-1.5 rounded-none h-8 border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground text-muted-foreground transition-colors"
           >
             <Bug className="w-3.5 h-3.5" />
             Debug
@@ -2760,7 +3037,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
           </TabsTrigger>
           <TabsTrigger
             value="backend"
-            className="text-xs gap-1.5 rounded-lg h-7 data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-foreground text-muted-foreground transition-all"
+            className="text-xs gap-1.5 rounded-none h-8 border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground text-muted-foreground transition-colors"
           >
             <Database className="w-3.5 h-3.5" />
             Backend
@@ -2772,16 +3049,37 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
           {/* Messages or Welcome */}
           <ScrollArea className="flex-1" ref={scrollRef}>
             <div className="py-3 px-3">
+              {pendingPermissionAction && (
+                <div className="mb-3 min-w-0 max-w-full overflow-hidden border-l-2 border-amber-500/60 py-1 pl-3">
+                  <div className="flex items-start gap-2">
+                    <Settings2 className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-semibold text-foreground">Review required</p>
+                      <p className="mt-1 break-words text-[11px] font-medium text-foreground/85">{pendingPermissionAction.title}</p>
+                      <p className="mt-0.5 break-words text-[10px] leading-relaxed text-muted-foreground">{pendingPermissionAction.description}</p>
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        <Button size="sm" disabled={isApplyingPermissionAction} onClick={() => void approvePendingPermissionAction()} className="h-7 gap-1 px-2.5 text-[10px]">
+                          {isApplyingPermissionAction ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />}
+                          Apply change
+                        </Button>
+                        <Button size="sm" variant="outline" disabled={isApplyingPermissionAction} onClick={() => setPendingPermissionAction(null)} className="h-7 px-2.5 text-[10px]">
+                          Dismiss
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
               <LaunchReadinessCard vfsFiles={vfsFiles} className="-mx-3" />
               <LayoutSnapshotCard vfsFiles={vfsFiles} />
               {heldFiles && (
-                <div className="mb-3 rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 text-xs">
+                <div className="mb-3 min-w-0 max-w-full overflow-hidden border-l-2 border-amber-500/60 py-1 pl-3 text-xs">
                   <div className="font-semibold text-foreground">Changes ready but not applied</div>
-                  <p className="mt-1 text-muted-foreground">{heldFiles.reason}</p>
-                  <p className="mt-1 text-muted-foreground">
+                  <p className="mt-1 break-words text-muted-foreground">{heldFiles.reason}</p>
+                  <p className="mt-1 break-words text-muted-foreground">
                     {Object.keys(heldFiles.files).join(', ')}
                   </p>
-                  <div className="mt-2 flex gap-2">
+                  <div className="mt-2 flex flex-wrap gap-2">
                     <Button
                       size="sm"
                       onClick={async () => {
@@ -2808,7 +3106,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
                 </div>
               )}
               {pendingCapabilityProposal && (
-                <div className="mb-3 border border-amber-500/40 bg-amber-500/5 p-3 text-xs">
+                <div className="mb-3 min-w-0 max-w-full overflow-hidden border-l-2 border-amber-500/60 py-1 pl-3 text-xs">
                   <div className="flex items-center gap-2 font-semibold text-foreground">
                     <Database className="h-4 w-4 text-amber-500" />
                     Business system change required
@@ -2944,8 +3242,13 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
           <DebugAgentPanel
             iframeErrors={iframeErrors}
             onFixError={handleFixError}
+            onDebugRequest={(prompt) => {
+              void handleFixError({ type: 'runtime', message: prompt, timestamp: new Date() });
+            }}
             onClearErrors={onClearErrors}
             onApplyPatch={onApplyToVFS}
+            canAutoApplyPatch={canAutoApply('behavioral')}
+            onReviewPatch={queueDebugPatchReview}
             vfsFiles={vfsFiles}
             isFixing={isFixing}
           />

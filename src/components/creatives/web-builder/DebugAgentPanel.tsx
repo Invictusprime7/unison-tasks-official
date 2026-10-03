@@ -22,13 +22,18 @@ import { toast } from 'sonner';
 import {
   applyAIBuilderFiles,
   type AIBuilderApplyCallback,
+  type AIBuilderApplyMeta,
 } from '@/services/aiBuilderApply';
 
 export interface DebugAgentPanelProps {
   iframeErrors: Array<{ type: string; message: string; stack?: string; file?: string; line?: number; column?: number; timestamp: Date }>;
   onFixError?: (error: any) => void;
+  /** Send a manual debug request through the authenticated Builder/Supabase lane. */
+  onDebugRequest?: (prompt: string) => void;
   onClearErrors?: () => void;
   onApplyPatch?: AIBuilderApplyCallback;
+  canAutoApplyPatch?: boolean;
+  onReviewPatch?: (files: Record<string, string>, meta: AIBuilderApplyMeta) => void;
   vfsFiles?: Record<string, string> | null;
   isFixing?: boolean;
 }
@@ -316,7 +321,7 @@ const InlineCommandApproval: React.FC<{
 // ── Main Component ─────────────────────────────────────────────────────────────
 
 export const DebugAgentPanel: React.FC<DebugAgentPanelProps> = ({
-  iframeErrors, onFixError, onClearErrors, onApplyPatch, vfsFiles, isFixing,
+  iframeErrors, onFixError, onDebugRequest, onClearErrors, onApplyPatch, canAutoApplyPatch = true, onReviewPatch, vfsFiles, isFixing,
 }) => {
   const [input, setInput] = useState('');
   const [session, setSession] = useState<DebugSession | null>(null);
@@ -384,6 +389,11 @@ export const DebugAgentPanel: React.FC<DebugAgentPanelProps> = ({
       setInput('');
       return;
     }
+    if (onDebugRequest) {
+      onDebugRequest(input.trim());
+      setInput('');
+      return;
+    }
     // Fallback: start a debug agent session
     const newSession = debugAgentService.startSession({
       task: input.trim(),
@@ -396,12 +406,17 @@ export const DebugAgentPanel: React.FC<DebugAgentPanelProps> = ({
       debugAgentService.validateUnisonIntegrity(newSession.id, vfsFiles);
     }
     setInput('');
-  }, [input, vfsFiles, iframeErrors, onFixError]);
+  }, [input, vfsFiles, iframeErrors, onDebugRequest, onFixError]);
 
   const handleApplyPatch = useCallback(async (patchSetId: string) => {
     const files = workspacePatchEngine.getAcceptedFiles(patchSetId);
+    const meta: AIBuilderApplyMeta = { origin: 'debug-patch' };
+    if (files && !canAutoApplyPatch) {
+      onReviewPatch?.(files, meta);
+      return;
+    }
     if (files && onApplyPatch) {
-      const outcome = await applyAIBuilderFiles(onApplyPatch, files, { origin: 'debug-patch' });
+      const outcome = await applyAIBuilderFiles(onApplyPatch, files, meta);
       if (outcome.success) {
         workspacePatchEngine.markApplied(patchSetId);
       } else {
@@ -411,7 +426,7 @@ export const DebugAgentPanel: React.FC<DebugAgentPanelProps> = ({
         });
       }
     }
-  }, [onApplyPatch]);
+  }, [canAutoApplyPatch, onApplyPatch, onReviewPatch]);
 
   const activePatchSet = useMemo(() => {
     if (session?.activePatchSetId) return workspacePatchEngine.getPatchSet(session.activePatchSetId);

@@ -1543,6 +1543,97 @@ export async function hashVfsFiles(files: Record<string, string>): Promise<strin
   return `fallback-${(h >>> 0).toString(16)}`;
 }
 
+const PERSIST_RECOVERY_DELAYS_MS = [0, 500, 1_000] as const;
+
+function isRecoverablePersistTimeout(error: { message?: string } | null): boolean {
+  return /upstream request timeout|gateway timeout|request timed out|\btimeout\b|\b504\b/i.test(
+    error?.message ?? '',
+  );
+}
+
+function isLegacyCanonicalVfsContractError(error: { message?: string } | null): boolean {
+  return /Canonical runtime VFS must exactly match SiteBundleSnapshot\.vfsFiles/i.test(
+    error?.message ?? '',
+  );
+}
+
+function projectRuntimeVfs(files: Record<string, string>): Record<string, string> {
+  return Object.fromEntries(Object.entries(files).filter(([path]) => (
+    !path.startsWith('/.unison/') && !path.startsWith('.unison/')
+  )));
+}
+
+async function recoverTimedOutRevision(args: {
+  projectId: string;
+  draftId: string;
+  vfsHash: string;
+}): Promise<string | null> {
+  for (const delayMs of PERSIST_RECOVERY_DELAYS_MS) {
+    if (delayMs > 0) {
+      await new Promise<void>((resolve) => globalThis.setTimeout(resolve, delayMs));
+    }
+    const { data, error } = await supabase
+      .from('site_revisions')
+      .select('id')
+      .eq('project_id', args.projectId)
+      .eq('draft_id', args.draftId)
+      .eq('status', 'committed')
+      .eq('vfs_hash', args.vfsHash)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) continue;
+    const revisionId = (data as { id?: unknown } | null)?.id;
+    if (typeof revisionId === 'string' && revisionId) return revisionId;
+  }
+  return null;
+}
+
+function compactPatchForPersistence(
+  patch: PatchPlan,
+  operationIds: string[],
+  fileProvenance: FileProvenanceMap,
+  candidateId: string | null,
+  vfsDelta: { files: Record<string, string>; deletedPaths: string[] },
+): Record<string, unknown> {
+  return {
+    ...patch,
+    fileOps: patch.fileOps.map((operation) => {
+      if (operation.type === 'create' || operation.type === 'replace') {
+        return {
+          type: operation.type,
+          path: operation.path,
+          contentLength: operation.contents.length,
+        };
+      }
+      return operation;
+    }),
+    operationIds,
+    _commitMetadata: {
+      candidateId,
+      operationIds,
+      fileProvenance,
+      vfsDelta,
+    },
+  };
+}
+
+function buildVfsDelta(
+  previousFiles: Record<string, string>,
+  nextFiles: Record<string, string>,
+): { files: Record<string, string>; deletedPaths: string[] } {
+  const files: Record<string, string> = {};
+  const deletedPaths: string[] = [];
+  for (const path of new Set([...Object.keys(previousFiles), ...Object.keys(nextFiles)])) {
+    if (!(path in nextFiles)) {
+      deletedPaths.push(path);
+    } else if (previousFiles[path] !== nextFiles[path]) {
+      files[path] = nextFiles[path];
+    }
+  }
+  return { files, deletedPaths: deletedPaths.sort() };
+}
+
 async function finalize(args: {
   input: CommitMutationInput;
   status: 'committed' | 'rejected';
@@ -1608,15 +1699,14 @@ async function finalize(args: {
   });
 
   if (!dryRun) {
-    const patchForPersistence = {
-      ...input.patch,
+    const vfsDelta = buildVfsDelta(parentRevision?.vfsFiles ?? {}, vfsFiles);
+    const patchForPersistence = compactPatchForPersistence(
+      input.patch,
       operationIds,
-      _commitMetadata: {
-        candidateId,
-        operationIds,
-        fileProvenance,
-      },
-    };
+      fileProvenance,
+      candidateId,
+      vfsDelta,
+    );
     const breakerKey = input.identity.draftId || input.identity.projectId || 'anonymous';
     const breakerSignature = `${parentRevisionId ?? ''}:${vfsHash}`;
     const blockedReason = persistCircuitBlockReason(breakerKey, breakerSignature, input.source);
@@ -1628,32 +1718,63 @@ async function finalize(args: {
     PERSIST_IN_FLIGHT.add(breakerKey);
     let rpcResult: { data: unknown; error: { message?: string } | null };
     try {
-      rpcResult = await (supabase.rpc as any)('commit_canonical_site_revision_v2', {
-      p_project_id: input.identity.projectId,
-      p_business_id: input.identity.businessId,
-      p_draft_id: input.identity.draftId,
-      p_parent_revision_id: parentRevisionId,
-      p_source: input.source,
-      p_status: status,
-      p_patch_json: patchForPersistence,
-      p_vfs_files: vfsFiles,
-      p_site_bundle_snapshot: siteBundleSnapshot ?? {},
-      p_runtime_manifest: runtimeManifest ?? {},
-      p_playground_state: playground ?? {},
-      p_readiness_report: readinessReport,
-      p_diagnostics: diagnostics,
-      p_publish_ready: publishReady,
-      p_publish_blockers: publishBlockers,
-      p_backend_ops_applied: backendOpsApplied,
-      p_vfs_hash: vfsHash,
-      p_active_page_path: input.current.activePagePath ?? null,
-    });
+      const siteBundleSnapshotPayload = siteBundleSnapshot
+        ? Object.fromEntries(Object.entries(siteBundleSnapshot).filter(([key]) => key !== 'vfsFiles'))
+        : {};
+      const compactRpcPayload = {
+        p_project_id: input.identity.projectId,
+        p_business_id: input.identity.businessId,
+        p_draft_id: input.identity.draftId,
+        p_parent_revision_id: parentRevisionId,
+        p_source: input.source,
+        p_status: status,
+        p_patch_json: patchForPersistence,
+        p_vfs_files: vfsDelta.files,
+        p_site_bundle_snapshot: siteBundleSnapshotPayload,
+        p_runtime_manifest: runtimeManifest ?? {},
+        p_playground_state: playground ?? {},
+        p_readiness_report: readinessReport,
+        p_diagnostics: diagnostics,
+        p_publish_ready: publishReady,
+        p_publish_blockers: publishBlockers,
+        p_backend_ops_applied: backendOpsApplied,
+        p_vfs_hash: vfsHash,
+        p_active_page_path: input.current.activePagePath ?? null,
+      };
+      rpcResult = await (supabase.rpc as any)('commit_canonical_site_revision_v2', compactRpcPayload);
+      if (rpcResult.error && isLegacyCanonicalVfsContractError(rpcResult.error)) {
+        rpcResult = await (supabase.rpc as any)('commit_canonical_site_revision_v2', {
+          ...compactRpcPayload,
+          p_vfs_files: vfsFiles,
+          p_site_bundle_snapshot: {
+            ...siteBundleSnapshotPayload,
+            vfsFiles: projectRuntimeVfs(vfsFiles),
+          },
+        });
+      }
     } catch (rpcError) {
       rpcResult = { data: null, error: { message: rpcError instanceof Error ? rpcError.message : String(rpcError) } };
     } finally {
       PERSIST_IN_FLIGHT.delete(breakerKey);
     }
-    const { data, error } = rpcResult;
+    let { data, error } = rpcResult;
+    if (error && isRecoverablePersistTimeout(error)) {
+      const recoveredRevisionId = await recoverTimedOutRevision({
+        projectId: input.identity.projectId,
+        draftId: input.identity.draftId,
+        vfsHash,
+      });
+      if (recoveredRevisionId) {
+        diagnostics.push({
+          stage: 'persist',
+          level: 'warn',
+          message: 'canonical revision response timed out after commit; recovered committed revision',
+          detail: { revisionId: recoveredRevisionId },
+        });
+        data = recoveredRevisionId;
+        error = null;
+      }
+    }
     if (error || typeof data !== 'string' || !data) {
       recordPersistFailure(breakerKey, breakerSignature);
       const detail = error?.message || 'atomic commit returned no revision id';
