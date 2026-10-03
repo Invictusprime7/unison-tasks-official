@@ -2,9 +2,10 @@
 # Copy these to your Vercel project settings under Environment Variables
 
 # Supabase Configuration (Required)
-VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_PUBLISHABLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+VITE_SUPABASE_URL=https://oruwtgdjurstvhgqcvbv.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9ydXd0Z2RqdXJzdHZoZ3FjdmJ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAyOTE5NzIsImV4cCI6MjA3NTg2Nzk3Mn0.aOV9uab2niXhszfqCg81yzDRDg1-15XS9BL3-2bhhYM
+VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9ydXd0Z2RqdXJzdHZoZ3FjdmJ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAyOTE5NzIsImV4cCI6MjA3NTg2Nzk3Mn0.aOV9uab2niXhszfqCg81yzDRDg1-15XS9BL3-2bhhYM
+VITE_SUPABASE_PROJECT_ID=oruwtgdjurstvhgqcvbv
 
 # AI services
 # Configure provider credentials such as OPENAI_API_KEY as Supabase Edge
@@ -20,7 +21,7 @@ ENABLE_EXPERIMENTAL_COREPACK=1
 
 # Security Headers
 VITE_APP_DOMAIN=your-app-domain.vercel.app
-VITE_SUPABASE_AUTH_DOMAIN=your-project.supabase.co
+VITE_SUPABASE_AUTH_DOMAIN=oruwtgdjurstvhgqcvbv.supabase.co
 
 # Performance Monitoring
 VITE_ENABLE_ANALYTICS=true
