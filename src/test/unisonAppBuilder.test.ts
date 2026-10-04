@@ -4,6 +4,7 @@ import { compileResolvedSiteDesignContext } from '@/services/launch/resolvedSite
 import { createUnisonAppBuilder } from '@/services/app-builder/UnisonAppBuilder';
 import { APP_BUILDER_PROTOCOL_VERSION, type AppBuildContract } from '@/services/app-builder/appBuilderContracts';
 import type { ComposerLoopInput, ComposerLoopResult } from '@/services/builder/aiRepairLoop';
+import { rebaseAuthoredPage } from '@/services/launch/siteAuthoringOrchestrator';
 
 const baseFiles = {
   '/src/pages/Home.tsx': 'export default function Home(){return <main>Before</main>}',
@@ -44,6 +45,45 @@ function contract(): AppBuildContract {
 }
 
 describe('UnisonAppBuilder facade', () => {
+  it('preserves a newer shared component when rebasing a parallel page candidate', () => {
+    const base = {
+      '/src/pages/Shop.tsx': 'export default function Shop(){return <main>Old</main>}',
+      '/src/project-components/ProductCard.tsx': 'export default function ProductCard(){return <article>Base</article>}',
+    };
+    const latest = {
+      ...base,
+      '/src/project-components/ProductCard.tsx': 'export default function ProductCard(){return <article>New card</article>}',
+    };
+    const candidate = {
+      ...base,
+      '/src/pages/Shop.tsx': 'export default function Shop(){return <main>New</main>}',
+      '/src/project-components/ProductCard.tsx': 'export default function ProductCard(){return <article>Stale card</article>}',
+    };
+
+    const rebased = rebaseAuthoredPage(base, latest, candidate, '/src/pages/Shop.tsx');
+
+    expect(rebased['/src/pages/Shop.tsx']).toContain('New');
+    expect(rebased['/src/project-components/ProductCard.tsx']).toContain('New card');
+  });
+
+  it('does not delete a shared file changed since a parallel page took its base snapshot', () => {
+    const base = {
+      '/src/pages/Shop.tsx': 'export default function Shop(){return <main>Old</main>}',
+      '/src/project-components/ProductCard.tsx': 'export default function ProductCard(){return <article>Base</article>}',
+    };
+    const latest = {
+      ...base,
+      '/src/project-components/ProductCard.tsx': 'export default function ProductCard(){return <article>New card</article>}',
+    };
+    const candidate = {
+      '/src/pages/Shop.tsx': 'export default function Shop(){return <main>New</main>}',
+    };
+
+    const rebased = rebaseAuthoredPage(base, latest, candidate, '/src/pages/Shop.tsx');
+
+    expect(rebased['/src/project-components/ProductCard.tsx']).toContain('New card');
+  });
+
   it('is the shared product boundary for Launcher generation and Builder source edits', () => {
     const launcher = readFileSync('src/services/launch/launchOrchestrator.ts', 'utf8');
     const builder = readFileSync('src/components/creatives/web-builder/AIBuilderPanel.tsx', 'utf8');
