@@ -231,13 +231,12 @@ export async function hydrateAIHistoryFromSupabase(
   }
 
   try {
-    const { data: row, error } = await supabase
-      .from('builder_drafts')
-      .select('metadata')
-      .eq('id', draftId)
-      .maybeSingle();
+    const [{ data: row, error }, { data: chatRow }] = await Promise.all([
+      supabase.from('builder_drafts').select('metadata').eq('id', draftId).maybeSingle(),
+      supabase.from('builder_chat_history').select('messages').eq('draft_id', draftId).maybeSingle(),
+    ]);
 
-    if (error || !row) {
+    if ((error || !row) && !chatRow) {
       return local;
     }
 
@@ -246,10 +245,14 @@ export async function hydrateAIHistoryFromSupabase(
       metadata && typeof metadata === 'object'
         ? (metadata as Record<string, unknown>).aiHistory
         : null;
-    const remoteMessagesRaw =
+    const legacyMessages =
       aiHistory && typeof aiHistory === 'object'
         ? (aiHistory as Record<string, unknown>).messages
         : null;
+    // Dedicated per-draft chat table is authoritative; legacy metadata mirror is read-only fallback.
+    const remoteMessagesRaw = Array.isArray(chatRow?.messages)
+      ? (chatRow!.messages as unknown[])
+      : legacyMessages;
 
     if (!Array.isArray(remoteMessagesRaw)) {
       return local;
@@ -340,6 +343,44 @@ export async function hydrateAIHistoryFromSupabase(
   }
 }
 
+// Debounced cloud mirror into builder_chat_history, one timer per draft.
+const remoteTimers = new Map<string, ReturnType<typeof setTimeout>>();
+const lastRemoteSignature = new Map<string, string>();
+
+function scheduleRemoteWrite(draftId: string, messages: PersistedMessage[]): void {
+  const existing = remoteTimers.get(draftId);
+  if (existing) clearTimeout(existing);
+  remoteTimers.set(draftId, setTimeout(() => {
+    remoteTimers.delete(draftId);
+    void writeRemoteMessages(draftId, messages);
+  }, 1200));
+}
+
+async function writeRemoteMessages(draftId: string, messages: PersistedMessage[]): Promise<void> {
+  const signature = `${messages.length}:${messages[messages.length - 1]?.id ?? ''}:${messages[messages.length - 1]?.content.length ?? 0}`;
+  if (lastRemoteSignature.get(draftId) === signature) return;
+  try {
+    const { data: auth } = await supabase.auth.getSession();
+    const userId = auth.session?.user?.id;
+    if (!userId) return;
+    // Drop heavy fields (code blobs) to keep the row small.
+    const slim = messages.map(({ code: _code, ...rest }) => rest);
+    const { error } = await supabase
+      .from('builder_chat_history')
+      .upsert(
+        { draft_id: draftId, user_id: userId, messages: slim as never, updated_at: new Date().toISOString() },
+        { onConflict: 'draft_id' },
+      );
+    if (error) {
+      console.warn('[aiHistoryStore] chat cloud save failed', error.message);
+      return;
+    }
+    lastRemoteSignature.set(draftId, signature);
+  } catch (err) {
+    console.warn('[aiHistoryStore] chat cloud save failed', err);
+  }
+}
+
 export function setMessages(
   projectId: string | null | undefined,
   messages: PersistedMessage[],
@@ -351,6 +392,9 @@ export function setMessages(
   };
   writeLocal(projectId, next);
   emit(projectId, next);
+  if (isUuid(projectId) && next.messages.length > 0) {
+    scheduleRemoteWrite(projectId, next.messages);
+  }
 }
 
 export function pushSnapshot(
