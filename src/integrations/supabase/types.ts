@@ -863,6 +863,35 @@ export type Database = {
           },
         ]
       }
+      builder_chat_history: {
+        Row: {
+          draft_id: string
+          messages: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          draft_id: string
+          messages?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          draft_id?: string
+          messages?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "builder_chat_history_draft_id_fkey"
+            columns: ["draft_id"]
+            isOneToOne: true
+            referencedRelation: "builder_drafts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       builder_drafts: {
         Row: {
           business_id: string | null
