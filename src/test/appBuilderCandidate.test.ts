@@ -43,26 +43,26 @@ const initialFiles = {
 };
 
 describe('App Builder candidate closure', () => {
-  it('accepts a complete multi-page candidate with project-local companion modules', () => {
+  it('accepts a complete multi-page candidate with project-local companion modules', async () => {
     const files = {
       ...initialFiles,
       '/src/pages/Home.tsx': 'import Card from "../project-components/Card"; export default function Home(){return <main><Card /></main>}',
       '/src/pages/Contact.tsx': 'export default function Contact(){return <main>Contact</main>}',
       '/src/project-components/Card.tsx': 'export default function Card(){return <section>Card</section>}',
     };
-    const report = validateAppBuildCandidate({ contract: contract(), files, initialFiles });
+    const report = await validateAppBuildCandidate({ contract: contract(), files, initialFiles });
 
     expect(report.ok).toBe(true);
     expect(report.issues.filter((issue) => issue.severity === 'blocker')).toEqual([]);
     expect(report.sourceHash).toMatch(/^fnv1a:/);
   });
 
-  it('blocks missing pages, unresolved companions and protected infrastructure changes', () => {
+  it('blocks missing pages, unresolved companions and protected infrastructure changes', async () => {
     const files = {
       '/src/main.tsx': 'changed canonical entry',
       '/src/pages/Home.tsx': 'import Missing from "../project-components/Missing"; export default function Home(){return <Missing />}',
     };
-    const report = validateAppBuildCandidate({ contract: contract(), files, initialFiles });
+    const report = await validateAppBuildCandidate({ contract: contract(), files, initialFiles });
     const codes = report.issues.filter((issue) => issue.severity === 'blocker').map((issue) => issue.code);
 
     expect(report.ok).toBe(false);
@@ -73,46 +73,91 @@ describe('App Builder candidate closure', () => {
     ]));
   });
 
-  it('blocks pages that reach into recipe internals', () => {
+  it('blocks pages that reach into recipe internals', async () => {
     const files = {
       ...initialFiles,
       '/src/pages/Home.tsx': 'import { HeroImageStream } from "@/components/recipes/Hero"; export default function Home(){return <main><HeroImageStream /></main>}',
       '/src/pages/Contact.tsx': 'import { REGISTERED_VARIANTS } from "../unison/design-sources/recipes/Hero"; export default function Contact(){return <main />}',
     };
-    const report = validateAppBuildCandidate({ contract: contract(), files, initialFiles });
+    const report = await validateAppBuildCandidate({ contract: contract(), files, initialFiles });
     const blocked = report.issues.filter((issue) => issue.code === 'recipe-internal-import').map((issue) => issue.path);
 
     expect(blocked.sort()).toEqual(['/src/pages/Contact.tsx', '/src/pages/Home.tsx']);
   });
 
-  it('blocks design-source components rendered without required array props', () => {
+  it('blocks design-source components rendered without required array props', async () => {
     const manifest = JSON.stringify({ implementations: { 'services:editorial-rows': { exportName: 'ServicesEditorialRows', props: 'headline, items[]' } } });
     const base = { ...initialFiles, '/.unison/design-source-manifest.json': manifest };
     const page = (body: string) => `import { ServicesEditorialRows } from "@/unison/design-sources/Services"; export default function Home(){return <main>${body}</main>}`;
-    const run = (body: string) => validateAppBuildCandidate({
+    const run = async (body: string) => (await validateAppBuildCandidate({
       contract: contract(),
       files: { ...base, '/src/pages/Home.tsx': page(body) },
       initialFiles: base,
-    }).issues.filter((issue) => issue.code === 'design-source-missing-props');
+    })).issues.filter((issue) => issue.code === 'design-source-missing-props');
 
-    expect(run('<ServicesEditorialRows headline="x" />')).toHaveLength(1);
-    expect(run('<ServicesEditorialRows headline="x" items={[{ title: "a" }]} />')).toHaveLength(0);
-    expect(run('<ServicesEditorialRows {...props} />')).toHaveLength(0);
+    expect(await run('<ServicesEditorialRows headline="x" />')).toHaveLength(1);
+    expect(await run('<ServicesEditorialRows headline="x" items={[{ title: "a" }]} />')).toHaveLength(0);
+    expect(await run('<ServicesEditorialRows {...props} />')).toHaveLength(0);
   });
 
-  it('blocks empty, incomplete and nested-markup design-source usage', () => {
+  it('blocks empty, incomplete and nested-markup design-source usage', async () => {
     const manifest = JSON.stringify({ implementations: { 'services:editorial-rows': { exportName: 'ServicesEditorialRows', props: 'headline, items[]{title|description|price?}' } } });
     const base = { ...initialFiles, '/.unison/design-source-manifest.json': manifest };
-    const codes = (body: string) => validateAppBuildCandidate({
+    const codes = async (body: string) => (await validateAppBuildCandidate({
       contract: contract(),
       files: { ...base, '/src/pages/Home.tsx': `import { ServicesEditorialRows } from "@/unison/design-sources/Services"; export default function Home(){return <main>${body}</main>}` },
       initialFiles: base,
-    }).issues.map((issue) => issue.code);
+    })).issues.map((issue) => issue.code);
 
-    expect(codes('<ServicesEditorialRows headline="x" items={[]} />')).toContain('design-source-empty-array');
-    expect(codes('<ServicesEditorialRows headline="x" items={[{ title: "a" }]} />')).toContain('design-source-incomplete-items');
-    expect(codes('<ServicesEditorialRows headline={<h2>x</h2>} items={[{ title: "a", description: "b" }]} />')).toContain('design-source-nested-block');
-    const clean = codes('<ServicesEditorialRows headline="x" items={[{ title: "a", description: "b" }, { title: "c", description: "d" }]} />');
+    expect(await codes('<ServicesEditorialRows headline="x" items={[]} />')).toContain('design-source-empty-array');
+    expect(await codes('<ServicesEditorialRows headline="x" items={[{ title: "a" }]} />')).toContain('design-source-incomplete-items');
+    expect(await codes('<ServicesEditorialRows headline={<h2>x</h2>} items={[{ title: "a", description: "b" }]} />')).toContain('design-source-nested-block');
+    const clean = await codes('<ServicesEditorialRows headline="x" items={[{ title: "a", description: "b" }, { title: "c", description: "d" }]} />');
     expect(clean.filter((code) => code.startsWith('design-source-'))).toEqual([]);
+  });
+
+  it('blocks navigation descriptor objects rendered directly as JSX children', async () => {
+    const files = {
+      ...initialFiles,
+      '/src/pages/Home.tsx': `const links = [{ text: 'Home', href: '/', intent: 'nav.goto', dataUiPath: '/home' }]; export default function Home(){return <nav>{links}</nav>}`,
+    };
+    const report = await validateAppBuildCandidate({ contract: contract(), files, initialFiles });
+
+    expect(report.ok).toBe(false);
+    expect(report.issues).toContainEqual(expect.objectContaining({
+      severity: 'blocker',
+      code: 'jsx-child-not-renderable',
+      path: '/src/pages/Home.tsx',
+    }));
+
+    const mappedObject = await validateAppBuildCandidate({
+      contract: contract(),
+      files: {
+        ...initialFiles,
+        '/src/pages/Home.tsx': `const links = [{ text: 'Home', href: '/', intent: 'nav.goto', dataUiPath: '/home' }]; export default function Home(){return <nav>{links.map(link => link)}</nav>}`,
+      },
+      initialFiles,
+    });
+    expect(mappedObject.issues.some((issue) => issue.code === 'jsx-child-not-renderable')).toBe(true);
+  });
+
+  it('accepts navigation descriptor objects mapped to renderable elements', async () => {
+    const files = {
+      ...initialFiles,
+      '/src/pages/Home.tsx': `const links = [{ text: 'Home', href: '/', intent: 'nav.goto', dataUiPath: '/home' }]; export default function Home(){return <nav>{links.map(link => <a key={link.href} href={link.href}>{link.text}</a>)}</nav>}`,
+    };
+    const report = await validateAppBuildCandidate({ contract: contract(), files, initialFiles });
+
+    expect(report.issues.some((issue) => issue.code === 'jsx-child-not-renderable')).toBe(false);
+
+    const passedAsProps = await validateAppBuildCandidate({
+      contract: contract(),
+      files: {
+        ...initialFiles,
+        '/src/pages/Home.tsx': `const links = [{ text: 'Home', href: '/', intent: 'nav.goto', dataUiPath: '/home' }]; function Navbar({ links }) { return <nav>{links.map(link => <a key={link.href} href={link.href}>{link.text}</a>)}</nav> } export default function Home(){return <Navbar links={links} />}`,
+      },
+      initialFiles,
+    });
+    expect(passedAsProps.issues.some((issue) => issue.code === 'jsx-child-not-renderable')).toBe(false);
   });
 });
