@@ -54,13 +54,51 @@ export function HeroSection({ user, onAuthRequired, onSiteConfirmed, launcherOpe
             transition={{ duration: 0.7, ease: "easeOut" }}
             className="mb-6"
           >
-            <img
-              src="/unison-logo-lockup.png"
-              alt="Unison — Intent-Driven AI App Builder"
-              width={532}
-              height={480}
-              className="mx-auto h-auto w-64 sm:w-72 md:w-80"
-            />
+            <div className="relative mx-auto w-64 sm:w-72 md:w-80">
+              <img
+                src="/unison-logo-lockup.png"
+                alt="Unison — Intent-Driven AI App Builder"
+                width={532}
+                height={480}
+                className="h-auto w-full"
+              />
+              <svg
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-0 h-full w-full"
+                viewBox="0 0 532 480"
+                focusable="false"
+              >
+                <style>
+                  {`@media (prefers-reduced-motion: reduce) { .unison-logo-orb-motion { display: none; } }`}
+                </style>
+                <defs>
+                  <radialGradient id="unison-logo-orb-gradient">
+                    <stop offset="0%" stopColor="#ffffff" />
+                    <stop offset="42%" stopColor="#bffaff" />
+                    <stop offset="100%" stopColor="#21baff" />
+                  </radialGradient>
+                  <filter id="unison-logo-orb-glow" x="-150%" y="-150%" width="400%" height="400%">
+                    <feGaussianBlur stdDeviation="6" result="glow" />
+                    <feMerge>
+                      <feMergeNode in="glow" />
+                      <feMergeNode in="SourceGraphic" />
+                    </feMerge>
+                  </filter>
+                </defs>
+                <circle
+                  className="unison-logo-orb-motion"
+                  r="14"
+                  fill="url(#unison-logo-orb-gradient)"
+                  filter="url(#unison-logo-orb-glow)"
+                >
+                  <animateMotion
+                    dur="7s"
+                    repeatCount="indefinite"
+                    path="M 163 32 L 163 236 C 163 286 202 313 266 313 C 330 313 369 286 369 236 L 369 32 C 369 -12 163 -12 163 32"
+                  />
+                </circle>
+              </svg>
+            </div>
           </motion.div>
 
           {/* Badge */}
