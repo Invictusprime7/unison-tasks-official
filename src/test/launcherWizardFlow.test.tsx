@@ -16,6 +16,46 @@ vi.mock("@/components/onboarding/wizard/DesignContractInspector", () => ({ Desig
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
 
 describe("Launcher Wizard guided flow", () => {
+  it("guides chat selections without an overlay and launches only after the final plan is confirmed", async () => {
+    vi.mocked(runLaunchPipeline).mockImplementation(async (_input, callbacks) => {
+      await callbacks!.onReview!({ files: { '/src/App.tsx': 'chat candidate' }, entryPoint: '/src/App.tsx' });
+      const error = new Error('discarded'); error.name = 'LaunchReviewCancelled'; throw error;
+    });
+    render(<MemoryRouter><LauncherWizard open presentation="chat" onOpenChange={vi.fn()} /></MemoryRouter>);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.queryByText('Pages to include')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Create site' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Salon & Spa/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    fireEvent.click(screen.getByRole('button', { name: /Book Appointments/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    expect(screen.getByText('Visitor actions')).toBeInTheDocument();
+    expect(screen.queryByText('Pages to include')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    expect(screen.getByText('Pages to include')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    expect(screen.getByText('Selected style')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Business name')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
+    fireEvent.change(screen.getByLabelText('Business name'), { target: { value: 'Studio Glow' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    expect(screen.getByRole('region', { name: 'Your site plan' })).toHaveTextContent('Studio Glow');
+    expect(runLaunchPipeline).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+    expect(screen.getByLabelText('Business name')).toHaveValue('Studio Glow');
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create site' }));
+    expect(runLaunchPipeline).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(runLaunchPipeline).mock.calls[0][0]).toMatchObject({ businessName: 'Studio Glow', primaryGoal: 'book_appointments' });
+    await screen.findByRole('heading', { name: 'Your site is ready to review' });
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Open in builder' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: /Preview loaded chat candidate/ }));
+    expect(screen.getByRole('button', { name: 'Open in builder' })).toBeEnabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Edit details' }));
+  }, 20000);
+
   it("keeps the opening screen focused on industry selection and progressively reveals setup", () => {
     render(<MemoryRouter><LauncherWizard open onOpenChange={vi.fn()} /></MemoryRouter>);
     expect(screen.getByRole("button", { name: "Continue" })).toBeDisabled();

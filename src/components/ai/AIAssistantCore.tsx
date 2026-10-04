@@ -97,6 +97,10 @@ export interface AIAssistantCoreProps {
   hideHeader?: boolean;
   /** Presentation style for embedded surfaces */
   appearance?: "default" | "unison";
+  /** Guided selections rendered as the next turn in this conversation. */
+  conversationContent?: React.ReactNode;
+  /** Selection turns provide their own controls while keeping history visible. */
+  selectionActive?: boolean;
   /** Custom send handler - if provided, bypasses default AI logic */
   customSendHandler?: (message: string, files?: DroppedFile[]) => Promise<{ content: string; code?: string } | null>;
 }
@@ -120,6 +124,8 @@ export const AIAssistantCore: React.FC<AIAssistantCoreProps> = ({
   headerContent,
   hideHeader = false,
   appearance = "default",
+  conversationContent,
+  selectionActive = false,
   customSendHandler,
 }) => {
   const [messages, setMessages] = useState<AIMessage[]>(initialMessages);
@@ -138,7 +144,7 @@ export const AIAssistantCore: React.FC<AIAssistantCoreProps> = ({
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages]);
+  }, [messages, conversationContent]);
 
   // File handlers
   const handleFilesDropped = useCallback((files: DroppedFile[]) => {
@@ -390,7 +396,7 @@ export const AIAssistantCore: React.FC<AIAssistantCoreProps> = ({
       )}
 
       {/* Quick Actions */}
-      {quickActions.length > 0 && (
+      {!selectionActive && quickActions.length > 0 && (
         <div className={cn(
           "p-2 border-b",
           appearance === "unison" ? "border-0 bg-transparent px-0 pt-0" : "bg-muted/30"
@@ -416,7 +422,7 @@ export const AIAssistantCore: React.FC<AIAssistantCoreProps> = ({
       )}
 
       {/* Messages */}
-      <ScrollArea className="flex-1 p-3" ref={scrollRef}>
+      <ScrollArea className="min-h-0 flex-1 p-3" ref={scrollRef} data-chat-viewport>
         <div className="space-y-3">
           {messages.length === 0 && (
             <div className={cn(
@@ -523,6 +529,7 @@ export const AIAssistantCore: React.FC<AIAssistantCoreProps> = ({
               </div>
             </div>
           )}
+          {conversationContent}
         </div>
       </ScrollArea>
 
@@ -539,7 +546,7 @@ export const AIAssistantCore: React.FC<AIAssistantCoreProps> = ({
       )}
 
       {/* Input Area */}
-      <div className={cn(
+      {!selectionActive && <div className={cn(
         "p-3 border-t",
         appearance === "unison" ? "border-cyan-300/20 bg-transparent px-0 pb-0" : "bg-background"
       )}>
@@ -595,7 +602,7 @@ export const AIAssistantCore: React.FC<AIAssistantCoreProps> = ({
             📎 Paste images or drop files • Powered by AI
           </p>
         )}
-      </div>
+      </div>}
     </div>
   );
 };

@@ -91,6 +91,7 @@ export interface LauncherWizardProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   initialVisionPrompt?: string | null;
+  presentation?: "dialog" | "chat";
   prefill?: {
     businessId: string;
     businessName: string | null;
@@ -106,16 +107,45 @@ const STEP_ORDER: WizardStep[] = [
   "aesthetic",
 ];
 
+type SelectionStep = WizardStep | "pages" | "brand" | "confirm";
+const CHAT_STEP_ORDER: SelectionStep[] = ["industry", "goals", "questions", "pages", "aesthetic", "brand", "confirm"];
+const CHAT_GUIDANCE: Record<SelectionStep, string> = {
+  industry: "First, choose the business type that fits your idea. I'll suggest a starting point you can refine.",
+  goals: "Let's choose the main outcome for your site. What matters most to your business?",
+  questions: "Now let's shape what visitors can do. Keep the suggested actions or select the ones you need.",
+  pages: "Which pages will support your goal? Home is always included; the rest are up to you.",
+  aesthetic: "Let's give your site a visual personality. Choose a style, then fine-tune the art direction and experience.",
+  brand: "What should we call your brand? You can also add social profiles before we wrap up.",
+  confirm: "Here's the plan we've shaped together. Review your choices, go back to refine them, or create your site when you're ready.",
+};
+
 export const LauncherWizard = ({
   open,
   onOpenChange,
   initialVisionPrompt,
   prefill,
+  presentation = "dialog",
 }: LauncherWizardProps) => {
   const navigate = useNavigate();
   const { setLaunch } = useLaunch();
 
-  const [step, setStep] = useState<WizardStep>("industry");
+  const [step, setStep] = useState<SelectionStep>("industry");
+  const isChat = presentation === "chat";
+  const stepOrder: readonly SelectionStep[] = isChat ? CHAT_STEP_ORDER : STEP_ORDER;
+  const [completedTurns, setCompletedTurns] = useState<{ step: SelectionStep; answer: string }[]>([]);
+  const currentTurnRef = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    if (!isChat || !open) return;
+    const turn = currentTurnRef.current;
+    const viewport = turn?.closest<HTMLElement>('[data-chat-viewport]');
+    if (turn && viewport) {
+      viewport.scrollTo?.({
+        top: viewport.scrollTop + turn.getBoundingClientRect().top - viewport.getBoundingClientRect().top - 12,
+        behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth',
+      });
+      turn.focus({ preventScroll: true });
+    }
+  }, [isChat, open, step]);
   const [selectedIndustry, setSelectedIndustry] = useState<string | null>(null);
   const [systemId, setSystemId] = useState<BusinessSystemType | null>(null);
   const [businessName, setBusinessName] = useState("");
@@ -155,6 +185,7 @@ export const LauncherWizard = ({
     setReview(null);
     setPreviewReady(false);
     setStep("industry");
+    setCompletedTurns([]);
     setSelectedIndustry(null);
     setSystemId(null);
     setBusinessName("");
@@ -260,16 +291,38 @@ export const LauncherWizard = ({
         ? Boolean(primaryGoal)
         : step === "questions"
           ? Boolean(primaryGoal)
-          : Boolean(businessName.trim() && theme);
+          : step === "aesthetic" && isChat
+            ? Boolean(theme)
+            : step === "pages"
+              ? Boolean(primaryGoal)
+              : Boolean(businessName.trim() && theme);
+
+  const selectionSummary = (selectedStep: SelectionStep): string => {
+    switch (selectedStep) {
+      case "industry": return INDUSTRY_FOCUS_CARDS.find(card => card.industry === selectedIndustry)?.label ?? selectedIndustry ?? "";
+      case "goals": return PRIMARY_GOALS.find(goal => goal.id === primaryGoal)?.label ?? "";
+      case "questions": return CUSTOMER_NEEDS.filter(need => customerNeeds.includes(need.id)).map(need => need.label).join(", ") || "No additional visitor actions";
+      case "pages": return ["Home", ...pageChoices.filter(page => selectedPages.includes(page.id)).map(page => page.label)].join(", ");
+      case "aesthetic": return [theme?.label, visualDirections.find(direction => direction.id === artDirectionPackId)?.name ?? "Auto-matched art direction", experience].join(" · ");
+      case "brand": return businessName.trim();
+      default: return "";
+    }
+  };
 
   const goBack = () => {
-    const index = STEP_ORDER.indexOf(step);
-    if (index > 0) setStep(STEP_ORDER[index - 1]);
+    const index = stepOrder.indexOf(step);
+    if (index > 0) {
+      setCompletedTurns(current => current.filter(turn => stepOrder.indexOf(turn.step) < index - 1));
+      setStep(stepOrder[index - 1]);
+    }
   };
 
   const goNext = () => {
-    const index = STEP_ORDER.indexOf(step);
-    if (index < STEP_ORDER.length - 1) setStep(STEP_ORDER[index + 1]);
+    const index = stepOrder.indexOf(step);
+    if (index < stepOrder.length - 1) {
+      if (isChat) setCompletedTurns(current => [...current, { step, answer: selectionSummary(step) }]);
+      setStep(stepOrder[index + 1]);
+    }
   };
 
   const handleGenerate = async () => {
@@ -360,22 +413,17 @@ export const LauncherWizard = ({
     }
   };
 
-  const currentStepIndex = STEP_ORDER.indexOf(step);
-  return (
-    <Dialog
-      open={open}
-      onOpenChange={(next) => {
-        if (isLaunching) return;
-        onOpenChange(next);
-        if (!next) reset();
-      }}
-    >
-      <DialogContent className="max-h-[94dvh] w-[calc(100%-1rem)] max-w-[1040px] gap-0 overflow-hidden rounded-lg border-border bg-background p-0 text-foreground shadow-2xl sm:w-[calc(100%-3rem)]">
-        <DialogHeader className="sr-only">
-          <DialogTitle>Launch your website</DialogTitle>
-        </DialogHeader>
-
-        {!review && (
+  const currentStepIndex = stepOrder.indexOf(step);
+  const content = (
+    <>
+        {isChat && !review && !isLaunching && <div className="space-y-4 p-3" aria-live="polite">
+          {completedTurns.map((turn, index) => <div key={index} className="space-y-2">
+            <p className="rounded-lg bg-white/5 p-3 text-sm text-white/80">{CHAT_GUIDANCE[turn.step]}</p>
+            <p className="ml-8 rounded-lg border border-cyan-300/20 bg-cyan-400/10 p-3 text-sm text-cyan-100">{turn.answer}</p>
+          </div>)}
+          <p ref={currentTurnRef} tabIndex={-1} key={step} className="animate-fade-in motion-reduce:animate-none rounded-lg bg-white/5 p-3 text-sm leading-6 text-cyan-100 focus-visible:outline-none">{CHAT_GUIDANCE[step]}</p>
+        </div>}
+        {!isChat && !review && (
           <header className="border-b border-border px-5 py-4 pr-14 sm:px-7 sm:pr-16">
             <div className="flex items-center justify-between gap-6">
               <div className="flex min-w-0 items-center gap-3">
@@ -399,7 +447,7 @@ export const LauncherWizard = ({
                       )}
                     />
                   ))}
-                  <span className="ml-1 text-xs tabular-nums text-muted-foreground">{currentStepIndex + 1}/{STEP_ORDER.length}</span>
+                  <span className="ml-1 text-xs tabular-nums text-muted-foreground">{currentStepIndex + 1}/{stepOrder.length}</span>
                 </div>
               )}
             </div>
@@ -436,17 +484,17 @@ export const LauncherWizard = ({
             {launchError && <p role="alert" className="px-7 pb-4 text-sm text-destructive">{launchError}</p>}
           </section>
         ) : (
-          <div className="max-h-[calc(94dvh-65px)] overflow-y-auto">
+          <div className={isChat ? "" : "max-h-[calc(94dvh-65px)] overflow-y-auto"}>
             {isLaunching && progress ? (
               <div className="mx-auto flex min-h-[560px] max-w-xl items-center px-6 py-12">
                 <LaunchStageTimeline snapshot={progress} statusText={launchStatus} className="w-full" />
               </div>
             ) : (
-              <fieldset disabled={isLaunching} aria-busy={isLaunching} className="mx-auto max-w-4xl px-5 py-7 sm:px-8 sm:py-10">
+              <fieldset disabled={isLaunching} aria-busy={isLaunching} className={cn("mx-auto min-w-0 max-w-4xl", isChat ? "px-3 pb-4 pt-2" : "px-5 py-7 sm:px-8 sm:py-10")}>
                 <div key={step} className="animate-fade-in">
                   {step === "industry" && (
                     <div className="mx-auto max-w-3xl space-y-7">
-                      <StepHeading title="Choose your business type" subtitle="This gives Unison the right starting point. You can fine-tune your site goals and pages next." />
+                      {!isChat && <StepHeading title="Choose your business type" subtitle="This gives Unison the right starting point. You can fine-tune your site goals and pages next." />}
                       {visionPrompt && (
                         <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
                           <p className="text-xs font-medium text-primary">Your site direction</p>
@@ -469,7 +517,7 @@ export const LauncherWizard = ({
 
                   {step === "goals" && (
                     <div className="mx-auto max-w-3xl space-y-8">
-                      <StepHeading title="What should your site accomplish?" subtitle="Choose the main outcome. After you continue, you can fine-tune visitor actions and pages." />
+                      {!isChat && <StepHeading title="What should your site accomplish?" subtitle="Choose the main outcome. After you continue, you can fine-tune visitor actions and pages." />}
                       <section className="space-y-3">
                         <FieldLabel>Primary goal</FieldLabel>
                         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -481,22 +529,22 @@ export const LauncherWizard = ({
 
                   {step === "questions" && (
                     <div className="mx-auto max-w-3xl animate-fade-in space-y-8">
-                      <StepHeading title="Shape the visitor experience" subtitle="Choose what visitors can do and which pages will support your goal." />
+                      {!isChat && <StepHeading title="Shape the visitor experience" subtitle="Choose what visitors can do and which pages will support your goal." />}
                       <section className="space-y-3">
                         <FieldLabel>Visitor actions</FieldLabel>
                         <div className="flex flex-wrap gap-2">{CUSTOMER_NEEDS.map((need) => <Chip key={need.id} active={customerNeeds.includes(need.id)} onClick={() => setCustomerNeeds((current) => toggle(current, need.id))}><span>{need.icon}</span>{need.label}</Chip>)}</div>
                       </section>
-                      <section className="space-y-3 border-t border-border pt-6">
+{!isChat &&                       <section className="space-y-3 border-t border-border pt-6">
                         <FieldLabel>Pages to include</FieldLabel>
                         <p className="text-xs text-muted-foreground">Home is included automatically. Select any additional pages you need.</p>
                         <div className="flex flex-wrap gap-2"><span className="inline-flex items-center rounded-md border border-border bg-muted px-3 py-2 text-sm text-muted-foreground"><Check className="mr-2 h-3.5 w-3.5" />Home</span>{pageChoices.map((page) => <Chip key={page.id} active={selectedPages.includes(page.id)} onClick={() => setSelectedPages((current) => toggle(current, page.id))}><span>{page.icon}</span>{page.label}</Chip>)}</div>
-                      </section>
+                      </section>}
                     </div>
                   )}
 
                   {step === "aesthetic" && (
                     <div className="space-y-7">
-                      <StepHeading title="Choose the visual direction" subtitle="Preview each style as a real interface, then fine-tune only if you need to." />
+                      {!isChat && <StepHeading title="Choose the visual direction" subtitle="Preview each style as a real interface, then fine-tune only if you need to." />}
                       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_240px]">
                         <div className="relative min-w-0 overflow-hidden rounded-lg border border-border bg-card shadow-lg">
                           <StyleTokenCard theme={theme} businessName={businessName} showTokenLedger={false} className="rounded-none border-0" />
@@ -510,7 +558,7 @@ export const LauncherWizard = ({
                           </div>
                         </div>
                         <aside className="space-y-5">
-                          <div><FieldLabel>Business name</FieldLabel><Input aria-label="Business name" value={businessName} onChange={(event) => setBusinessName(event.target.value)} placeholder="Northside Studio" className="mt-2" /></div>
+{!isChat && <div><FieldLabel>Business name</FieldLabel><Input aria-label="Business name" value={businessName} onChange={(event) => setBusinessName(event.target.value)} placeholder="Northside Studio" className="mt-2" /></div>}
                           <div className="space-y-2"><FieldLabel>Selected style</FieldLabel><div><p className="text-base font-semibold">{theme?.label}</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{theme?.description}</p></div></div>
                           <div><FieldLabel>Experience</FieldLabel><div className="mt-2 grid gap-2">{([['standard','Standard'],['motion-rich','Motion rich'],['immersive','Immersive 3D']] as const).map(([value,label]) => <Chip key={value} active={experience === value} onClick={() => setExperience(value)}>{label}</Chip>)}</div></div>
                         </aside>
@@ -520,23 +568,47 @@ export const LauncherWizard = ({
                         <div className="mt-5 grid gap-6 border-t border-border pt-5 sm:grid-cols-2">
                           <div><FieldLabel>Visual direction</FieldLabel><div className="mt-2 grid gap-2"><Chip active={artDirectionPackId === null} onClick={() => setArtDirectionPackId(null)}>Auto match</Chip>{visualDirections.map((option) => <Chip key={option.id} active={artDirectionPackId === option.id} disabled={!option.available} title={option.unavailableReason} onClick={() => option.available && setArtDirectionPackId(option.id)}><span className="text-left"><span className="block">{option.name}</span><span className="block text-xs font-normal text-muted-foreground">{option.available ? option.description : option.unavailableReason}</span></span></Chip>)}</div></div>
                           <div><FieldLabel>Section treatment</FieldLabel><div className="mt-2 grid gap-3">{sectionPickers.length === 0 ? <p className="text-xs text-muted-foreground">Automatic choices will follow the selected style.</p> : sectionPickers.map((picker) => <label key={picker.sectionType} className="grid gap-1 text-xs text-muted-foreground"><span className="capitalize">{picker.sectionType.replace(/-/g, ' ')}</span><select value={sectionPins[picker.sectionType] ?? ''} onChange={(event) => setSectionPins((current) => { const next = {...current}; if (!event.target.value) delete next[picker.sectionType]; else next[picker.sectionType] = event.target.value as VariantId; return next; })} className="h-9 rounded-md border border-input bg-background px-3 text-sm text-foreground"><option value="">Auto</option>{picker.options.map((option) => <option key={option.variantId} value={option.variantId}>{option.name}</option>)}</select></label>)}</div></div>
-                          <div className="sm:col-span-2"><FieldLabel>Social profiles</FieldLabel><div className="mt-2 grid gap-2 sm:grid-cols-2">{(['instagram','facebook','linkedin','youtube'] as const).map((platform) => <Input key={platform} value={socialLinks[platform] || ''} onChange={(event) => setSocialLinks((current) => ({...current,[platform]:event.target.value}))} placeholder={`${platform[0].toUpperCase()}${platform.slice(1)} URL`} aria-label={`${platform} profile URL`} />)}</div></div>
+{!isChat && <div className="sm:col-span-2"><FieldLabel>Social profiles</FieldLabel><div className="mt-2 grid gap-2 sm:grid-cols-2">{(['instagram','facebook','linkedin','youtube'] as const).map((platform) => <Input key={platform} value={socialLinks[platform] || ''} onChange={(event) => setSocialLinks((current) => ({...current,[platform]:event.target.value}))} placeholder={`${platform[0].toUpperCase()}${platform.slice(1)} URL`} aria-label={`${platform} profile URL`} />)}</div></div>}
                         </div>
                       </details>
                     </div>
                   )}
+                  {step === "pages" && <section className="space-y-3">
+                    <FieldLabel>Pages to include</FieldLabel>
+                    <div className="flex flex-wrap gap-2"><span className="inline-flex items-center rounded-md border border-border bg-muted px-3 py-2 text-sm"><Check className="mr-2 h-3.5 w-3.5" />Home</span>{pageChoices.map(page => <Chip key={page.id} active={selectedPages.includes(page.id)} onClick={() => setSelectedPages(current => toggle(current, page.id))}>{page.icon} {page.label}</Chip>)}</div>
+                  </section>}
+                  {step === "brand" && <section className="space-y-5">
+                    <label className="block text-sm">Brand name<Input aria-label="Business name" value={businessName} onChange={event => setBusinessName(event.target.value)} placeholder="Northside Studio" className="mt-2" /></label>
+                    <details><summary className="cursor-pointer text-sm">Add social profiles (optional)</summary><div className="mt-3 grid gap-2 sm:grid-cols-2">{(['instagram','facebook','linkedin','youtube'] as const).map(platform => <Input key={platform} value={socialLinks[platform] || ''} onChange={event => setSocialLinks(current => ({...current,[platform]:event.target.value}))} placeholder={`${platform} URL`} aria-label={`${platform} profile URL`} />)}</div></details>
+                  </section>}
+                  {step === "confirm" && <section aria-label="Your site plan" className="rounded-lg border border-cyan-300/20 bg-cyan-400/5 p-4">
+                    <h2 className="mb-4 text-lg font-semibold">Ready to create {businessName}?</h2>
+                    <dl className="space-y-3">{([['Business type','industry'],['Main goal','goals'],['Visitor actions','questions'],['Pages','pages'],['Visual direction','aesthetic'],['Brand name','brand']] as const).map(([label, selectedStep]) => <div key={selectedStep}><dt className="text-xs text-muted-foreground">{label}</dt><dd className="mt-1 text-sm">{selectionSummary(selectedStep)}</dd></div>)}</dl>
+                  </section>}
                 </div>
 
                 {launchError && <div role="alert" className="mt-6 rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">{launchError}{launchFailure && <details className="mt-2"><summary className="cursor-pointer text-xs font-medium">Technical details</summary><pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap text-[10px]">{JSON.stringify(launchFailure, null, 2)}</pre></details>}</div>}
 
                 <footer className="mt-8 flex items-center justify-between border-t border-border pt-5">
                   {step === "industry" ? <span /> : <Button variant="ghost" onClick={goBack}><ArrowLeft />Back</Button>}
-                  {step === "aesthetic" ? <Button disabled={!canContinue || isLaunching} onClick={handleGenerate}>{isLaunching ? <Loader2 className="animate-spin" /> : <Sparkle />}{isLaunching ? 'Creating…' : 'Create site'}</Button> : <Button disabled={!canContinue || isLaunching} onClick={goNext}>Continue<ArrowRight /></Button>}
+                  {(isChat ? step === "confirm" : step === "aesthetic") ? <Button disabled={!canContinue || isLaunching} onClick={handleGenerate}>{isLaunching ? <Loader2 className="animate-spin" /> : <Sparkle />}{isLaunching ? 'Creating…' : 'Create site'}</Button> : <Button disabled={!canContinue || isLaunching} onClick={goNext}>Continue<ArrowRight /></Button>}
                 </footer>
               </fieldset>
             )}
           </div>
         )}
+    </>
+  );
+  if (isChat) return open ? <section aria-label="Guided site setup" className="dark rounded-xl border border-cyan-300/20 bg-[#101521] text-foreground">{content}</section> : null;
+  return (
+    <Dialog open={open} onOpenChange={next => {
+      if (isLaunching) return;
+      onOpenChange(next);
+      if (!next) reset();
+    }}>
+      <DialogContent className="max-h-[94dvh] w-[calc(100%-1rem)] max-w-[1040px] gap-0 overflow-hidden rounded-lg border-border bg-background p-0 text-foreground shadow-2xl sm:w-[calc(100%-3rem)]">
+        <DialogHeader className="sr-only"><DialogTitle>Launch your website</DialogTitle></DialogHeader>
+        {content}
       </DialogContent>
     </Dialog>
   );

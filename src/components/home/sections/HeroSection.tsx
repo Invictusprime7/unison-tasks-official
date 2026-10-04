@@ -4,12 +4,16 @@ import type { User } from "@supabase/supabase-js";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { AIAssistantCore, type QuickAction } from "@/components/ai/AIAssistantCore";
+import { LauncherWizard } from "@/components/onboarding/wizard/LauncherWizard";
 
 
 interface HeroSectionProps {
   user: User | null;
   onAuthRequired: () => void;
   onSiteConfirmed: (siteBrief: string) => void;
+  launcherOpen: boolean;
+  launchBrief: string | null;
+  onLauncherOpenChange: (open: boolean) => void;
 }
 
 const HOME_QUICK_ACTIONS: QuickAction[] = [
@@ -30,7 +34,7 @@ const HOME_QUICK_ACTIONS: QuickAction[] = [
   },
 ];
 
-export function HeroSection({ user, onAuthRequired, onSiteConfirmed }: HeroSectionProps) {
+export function HeroSection({ user, onAuthRequired, onSiteConfirmed, launcherOpen, launchBrief, onLauncherOpenChange }: HeroSectionProps) {
 
   return (
     <section className="relative overflow-hidden">
@@ -101,7 +105,8 @@ export function HeroSection({ user, onAuthRequired, onSiteConfirmed }: HeroSecti
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.6, duration: 0.4 }}
-            className="relative mx-auto mb-10 max-w-2xl text-left"
+            className="relative mx-auto mb-10 max-w-3xl text-left"
+            id="home-ai-chat"
           >
             <div className="pointer-events-none absolute -inset-x-8 inset-y-8 -z-10 rounded-full bg-cyan-500/10 blur-3xl" />
             <div className="mb-3 flex items-center justify-center gap-2 text-sm font-medium text-cyan-100/80">
@@ -110,11 +115,18 @@ export function HeroSection({ user, onAuthRequired, onSiteConfirmed }: HeroSecti
             </div>
             <AIAssistantCore
               appearance="unison"
-              className="h-[250px] sm:h-[270px]"
+              className={cn("transition-[height] duration-500 motion-reduce:transition-none", launcherOpen ? "h-[min(740px,85dvh)]" : "h-[250px] sm:h-[270px]")}
               placeholder="Tell Unison about your idea..."
               quickActions={HOME_QUICK_ACTIONS}
               aiMode="site-discovery"
               onSiteConfirmed={onSiteConfirmed}
+              selectionActive={launcherOpen}
+              conversationContent={launcherOpen ? <LauncherWizard
+                open
+                presentation="chat"
+                initialVisionPrompt={launchBrief}
+                onOpenChange={onLauncherOpenChange}
+              /> : undefined}
               onBeforeSend={() => {
                 if (user) return true;
                 onAuthRequired();
@@ -127,7 +139,7 @@ export function HeroSection({ user, onAuthRequired, onSiteConfirmed }: HeroSecti
               hideHeader
             />
             <p className="mt-2 text-center text-xs text-white/40">
-              Describe your idea or choose a starting point above
+              {launcherOpen ? "Refine each choice at your own pace. Create your site when you're ready." : "Describe your idea or choose a starting point above"}
             </p>
           </motion.div>
 

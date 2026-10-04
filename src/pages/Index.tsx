@@ -4,7 +4,6 @@ import { supabase, isSupabaseConfigured } from "@/integrations/supabase/client";
 import { AlertCircle, Zap } from "lucide-react";
 import { User } from "@supabase/supabase-js";
 import { useToast } from "@/hooks/use-toast";
-import { LauncherWizard } from "@/components/onboarding/wizard/LauncherWizard";
 import { 
   NavigationBar,
   HeroSection, 
@@ -199,11 +198,11 @@ const Index = () => {
     }
     setLaunchBrief(null);
     setLauncherOpen(true);
+    document.getElementById('home-ai-chat')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   };
 
   const handleStartLauncher = () => {
-    setLaunchBrief(null);
-    setLauncherOpen(true);
+    handleNewProject();
   };
 
   const handleConfirmedSite = (siteBrief: string) => {
@@ -342,6 +341,12 @@ const Index = () => {
         user={user}
         onAuthRequired={() => navigate("/auth")}
         onSiteConfirmed={handleConfirmedSite}
+        launcherOpen={launcherOpen}
+        launchBrief={launchBrief}
+        onLauncherOpenChange={(open) => {
+          setLauncherOpen(open);
+          if (!open) setLaunchBrief(null);
+        }}
       />
 
       {/* Recent Projects Section - Only visible for authenticated users */}
@@ -375,15 +380,6 @@ const Index = () => {
       {/* Footer */}
       <FooterSection />
 
-      {/* System Launcher Wizard — direct entry, no pre-dialog step */}
-      <LauncherWizard
-        open={launcherOpen}
-        initialVisionPrompt={launchBrief}
-        onOpenChange={(open) => {
-          setLauncherOpen(open);
-          if (!open) setLaunchBrief(null);
-        }}
-      />
     </div>
   );
 };
