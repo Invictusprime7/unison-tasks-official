@@ -16,14 +16,17 @@ vi.mock("@/components/onboarding/wizard/DesignContractInspector", () => ({ Desig
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
 
 describe("Launcher Wizard guided flow", () => {
-  it("keeps the opening screen focused and routes a prompt through review before launch", () => {
+  it("keeps the opening screen focused on industry selection and progressively reveals setup", () => {
     render(<MemoryRouter><LauncherWizard open onOpenChange={vi.fn()} /></MemoryRouter>);
     expect(screen.getByRole("button", { name: "Continue" })).toBeDisabled();
-    expect(screen.getByText("Choose an industry instead").closest("details")).not.toHaveAttribute("open");
+    expect(screen.queryByLabelText("Describe your website")).not.toBeInTheDocument();
     expect(screen.queryByText("Design details")).not.toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText("Describe your website"), { target: { value: "Luxury salon with online booking and lookbook gallery" } });
+    fireEvent.click(screen.getByRole("button", { name: /Salon & Spa/ }));
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
-    expect(screen.getByRole("heading", { name: "What should the site accomplish?" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "What should your site accomplish?" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Book Appointments/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    expect(screen.getByRole("heading", { name: "Shape the visitor experience" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
     expect(screen.queryByRole("heading", { name: "Choose a starting layout" })).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Choose the visual direction" })).toBeInTheDocument();
@@ -35,6 +38,25 @@ describe("Launcher Wizard guided flow", () => {
     expect(screen.getByLabelText("Business name")).toHaveValue("Studio Glow");
     expect(runLaunchPipeline).not.toHaveBeenCalled();
   }, 20000);
+
+  it("opens directly on goals with the confirmed homepage brief prefilled", async () => {
+    render(
+      <MemoryRouter>
+        <LauncherWizard
+          open
+          onOpenChange={vi.fn()}
+          initialVisionPrompt="Luxury hair and nail spa named Studio Glow with online booking and lookbook gallery"
+        />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole("heading", { name: "What should your site accomplish?" })).toBeInTheDocument();
+    expect(screen.queryByLabelText("Describe your website")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    expect(screen.getByRole("heading", { name: "Shape the visitor experience" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    expect(screen.getByLabelText("Business name")).toHaveValue("Studio Glow");
+  });
 });
 
 it('requires preview readiness and discards the first candidate when regenerating', async () => {
@@ -46,7 +68,8 @@ it('requires preview readiness and discards the first candidate when regeneratin
   const error = new Error('discarded'); error.name = 'LaunchReviewCancelled'; throw error;
  });
  render(<MemoryRouter><LauncherWizard open onOpenChange={vi.fn()} /></MemoryRouter>);
- fireEvent.change(screen.getByLabelText('Describe your website'), {target:{value:'Luxury salon with online booking'}});
+ fireEvent.click(screen.getByRole('button',{name:/Salon & Spa/}));
+ fireEvent.click(screen.getByRole('button',{name:'Continue'}));
  fireEvent.click(screen.getByRole('button',{name:'Continue'}));
  fireEvent.click(screen.getByRole('button',{name:'Continue'}));
  fireEvent.change(screen.getByLabelText('Business name'),{target:{value:'Glow'}});

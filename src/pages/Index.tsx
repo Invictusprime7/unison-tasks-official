@@ -57,6 +57,7 @@ const Index = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
   const [launcherOpen, setLauncherOpen] = useState(false);
+  const [launchBrief, setLaunchBrief] = useState<string | null>(null);
   const [recentProjects, setRecentProjects] = useState<RecentProject[]>([]);
   const [loadingProjects, setLoadingProjects] = useState(false);
   const [docsOpen, setDocsOpen] = useState(false);
@@ -196,10 +197,17 @@ const Index = () => {
       navigate('/auth');
       return;
     }
+    setLaunchBrief(null);
     setLauncherOpen(true);
   };
 
   const handleStartLauncher = () => {
+    setLaunchBrief(null);
+    setLauncherOpen(true);
+  };
+
+  const handleConfirmedSite = (siteBrief: string) => {
+    setLaunchBrief(siteBrief);
     setLauncherOpen(true);
   };
 
@@ -332,8 +340,8 @@ const Index = () => {
       {/* Hero Section */}
       <HeroSection 
         user={user}
-        onStartLauncher={handleNewProject}
         onAuthRequired={() => navigate("/auth")}
+        onSiteConfirmed={handleConfirmedSite}
       />
 
       {/* Recent Projects Section - Only visible for authenticated users */}
@@ -368,7 +376,14 @@ const Index = () => {
       <FooterSection />
 
       {/* System Launcher Wizard — direct entry, no pre-dialog step */}
-      <LauncherWizard open={launcherOpen} onOpenChange={setLauncherOpen} />
+      <LauncherWizard
+        open={launcherOpen}
+        initialVisionPrompt={launchBrief}
+        onOpenChange={(open) => {
+          setLauncherOpen(open);
+          if (!open) setLaunchBrief(null);
+        }}
+      />
     </div>
   );
 };

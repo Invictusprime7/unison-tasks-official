@@ -36,6 +36,14 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { FileDropZone, DroppedFile } from "@/components/creatives/web-builder/FileDropZone";
 import { useAIFileAnalysis } from "@/hooks/useAIFileAnalysis";
+import {
+  buildConfirmedSiteBrief,
+  describeAssistantFailure,
+  isSiteDiscoveryResponse,
+  hasSiteConfirmationRequest,
+  isSiteConfirmation,
+  stripSiteConfirmationMarker,
+} from "./siteConfirmation";
 
 export interface AIMessage {
   role: "user" | "assistant";
@@ -63,6 +71,12 @@ export interface AIAssistantCoreProps {
   onCodeGenerated?: (code: string) => void;
   /** Callback when a message is sent (for custom handling) */
   onMessageSent?: (message: string) => Promise<string | null>;
+  /** Return false to stop submission before adding it to the conversation */
+  onBeforeSend?: (message: string) => boolean;
+  /** Backend mode for a specialized assistant surface */
+  aiMode?: string;
+  /** Called instead of another AI turn after explicit site confirmation */
+  onSiteConfirmed?: (siteBrief: string) => void;
   /** Current context code for the AI */
   contextCode?: string;
   /** System type for context */
@@ -81,6 +95,8 @@ export interface AIAssistantCoreProps {
   headerContent?: React.ReactNode;
   /** Hide the default header */
   hideHeader?: boolean;
+  /** Presentation style for embedded surfaces */
+  appearance?: "default" | "unison";
   /** Custom send handler - if provided, bypasses default AI logic */
   customSendHandler?: (message: string, files?: DroppedFile[]) => Promise<{ content: string; code?: string } | null>;
 }
@@ -91,6 +107,9 @@ export const AIAssistantCore: React.FC<AIAssistantCoreProps> = ({
   quickActions = [],
   onCodeGenerated,
   onMessageSent,
+  onBeforeSend,
+  aiMode,
+  onSiteConfirmed,
   contextCode,
   systemType,
   businessName,
@@ -100,6 +119,7 @@ export const AIAssistantCore: React.FC<AIAssistantCoreProps> = ({
   compact = false,
   headerContent,
   hideHeader = false,
+  appearance = "default",
   customSendHandler,
 }) => {
   const [messages, setMessages] = useState<AIMessage[]>(initialMessages);
@@ -149,12 +169,35 @@ export const AIAssistantCore: React.FC<AIAssistantCoreProps> = ({
     const trimmedInput = input.trim();
     if (!trimmedInput && droppedFiles.length === 0) return;
     if (isLoading) return;
+    if (onBeforeSend && !onBeforeSend(trimmedInput)) return;
 
     const userMessage: AIMessage = {
       role: "user",
       content: trimmedInput || "Analyze these files",
       timestamp: new Date(),
     };
+
+    const previousAssistantMessage = [...messages]
+      .reverse()
+      .find((message) => message.role === "assistant");
+    if (
+      onSiteConfirmed
+      && isSiteConfirmation(trimmedInput)
+      && hasSiteConfirmationRequest(previousAssistantMessage)
+    ) {
+      onSiteConfirmed(buildConfirmedSiteBrief([...messages, userMessage]));
+      setMessages((previous) => [
+        ...previous,
+        userMessage,
+        {
+          role: "assistant",
+          content: "Great. Let’s fine-tune the goals, visitor actions, pages, and visual direction.",
+          timestamp: new Date(),
+        },
+      ]);
+      setInput("");
+      return;
+    }
 
     setMessages(prev => [...prev, userMessage]);
     setInput("");
@@ -186,19 +229,26 @@ export const AIAssistantCore: React.FC<AIAssistantCoreProps> = ({
       }
       // Default AI handler via edge function
       else {
-        const messages = [
+        const requestMessages = [
           ...(contextCode ? [{ role: "system" as const, content: `Context:\n${contextCode}` }] : []),
+          ...messages.slice(-12).map(({ role, content }) => ({ role, content })),
           { role: "user" as const, content: trimmedInput },
         ];
         const { data, error } = await invokeAIFunction("ai-code-assistant", {
-          messages,
+          messages: requestMessages,
           systemType,
           businessName,
-          mode: "code",
+          mode: aiMode ?? "code",
         });
 
         if (error) {
           throw error;
+        }
+
+        if (aiMode === "site-discovery" && !isSiteDiscoveryResponse(data)) {
+
+          throw new Error("Site planning is unavailable: the AI backend has not been updated with the site-discovery lane.");
+
         }
 
         const content = data?.choices?.[0]?.message?.content || data?.content || "I couldn't generate a response.";
@@ -246,7 +296,7 @@ export const AIAssistantCore: React.FC<AIAssistantCoreProps> = ({
       setMessages(prev => [...prev, errorMessage]);
       toast({
         title: "Error",
-        description: "Failed to get AI response",
+        description: describeAssistantFailure(error),
         variant: "destructive",
       });
     } finally {
@@ -310,7 +360,10 @@ export const AIAssistantCore: React.FC<AIAssistantCoreProps> = ({
 
   return (
     <div className={cn(
-      "flex flex-col bg-background border rounded-lg overflow-hidden",
+      "flex flex-col overflow-hidden",
+      appearance === "unison"
+        ? "bg-transparent border-0 rounded-none"
+        : "bg-background border rounded-lg",
       compact ? "max-h-[400px]" : "h-full",
       className
     )}>
@@ -338,13 +391,21 @@ export const AIAssistantCore: React.FC<AIAssistantCoreProps> = ({
 
       {/* Quick Actions */}
       {quickActions.length > 0 && (
-        <div className="p-2 border-b bg-muted/30">
+        <div className={cn(
+          "p-2 border-b",
+          appearance === "unison" ? "border-0 bg-transparent px-0 pt-0" : "bg-muted/30"
+        )}>
           <div className="flex flex-wrap gap-1.5">
             {quickActions.map((action) => (
               <button
                 key={action.id}
                 onClick={() => handleQuickAction(action)}
-                className="text-xs px-2.5 py-1.5 bg-background border rounded-full hover:bg-primary/10 hover:border-primary/30 transition-colors flex items-center gap-1"
+                className={cn(
+                  "text-xs px-2.5 py-1.5 border rounded-full transition-colors flex items-center gap-1",
+                  appearance === "unison"
+                    ? "bg-white/5 border-cyan-300/20 text-white/75 hover:bg-cyan-400/10 hover:border-cyan-300/50 hover:text-white"
+                    : "bg-background hover:bg-primary/10 hover:border-primary/30"
+                )}
               >
                 {action.icon}
                 {action.label}
@@ -358,9 +419,21 @@ export const AIAssistantCore: React.FC<AIAssistantCoreProps> = ({
       <ScrollArea className="flex-1 p-3" ref={scrollRef}>
         <div className="space-y-3">
           {messages.length === 0 && (
-            <div className="text-center text-muted-foreground py-8">
-              <Bot className="w-12 h-12 mx-auto mb-3 opacity-50" />
-              <p className="text-sm">Start a conversation or try a quick action above</p>
+            <div className={cn(
+              "text-center py-5",
+              appearance === "unison" ? "text-cyan-100/70" : "text-muted-foreground py-8"
+            )}>
+              <Bot className={cn(
+                "w-8 h-8 mx-auto mb-2",
+                appearance === "unison"
+                  ? "text-cyan-300 drop-shadow-[0_0_12px_rgba(34,211,238,0.55)]"
+                  : "opacity-50"
+              )} />
+              <p className="text-sm">
+                {appearance === "unison"
+                  ? "Tell Unison what you have in mind."
+                  : "Start a conversation or try a quick action above"}
+              </p>
             </div>
           )}
           
@@ -376,18 +449,27 @@ export const AIAssistantCore: React.FC<AIAssistantCoreProps> = ({
                 )}
               >
                 {message.role === "assistant" && (
-                  <div className="w-7 h-7 rounded-full bg-gradient-to-r from-purple-500 to-blue-500 flex items-center justify-center flex-shrink-0">
+                  <div className={cn(
+                    "w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0",
+                    appearance === "unison"
+                      ? "bg-gradient-to-br from-cyan-400 to-violet-500 shadow-[0_0_12px_rgba(34,211,238,0.35)]"
+                      : "bg-gradient-to-r from-purple-500 to-blue-500"
+                  )}>
                     <Bot className="w-4 h-4 text-white" />
                   </div>
                 )}
                 
                 <div className={cn(
                   "max-w-[85%] rounded-lg p-3",
-                  message.role === "user"
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted"
+                  appearance === "unison"
+                    ? message.role === "user"
+                      ? "border border-cyan-300/20 bg-cyan-400/10 text-white"
+                      : "border border-white/10 bg-white/5 text-white/85"
+                    : message.role === "user"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted"
                 )}>
-                  <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                  <p className="text-sm whitespace-pre-wrap">{stripSiteConfirmationMarker(message.content)}</p>
                   
                   {/* Code block with copy button */}
                   {code && message.role === "assistant" && (
@@ -423,11 +505,19 @@ export const AIAssistantCore: React.FC<AIAssistantCoreProps> = ({
           {/* Loading indicator */}
           {isLoading && (
             <div className="flex gap-2 justify-start">
-              <div className="w-7 h-7 rounded-full bg-gradient-to-r from-purple-500 to-blue-500 flex items-center justify-center">
+              <div className={cn(
+                "w-7 h-7 rounded-full flex items-center justify-center",
+                appearance === "unison"
+                  ? "bg-gradient-to-br from-cyan-400 to-violet-500"
+                  : "bg-gradient-to-r from-purple-500 to-blue-500"
+              )}>
                 <Loader2 className="w-4 h-4 text-white animate-spin" />
               </div>
-              <div className="bg-muted rounded-lg p-3">
-                <p className="text-sm text-muted-foreground">
+              <div className={cn(
+                "rounded-lg p-3",
+                appearance === "unison" ? "text-cyan-100/70" : "bg-muted"
+              )}>
+                <p className={cn("text-sm", appearance === "unison" ? "text-cyan-100/70" : "text-muted-foreground")}>
                   {analyzing ? "Analyzing files..." : "Thinking..."}
                 </p>
               </div>
@@ -449,7 +539,10 @@ export const AIAssistantCore: React.FC<AIAssistantCoreProps> = ({
       )}
 
       {/* Input Area */}
-      <div className="p-3 border-t bg-background">
+      <div className={cn(
+        "p-3 border-t",
+        appearance === "unison" ? "border-cyan-300/20 bg-transparent px-0 pb-0" : "bg-background"
+      )}>
         <div className="flex gap-2">
           {showFileUpload && (
             <Button
@@ -468,9 +561,11 @@ export const AIAssistantCore: React.FC<AIAssistantCoreProps> = ({
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
             placeholder={droppedFiles.length > 0 ? "Describe what to do with files..." : placeholder}
+            aria-label={appearance === "unison" ? "Describe what you want Unison to build" : undefined}
             disabled={isLoading}
             className={cn(
               "flex-1 min-h-[40px] max-h-[120px] resize-none",
+              appearance === "unison" && "border-cyan-300/25 bg-white/5 text-white placeholder:text-white/45 focus-visible:ring-cyan-300/40",
               compact && "min-h-[36px]"
             )}
             rows={1}
@@ -480,7 +575,12 @@ export const AIAssistantCore: React.FC<AIAssistantCoreProps> = ({
             onClick={handleSend}
             disabled={isLoading || (!input.trim() && droppedFiles.length === 0)}
             size="icon"
-            className="h-9 w-9 bg-primary hover:bg-primary/90"
+            className={cn(
+              "h-9 w-9",
+              appearance === "unison"
+                ? "bg-cyan-400 text-slate-950 shadow-[0_0_18px_rgba(34,211,238,0.35)] hover:bg-cyan-300"
+                : "bg-primary hover:bg-primary/90"
+            )}
           >
             {isLoading ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -491,7 +591,7 @@ export const AIAssistantCore: React.FC<AIAssistantCoreProps> = ({
         </div>
         
         {showFileUpload && (
-          <p className="text-xs text-muted-foreground mt-1.5">
+          <p className={cn("text-xs mt-1.5", appearance === "unison" ? "text-white/40" : "text-muted-foreground")}>
             📎 Paste images or drop files • Powered by AI
           </p>
         )}

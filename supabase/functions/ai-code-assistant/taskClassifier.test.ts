@@ -50,6 +50,24 @@ Deno.test("routes theme edits to isolated structured output", () => {
   assertEquals(task.skipThinking, true);
 });
 
+Deno.test("routes homepage planning chat to the isolated site discovery lane", () => {
+  const task = classifyTask({
+    mode: "site-discovery",
+    editMode: false,
+    navPageGen: false,
+    surgicalEdit: false,
+    behavioralEdit: false,
+    debugMode: false,
+  });
+
+  assertEquals(task.type, "site_discovery");
+  assertEquals(task.fastPath, true);
+  assertEquals(task.shouldUseMemory, false);
+  assertEquals(task.prefersJsonOutput, false);
+  assertEquals(task.skipResearch, true);
+  assertEquals(task.skipThinking, true);
+});
+
 Deno.test("keeps surgical and behavioral intent ahead of the template-react transport", () => {
   const surgical = classifyTask({ mode: "template-react", editMode: true, navPageGen: false, surgicalEdit: true, behavioralEdit: false, debugMode: false });
   const behavioral = classifyTask({ mode: "template-react", editMode: true, navPageGen: false, surgicalEdit: false, behavioralEdit: true, debugMode: false });

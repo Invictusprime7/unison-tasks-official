@@ -3,7 +3,6 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { SubscriptionBadge } from "@/components/SubscriptionBadge";
 import { DocHelper } from "@/components/docs";
 import { 
-  CheckSquare, 
   Menu, 
   LayoutDashboard,
   LogOut, 
@@ -55,7 +54,7 @@ export function NavigationBar({
             onClick={() => navigate("/home")}
             className="flex items-center gap-2 group"
           >
-            <CheckSquare className="h-6 w-6 text-cyan-400 group-hover:drop-shadow-[0_0_10px_rgba(0,255,255,0.8)] transition-all" />
+            <img src="/unison-icon.png" alt="" className="h-7 w-7" />
             <span className="text-base font-bold text-white">Unison</span>
           </button>
         </div>

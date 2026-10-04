@@ -1,7 +1,8 @@
 /**
  * LauncherWizard — the Unison System Launcher.
  *
- * Selection surface only. Three steps: idea, goals and brand style.
+ * Selection surface only. Four steps: industry, goals, visitor actions/pages,
+ * and brand style.
  * gather answers; `runLaunchPipeline` owns every deterministic stage. This
  * component never touches the VFS or authors a page. The orchestrator owns
  * deterministic generation and any guarded AI enrichment while this surface
@@ -29,7 +30,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import {
@@ -71,7 +71,6 @@ import { VFSPreview } from '@/components/VFSPreview';
 
 import {
   classifyPromptForWizard,
-  type WizardPromptAnalysis,
 } from "./wizardPromptClassifier";
 import {
   getIndustryCustomerNeeds,
@@ -91,6 +90,7 @@ import {
 export interface LauncherWizardProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  initialVisionPrompt?: string | null;
   prefill?: {
     businessId: string;
     businessName: string | null;
@@ -101,46 +101,15 @@ export interface LauncherWizardProps {
 
 const STEP_ORDER: WizardStep[] = [
   "industry",
+  "goals",
   "questions",
   "aesthetic",
-];
-
-const PROMPT_PRESETS = [
-  {
-    label: "🚀 SaaS Platform",
-    prompt:
-      "Developer SaaS platform named Apex with cloud APIs, tier pricing, and documentation",
-  },
-  {
-    label: "✂️ Salon & Spa",
-    prompt:
-      "Luxury boutique salon and spa named Studio Glow with online booking and lookbook gallery",
-  },
-  {
-    label: "🍽️ Bistro & Dining",
-    prompt:
-      "Farm-to-table bistro called Bella Tavola with seasonal dinner menu and reservations",
-  },
-  {
-    label: "🔨 Home Contractor",
-    prompt:
-      "Residential construction contractor named Forge Builders with project estimates and past work",
-  },
-  {
-    label: "🏠 Real Estate",
-    prompt:
-      "Modern real estate agency named Horizon Estates with luxury property listings",
-  },
-  {
-    label: "🛍️ E-Commerce Shop",
-    prompt:
-      "Streetwear fashion store with product catalog, cart, and instant checkout",
-  },
 ];
 
 export const LauncherWizard = ({
   open,
   onOpenChange,
+  initialVisionPrompt,
   prefill,
 }: LauncherWizardProps) => {
   const navigate = useNavigate();
@@ -162,9 +131,6 @@ export const LauncherWizard = ({
 
   const [socialLinks, setSocialLinks] = useState<Record<string, string>>({});
   const [visionPrompt, setVisionPrompt] = useState("");
-  const [aiAnalysis, setAiAnalysis] = useState<WizardPromptAnalysis | null>(
-    null,
-  );
 
   const [isLaunching, setIsLaunching] = useState(false);
   const [launchStatus, setLaunchStatus] = useState("");
@@ -202,7 +168,6 @@ export const LauncherWizard = ({
 
     setSocialLinks({});
     setVisionPrompt("");
-    setAiAnalysis(null);
     setIsLaunching(false);
     setLaunchStatus("");
     setLaunchError(null);
@@ -211,34 +176,27 @@ export const LauncherWizard = ({
     latestProgressRef.current = null;
   }, []);
 
-  const handleVisionPromptChange = (value: string) => {
-    setVisionPrompt(value);
-    const analysis = classifyPromptForWizard(value);
-    setAiAnalysis(analysis);
-    if (analysis) {
-      setSelectedIndustry(analysis.industry);
-      setSystemId(analysis.systemId);
-      if (analysis.businessName && !businessName) {
-        setBusinessName(analysis.businessName);
-      }
-      setPrimaryGoal(analysis.primaryGoal);
-      setCustomerNeeds(analysis.customerNeeds);
-      setSelectedPages(analysis.selectedPages);
-      const matchedTheme = THEME_PRESETS.find(
-        (p) => p.id === analysis.themePresetId,
-      );
-      if (matchedTheme) setTheme(matchedTheme);
-    }
-  };
-
-  const applyAiAnalysisAndContinue = () => {
-    if (!aiAnalysis) return;
-    setStep("questions");
-  };
-
   useEffect(() => {
-    if (open && prefill?.businessName) setBusinessName(prefill.businessName);
-  }, [open, prefill?.businessName]);
+    if (!open) return;
+    if (prefill?.businessName) setBusinessName(prefill.businessName);
+    if (!initialVisionPrompt) return;
+
+    setVisionPrompt(initialVisionPrompt);
+    const analysis = classifyPromptForWizard(initialVisionPrompt);
+    if (!analysis || analysis.confidence <= 0.55) return;
+
+    setSelectedIndustry(analysis.industry);
+    setSystemId(analysis.systemId);
+    setBusinessName(analysis.businessName ?? prefill?.businessName ?? "");
+    setPrimaryGoal(analysis.primaryGoal);
+    setCustomerNeeds(analysis.customerNeeds);
+    setSelectedPages(analysis.selectedPages);
+    const matchedTheme = THEME_PRESETS.find(
+      (preset) => preset.id === analysis.themePresetId,
+    );
+    if (matchedTheme) setTheme(matchedTheme);
+    setStep("goals");
+  }, [open, initialVisionPrompt, prefill?.businessName]);
 
   const selectIndustry = (industry: string, id: BusinessSystemType) => {
     setSelectedIndustry(industry);
@@ -246,7 +204,6 @@ export const LauncherWizard = ({
     setPrimaryGoal(getIndustryPrimaryGoal(industry));
     setCustomerNeeds(getIndustryCustomerNeeds(industry));
     setSelectedPages(getIndustryDefaultPageChoices(industry));
-    setStep("questions");
   };
 
   const toggle = <T extends string>(list: T[], value: T): T[] =>
@@ -299,9 +256,11 @@ export const LauncherWizard = ({
   const canContinue =
     step === "industry"
       ? Boolean(systemId && selectedIndustry)
-      : step === "questions"
+      : step === "goals"
         ? Boolean(primaryGoal)
-        : Boolean(businessName.trim() && theme);
+        : step === "questions"
+          ? Boolean(primaryGoal)
+          : Boolean(businessName.trim() && theme);
 
   const goBack = () => {
     const index = STEP_ORDER.indexOf(step);
@@ -440,7 +399,7 @@ export const LauncherWizard = ({
                       )}
                     />
                   ))}
-                  <span className="ml-1 text-xs tabular-nums text-muted-foreground">{currentStepIndex + 1}/3</span>
+                  <span className="ml-1 text-xs tabular-nums text-muted-foreground">{currentStepIndex + 1}/{STEP_ORDER.length}</span>
                 </div>
               )}
             </div>
@@ -486,36 +445,21 @@ export const LauncherWizard = ({
               <fieldset disabled={isLaunching} aria-busy={isLaunching} className="mx-auto max-w-4xl px-5 py-7 sm:px-8 sm:py-10">
                 <div key={step} className="animate-fade-in">
                   {step === "industry" && (
-                    <div className="mx-auto max-w-2xl space-y-7">
-                      <StepHeading title="What are you creating?" subtitle="Describe the business and the outcome you want. We’ll shape the starting point." />
-                      <div className="rounded-lg border border-border bg-card p-3 shadow-sm focus-within:ring-2 focus-within:ring-ring">
-                        <label htmlFor="wizard-vision" className="sr-only">Describe your website</label>
-                        <Textarea id="wizard-vision" value={visionPrompt} onChange={(event) => handleVisionPromptChange(event.target.value)} placeholder="A boutique salon with online booking, a lookbook, and a warm, minimal feel…" className="min-h-36 resize-none border-0 bg-transparent p-2 text-base shadow-none focus-visible:ring-0" />
-                        <div className="flex justify-end border-t border-border pt-3">
-                          <Button onClick={applyAiAnalysisAndContinue} disabled={!aiAnalysis}>Continue <ArrowRight /></Button>
-                        </div>
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {PROMPT_PRESETS.map((preset) => (
-                          <Button key={preset.label} type="button" variant="outline" size="sm" onClick={() => handleVisionPromptChange(preset.prompt)} className="rounded-full text-xs font-normal">{preset.label}</Button>
-                        ))}
-                      </div>
-                      {aiAnalysis && (
-                        <div className="flex items-start gap-3 border-l-2 border-primary pl-4" role="status">
-                          <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                          <div><p className="text-sm font-medium">Starting point found</p><p className="mt-1 text-xs text-muted-foreground">{INDUSTRY_FOCUS_CARDS.find((card) => card.industry === selectedIndustry)?.label ?? selectedIndustry} · {selectedPages.length + 1} pages · {theme?.label}</p></div>
+                    <div className="mx-auto max-w-3xl space-y-7">
+                      <StepHeading title="Choose your business type" subtitle="This gives Unison the right starting point. You can fine-tune your site goals and pages next." />
+                      {visionPrompt && (
+                        <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
+                          <p className="text-xs font-medium text-primary">Your site direction</p>
+                          <p className="mt-1 text-sm leading-6 text-foreground/80">{visionPrompt}</p>
                         </div>
                       )}
-                      <details className="group border-t border-border pt-4">
-                        <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-medium">Choose an industry instead <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" /></summary>
-                        <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                          {INDUSTRY_FOCUS_CARDS.map((card) => (
-                            <Button key={card.industry} type="button" variant="outline" onClick={() => selectIndustry(card.industry, card.systemId)} className="h-auto min-h-20 justify-start whitespace-normal p-3 text-left">
-                              <span className="text-lg">{card.icon}</span><span><span className="block text-sm font-medium">{card.label}</span><span className="mt-0.5 block text-xs font-normal text-muted-foreground">{card.tagline}</span></span>
-                            </Button>
-                          ))}
-                        </div>
-                      </details>
+                      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                        {INDUSTRY_FOCUS_CARDS.map((card) => (
+                          <Button key={card.industry} type="button" variant="outline" aria-pressed={selectedIndustry === card.industry} onClick={() => selectIndustry(card.industry, card.systemId)} className={cn("h-auto min-h-20 justify-start whitespace-normal p-3 text-left", selectedIndustry === card.industry && "border-primary bg-primary/5 ring-1 ring-primary")}>
+                            <span className="text-lg">{card.icon}</span><span><span className="block text-sm font-medium">{card.label}</span><span className="mt-0.5 block text-xs font-normal text-muted-foreground">{card.tagline}</span></span>
+                          </Button>
+                        ))}
+                      </div>
                       <details className="group border-t border-border pt-4">
                         <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-medium">Import an existing project <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" /></summary>
                         <div className="mt-4 flex flex-wrap gap-2"><ImportProjectZipButton onImported={() => onOpenChange(false)} />{prefill?.businessId && <ImportUnisonSiteZipButton businessId={prefill.businessId} onImported={() => onOpenChange(false)} />}</div>
@@ -523,21 +467,30 @@ export const LauncherWizard = ({
                     </div>
                   )}
 
-                  {step === "questions" && (
+                  {step === "goals" && (
                     <div className="mx-auto max-w-3xl space-y-8">
-                      <StepHeading title="What should the site accomplish?" subtitle="Choose the main outcome first. Related choices appear as you go." />
+                      <StepHeading title="What should your site accomplish?" subtitle="Choose the main outcome. After you continue, you can fine-tune visitor actions and pages." />
                       <section className="space-y-3">
                         <FieldLabel>Primary goal</FieldLabel>
                         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                           {PRIMARY_GOALS.map((goal) => <ChoiceCard key={goal.id} active={primaryGoal === goal.id} onClick={() => setPrimaryGoal(goal.id)} icon={goal.icon} title={goal.label} description={goal.description} />)}
                         </div>
                       </section>
-                      {primaryGoal && (
-                        <div className="animate-fade-in space-y-7 border-t border-border pt-7">
-                          <section className="space-y-3"><FieldLabel>Visitor actions</FieldLabel><div className="flex flex-wrap gap-2">{CUSTOMER_NEEDS.map((need) => <Chip key={need.id} active={customerNeeds.includes(need.id)} onClick={() => setCustomerNeeds((current) => toggle(current, need.id))}><span>{need.icon}</span>{need.label}</Chip>)}</div></section>
-                          <section className="space-y-3"><FieldLabel>Pages to include</FieldLabel><div className="flex flex-wrap gap-2"><span className="inline-flex items-center rounded-md border border-border bg-muted px-3 py-2 text-sm text-muted-foreground"><Check className="mr-2 h-3.5 w-3.5" />Home</span>{pageChoices.map((page) => <Chip key={page.id} active={selectedPages.includes(page.id)} onClick={() => setSelectedPages((current) => toggle(current, page.id))}><span>{page.icon}</span>{page.label}</Chip>)}</div></section>
-                        </div>
-                      )}
+                    </div>
+                  )}
+
+                  {step === "questions" && (
+                    <div className="mx-auto max-w-3xl animate-fade-in space-y-8">
+                      <StepHeading title="Shape the visitor experience" subtitle="Choose what visitors can do and which pages will support your goal." />
+                      <section className="space-y-3">
+                        <FieldLabel>Visitor actions</FieldLabel>
+                        <div className="flex flex-wrap gap-2">{CUSTOMER_NEEDS.map((need) => <Chip key={need.id} active={customerNeeds.includes(need.id)} onClick={() => setCustomerNeeds((current) => toggle(current, need.id))}><span>{need.icon}</span>{need.label}</Chip>)}</div>
+                      </section>
+                      <section className="space-y-3 border-t border-border pt-6">
+                        <FieldLabel>Pages to include</FieldLabel>
+                        <p className="text-xs text-muted-foreground">Home is included automatically. Select any additional pages you need.</p>
+                        <div className="flex flex-wrap gap-2"><span className="inline-flex items-center rounded-md border border-border bg-muted px-3 py-2 text-sm text-muted-foreground"><Check className="mr-2 h-3.5 w-3.5" />Home</span>{pageChoices.map((page) => <Chip key={page.id} active={selectedPages.includes(page.id)} onClick={() => setSelectedPages((current) => toggle(current, page.id))}><span>{page.icon}</span>{page.label}</Chip>)}</div>
+                      </section>
                     </div>
                   )}
 
@@ -576,12 +529,10 @@ export const LauncherWizard = ({
 
                 {launchError && <div role="alert" className="mt-6 rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">{launchError}{launchFailure && <details className="mt-2"><summary className="cursor-pointer text-xs font-medium">Technical details</summary><pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap text-[10px]">{JSON.stringify(launchFailure, null, 2)}</pre></details>}</div>}
 
-                {step !== "industry" && (
-                  <footer className="mt-8 flex items-center justify-between border-t border-border pt-5">
-                    <Button variant="ghost" onClick={goBack}><ArrowLeft />Back</Button>
-                    {step === "aesthetic" ? <Button disabled={!canContinue || isLaunching} onClick={handleGenerate}>{isLaunching ? <Loader2 className="animate-spin" /> : <Sparkle />}{isLaunching ? 'Creating…' : 'Create site'}</Button> : <Button disabled={!canContinue || isLaunching} onClick={goNext}>Continue<ArrowRight /></Button>}
-                  </footer>
-                )}
+                <footer className="mt-8 flex items-center justify-between border-t border-border pt-5">
+                  {step === "industry" ? <span /> : <Button variant="ghost" onClick={goBack}><ArrowLeft />Back</Button>}
+                  {step === "aesthetic" ? <Button disabled={!canContinue || isLaunching} onClick={handleGenerate}>{isLaunching ? <Loader2 className="animate-spin" /> : <Sparkle />}{isLaunching ? 'Creating…' : 'Create site'}</Button> : <Button disabled={!canContinue || isLaunching} onClick={goNext}>Continue<ArrowRight /></Button>}
+                </footer>
               </fieldset>
             )}
           </div>

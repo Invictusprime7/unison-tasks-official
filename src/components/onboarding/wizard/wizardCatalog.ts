@@ -23,7 +23,7 @@ import {
 
 // ── Steps ───────────────────────────────────────────────────────────────────
 
-export type WizardStep = "industry" | "questions" | "aesthetic";
+export type WizardStep = "industry" | "goals" | "questions" | "aesthetic";
 
 export const STEP_META: {
   key: WizardStep;
@@ -32,8 +32,9 @@ export const STEP_META: {
   sublabel: string;
 }[] = [
   { key: "industry", num: 1, label: "Idea", sublabel: "What you do" },
-  { key: "questions", num: 2, label: "Goals", sublabel: "Your needs" },
-  { key: "aesthetic", num: 3, label: "Style", sublabel: "Name & style" },
+  { key: "goals", num: 2, label: "Goals", sublabel: "Site purpose" },
+  { key: "questions", num: 3, label: "Visitors", sublabel: "Actions & pages" },
+  { key: "aesthetic", num: 4, label: "Style", sublabel: "Name & style" },
 ];
 
 // ── Answer vocabulary ───────────────────────────────────────────────────────

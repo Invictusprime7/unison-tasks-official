@@ -200,6 +200,10 @@ export function runAssistantOrchestrator(
   userId?: string,
   signal?: AbortSignal,
 ): Promise<Response> {
+  if (task.type === 'site_discovery') {
+    return runSiteDiscoveryLane(parsed, task, corsHeaders, signal);
+  }
+
   if (task.type === 'wizard_canonical_enrichment') {
     // Repair turns append assistant + instruction messages after the canonical
     // context record, so the context is the LAST message that actually parses
@@ -244,6 +248,75 @@ export function runAssistantOrchestrator(
   }
   // Source-generation and editing tasks use the builder lane.
   return runBuilderLane(parsed, task, corsHeaders, userId, signal);
+}
+
+async function runSiteDiscoveryLane(
+  parsed: AIRequest,
+  task: ClassifiedTask,
+  corsHeaders: Record<string, string>,
+  signal?: AbortSignal,
+): Promise<Response> {
+  const confirmationMarker = '<UNISON_SITE_CONFIRMATION>';
+  const systemPrompt = `You are Unison's friendly site-planning assistant. Help the user clarify the website they want before they configure it in Unison's setup wizard.
+
+Have a concise, natural conversation. Use the conversation history and ask at most one useful follow-up question at a time when essential details are missing. Learn the business and audience, main site goal, important visitor actions, pages, and visual direction when known. Do not write code, invent business facts, or claim the site has already been built.
+
+Once there is enough information, summarize the proposed site direction in plain language and ask whether it is right. Only when you explicitly ask the user to confirm a complete site direction, append this exact marker on its own final line: ${confirmationMarker}
+
+Use the marker only for a clear confirmation request. If the user suggests changes, revise the plan and ask for confirmation again without treating the change request as approval.`;
+  const conversation = compactMessages(
+    parsed.messages
+      .filter((message) => message.role === 'user' || message.role === 'assistant')
+      .map((message) => ({
+        role: message.role,
+        content: extractTextContent(message.content),
+      })),
+    12,
+    3000,
+  );
+  const latestUserMessage = [...conversation].reverse().find((message) => message.role === 'user');
+  const latestUserText = typeof latestUserMessage?.content === 'string'
+    ? latestUserMessage.content
+    : '';
+  const providerPlan = buildProviderPlan(
+    task,
+    true,
+    { ...parsed.gatewayOptions, timeoutMs: 45000, maxTokens: 1200 },
+    'simple',
+    latestUserText,
+  );
+  const providerResult = await runProviderLoop({
+    aiMessages: [{ role: 'system', content: systemPrompt }, ...conversation],
+    providerPlan,
+    navPageGen: false,
+    reasoningEffort: 'none',
+    signal,
+  });
+
+  if (providerResult.earlyError) {
+    return new Response(JSON.stringify({ error: providerResult.earlyError.error }), {
+      status: providerResult.earlyError.status,
+      headers: {
+        ...corsHeaders,
+        'Content-Type': 'application/json',
+        ...(providerResult.earlyError.status === 429 ? { 'Retry-After': '1' } : {}),
+      },
+    });
+  }
+
+  return new Response(JSON.stringify({
+    choices: [{ message: { content: providerResult.content } }],
+    content: providerResult.content,
+    mode: 'site-discovery',
+    modelUsed: providerResult.modelUsed,
+    providerUsed: providerResult.providerUsed,
+  }), {
+    headers: {
+      ...corsHeaders,
+      'Content-Type': 'application/json',
+      ...(providerResult.providerUsed ? { 'X-Unison-AI-Provider': providerResult.providerUsed } : {}),
+    },
+  });
 }
 
 // ============================================================================
