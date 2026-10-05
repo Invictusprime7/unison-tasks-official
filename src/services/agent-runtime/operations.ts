@@ -6,6 +6,10 @@
  */
 import { supabase } from '@/integrations/supabase/client';
 import { collectIntentTargets } from './intentInvariant';
+import {
+  listCatalog, createCatalogItem, updateCatalogItemRow, deleteCatalogItem,
+  type CatalogItem, type CatalogPatch,
+} from './catalogOps';
 
 export interface AgentContext {
   files: Record<string, string>;
@@ -68,47 +72,47 @@ export const agentOperations = {
     if (typeof src !== 'string' || !src.includes(fromUrl)) return null;
     return { files: { [path]: src.split(fromUrl).join(toUrl) }, summary: `Image swapped in ${path}` };
   },
+  /** Live catalog (products, services, menu, plans) for this business. */
+  async inspect_catalog(ctx: AgentContext): Promise<CatalogItem[]> {
+    return ctx.businessId ? listCatalog(ctx.businessId) : [];
+  },
+  async create_catalog_item(ctx: AgentContext, surfaceId: string, patch: CatalogPatch): Promise<CatalogItem> {
+    if (!ctx.businessId) throw new Error('No business is linked to this site.');
+    return createCatalogItem(ctx.businessId, surfaceId, patch);
+  },
+  async hide_catalog_item(ctx: AgentContext, surfaceId: string, id: string, hidden = true) {
+    return agentOperations.update_catalog_item(ctx, surfaceId, id, { active: !hidden });
+  },
+  async delete_catalog_item(ctx: AgentContext, surfaceId: string, id: string): Promise<void> {
+    if (!ctx.businessId) throw new Error('No business is linked to this site.');
+    await deleteCatalogItem(ctx.businessId, surfaceId, id);
+  },
   /**
-   * Write a catalog record (price / image) to the real database row through
-   * normal access rules, then propose the matching preview edit (old image
-   * URL / old price text → new) for the canonical save path.
+   * Write a catalog record (database first), then propose the matching
+   * preview edit (old image URL / old price text → new) for the canonical
+   * save path. Sections bound to live data need no file change.
    */
   async update_catalog_item(
-    ctx: AgentContext,
-    table: CatalogTable,
-    id: string,
-    patch: { price?: number; image_url?: string },
-  ): Promise<{ change: ProposedChange | null; summary: string }> {
-    if (!ctx.businessId || !CATALOG_TABLES.includes(table)) throw new Error('No business is linked to this site.');
-    const usesCents = table !== 'products';
-    const { data: row, error: readErr } = await supabase
-      .from(table as 'products').select('*').eq('id', id).eq('business_id', ctx.businessId).maybeSingle();
-    if (readErr) throw new Error(readErr.message);
-    if (!row) throw new Error('That item was not found for this business.');
-    const r = row as Record<string, unknown>;
-    const update: Record<string, unknown> = {};
-    if (patch.price !== undefined) update[usesCents ? 'price_cents' : 'price'] = usesCents ? Math.round(patch.price * 100) : patch.price;
-    if (patch.image_url !== undefined) update.image_url = patch.image_url;
-    const { error } = await supabase.from(table as 'products').update(update as never).eq('id', id).eq('business_id', ctx.businessId);
-    if (error) throw new Error(error.message);
-
-    const files: Record<string, string> = {};
+    ctx: AgentContext, surfaceId: string, id: string, patch: CatalogPatch,
+  ): Promise<{ change: ProposedChange | null; summary: string; item: CatalogItem }> {
+    if (!ctx.businessId) throw new Error('No business is linked to this site.');
+    const { before, after } = await updateCatalogItemRow(ctx.businessId, surfaceId, id, patch);
     const swaps: Array<[string, string]> = [];
-    if (patch.image_url && typeof r.image_url === 'string' && r.image_url) swaps.push([r.image_url, patch.image_url]);
-    if (patch.price !== undefined) {
-      const old = usesCents ? Number(r.price_cents ?? 0) / 100 : Number(r.price ?? 0);
+    if (patch.image_url && before?.image && before.image !== patch.image_url) swaps.push([before.image, patch.image_url]);
+    if (patch.price != null && before?.price) {
       const fmt = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(2));
-      if (old > 0) swaps.push([`$${fmt(old)}`, `$${fmt(patch.price)}`]);
+      swaps.push([`$${fmt(before.price)}`, `$${fmt(patch.price)}`]);
     }
+    const files: Record<string, string> = {};
     for (const [path, src] of Object.entries(ctx.files)) {
       if (!/^\/src\/.+\.(t|j)sx?$/.test(path)) continue;
       let next = src;
-      for (const [a, b] of swaps) next = next.split(a).join(b);
+      for (const [x, y] of swaps) next = next.split(x).join(y);
       if (next !== src) files[path] = next;
     }
-    const name = String(r.name ?? 'item');
-    const summary = `${name}: ${patch.price !== undefined ? `price ${patch.price}` : 'new image'} saved to the database`;
-    return { change: Object.keys(files).length ? { files, summary } : null, summary };
+    const what = patch.price != null ? `price $${patch.price}` : patch.image_url ? 'new photo' : patch.active === false ? 'hidden' : 'updated';
+    const summary = `${after.name}: ${what} saved`;
+    return { change: Object.keys(files).length ? { files, summary } : null, summary, item: after };
   },
 } as const;
 
