@@ -6,7 +6,7 @@
  * `cms-records` function under business access rules. Every write emits a
  * `data_change` agent event.
  */
-import { getCatalogSurface, type CatalogSurface } from '@/platform/core/catalogSurfaceRegistry';
+import { getCatalogSurface, getCatalogSurfaceByTable, type CatalogSourceTable, type CatalogSurface } from '@/platform/core/catalogSurfaceRegistry';
 import { createCmsRecord, listCmsRecords, removeCmsRecord, updateCmsRecord } from '@/services/cmsRecordService';
 import { emitAgentEvent } from './agentEvents';
 
@@ -32,7 +32,7 @@ export interface CatalogPatch {
 }
 
 function surfaceOrThrow(surfaceId: string): CatalogSurface {
-  const s = getCatalogSurface(surfaceId);
+  const s = getCatalogSurface(surfaceId) ?? getCatalogSurfaceByTable(surfaceId as CatalogSourceTable);
   if (!s) throw new Error(`Unknown catalog type "${surfaceId}".`);
   return s;
 }
