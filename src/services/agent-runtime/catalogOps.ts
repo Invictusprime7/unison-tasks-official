@@ -1,0 +1,122 @@
+/**
+ * Catalog operations exposed through `agentOperations` — the one surface the
+ * AI, the command menu and the Catalog panel use to read and change a
+ * business's products / services / menu / plans. Table + field mapping comes
+ * from `catalogSurfaceRegistry`; rows are written server-side by the
+ * `cms-records` function under business access rules. Every write emits a
+ * `data_change` agent event.
+ */
+import { getCatalogSurface, getCatalogSurfaceByTable, type CatalogSourceTable, type CatalogSurface } from '@/platform/core/catalogSurfaceRegistry';
+import { createCmsRecord, listCmsRecords, removeCmsRecord, updateCmsRecord } from '@/services/cmsRecordService';
+import { emitAgentEvent } from './agentEvents';
+
+export const EDITABLE_CATALOG_SURFACES = ['products', 'services', 'menu_items', 'pricing_plans'] as const;
+
+export interface CatalogItem {
+  surfaceId: string;
+  id: string;
+  name: string;
+  price: number | null;
+  image: string | null;
+  active: boolean;
+}
+
+/** Owner-facing patch: price is always in dollars. */
+export interface CatalogPatch {
+  name?: string | null;
+  description?: string | null;
+  price?: number | null;
+  image_url?: string | null;
+  active?: boolean;
+  [column: string]: unknown;
+}
+
+function surfaceOrThrow(surfaceId: string): CatalogSurface {
+  const s = getCatalogSurface(surfaceId) ?? getCatalogSurfaceByTable(surfaceId as CatalogSourceTable);
+  if (!s) throw new Error(`Unknown catalog type "${surfaceId}".`);
+  return s;
+}
+
+export function normalizeCatalogPatch(surface: CatalogSurface, patch: CatalogPatch): Record<string, unknown> {
+  const f = surface.fields;
+  const editable = new Set(surface.editableFields.map((e) => e.key));
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(patch)) {
+    if (['name', 'description', 'price', 'image_url', 'active'].includes(k)) continue;
+    if (editable.has(k)) out[k] = v;
+  }
+  if (patch.name !== undefined) out[f.title] = patch.name ?? '';
+  if (patch.description !== undefined && f.description) out[f.description] = patch.description;
+  if (patch.image_url !== undefined && f.image) out[f.image] = patch.image_url;
+  if (patch.active !== undefined && f.active) out[f.active] = patch.active;
+  if (patch.price !== undefined) {
+    const dollars = patch.price == null || !Number.isFinite(patch.price) ? 0 : patch.price;
+    if (f.priceCents) out[f.priceCents] = Math.round(dollars * 100);
+    else if (f.price) out[f.price] = dollars;
+  }
+  return out;
+}
+
+export function toCatalogItem(surface: CatalogSurface, r: Record<string, unknown>): CatalogItem {
+  const f = surface.fields;
+  const cents = f.priceCents ? r[f.priceCents] : undefined;
+  const dollars = f.price ? r[f.price] : undefined;
+  return {
+    surfaceId: surface.surfaceId,
+    id: String(r.id),
+    name: String(r[f.title] ?? 'Untitled'),
+    price: cents != null ? Number(cents) / 100 : dollars != null ? Number(dollars) : null,
+    image: f.image && typeof r[f.image] === 'string' ? (r[f.image] as string) : null,
+    active: f.active ? r[f.active] !== false : true,
+  };
+}
+
+export async function listCatalog(businessId: string, surfaceIds: readonly string[] = EDITABLE_CATALOG_SURFACES): Promise<CatalogItem[]> {
+  const all = await Promise.all(surfaceIds.map(async (id) => {
+    const surface = surfaceOrThrow(id);
+    const rows = await listCmsRecords({ businessId, resource: surface.surfaceId }).catch(() => []);
+    return rows.map((r) => toCatalogItem(surface, r));
+  }));
+  return all.flat();
+}
+
+export async function createCatalogItem(businessId: string, surfaceId: string, patch: CatalogPatch): Promise<CatalogItem> {
+  const surface = surfaceOrThrow(surfaceId);
+  const row = await createCmsRecord({
+    businessId,
+    resource: surface.surfaceId,
+    values: { ...surface.newRowDefaults, ...normalizeCatalogPatch(surface, patch) },
+  });
+  const item = toCatalogItem(surface, row);
+  emitAgentEvent({ kind: 'data_change', message: `Added ${surface.rowLabel} "${item.name}"`, status: 'ok' });
+  return item;
+}
+
+export async function updateCatalogItemRow(
+  businessId: string, surfaceId: string, id: string, patch: CatalogPatch,
+): Promise<{ before: CatalogItem | null; after: CatalogItem }> {
+  const surface = surfaceOrThrow(surfaceId);
+  const rows = await listCmsRecords({ businessId, resource: surface.surfaceId });
+  const beforeRow = rows.find((r) => String(r.id) === id);
+  const row = await updateCmsRecord({
+    businessId, resource: surface.surfaceId, recordId: id, values: normalizeCatalogPatch(surface, patch),
+  });
+  const after = toCatalogItem(surface, row);
+  emitAgentEvent({ kind: 'data_change', message: `Updated ${surface.rowLabel} "${after.name}"`, status: 'ok' });
+  return { before: beforeRow ? toCatalogItem(surface, beforeRow) : null, after };
+}
+
+export async function deleteCatalogItem(businessId: string, surfaceId: string, id: string): Promise<void> {
+  const surface = surfaceOrThrow(surfaceId);
+  await removeCmsRecord({ businessId, resource: surface.surfaceId, recordId: id });
+  emitAgentEvent({ kind: 'data_change', message: `Removed a ${surface.rowLabel}`, status: 'ok' });
+}
+
+/** Compact catalog summary for the AI context. */
+export function renderCatalogForPrompt(items: CatalogItem[], maxChars = 1500): string {
+  if (items.length === 0) return 'CATALOG: this business has no saved products/services yet.';
+  const lines = ['CATALOG (live database; change prices/images via catalog operations, never by editing page text):'];
+  for (const i of items) lines.push(`- [${i.surfaceId}#${i.id}] ${i.name}${i.price != null ? ` — $${i.price}` : ''}${i.active ? '' : ' (hidden)'}`);
+  const t = lines.join('\n');
+  return t.length > maxChars ? `${t.slice(0, maxChars)}\n…` : t;
+}

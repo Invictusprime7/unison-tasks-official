@@ -58,6 +58,9 @@ import { AgentActivityFeed } from './ai-chat/AgentActivityFeed';
 import { emitAgentEvent } from '@/services/agent-runtime/agentEvents';
 import { buildSystemGraph, renderSystemGraphForPrompt } from '@/services/agent-runtime/systemGraph';
 import { AgentCommandPalette } from './ai-chat/AgentCommandPalette';
+import { CatalogPanel } from './ai-chat/CatalogPanel';
+import { agentOperations } from '@/services/agent-runtime/operations';
+import { renderCatalogForPrompt } from '@/services/agent-runtime/catalogOps';
 import { toast } from 'sonner';
 import type { BusinessSystemType } from '@/data/templates/types';
 import type { SystemsBuildContext } from '@/types/systemsBuildContext';
@@ -446,6 +449,8 @@ export interface Message {
   taskPlan?: TaskPlan;
   /** Rich metadata from the AI response */
   meta?: MessageMeta;
+  /** Inline question the AI asks; saved with the conversation. */
+  ask?: { question: string; options: Array<{ label: string; reply: string }>; answer?: string };
 }
 
 export interface VFSEdit {
@@ -650,6 +655,15 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pendingPromptRef = useRef<string | null>(null);
+  // Set when the owner confirms (via an inline answer) that they want the
+  // real business setup, so the next request skips the uncertainty question.
+  const confirmedSetupRef = useRef(false);
+  const answerAsk = (messageId: string, option: { label: string; reply: string }, confirmsSetup: boolean) => {
+    setMessages((prev) => prev.map((m) => (m.id === messageId && m.ask ? { ...m, ask: { ...m.ask, answer: option.label } } : m)));
+    confirmedSetupRef.current = confirmsSetup;
+    pendingPromptRef.current = option.reply;
+    setInput(option.reply);
+  };
 
   useEffect(() => {
     try {
@@ -991,7 +1005,29 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
       userContent,
     );
     let backendAutoApplied = false;
-    if (capabilityPlan.requestedCapabilities.length > 0) {
+    const setupConfidence = capabilityInterpretation.degraded ? 0 : (capabilityInterpretation.envelope?.confidence ?? 0);
+    const setupConfirmed = confirmedSetupRef.current;
+    confirmedSetupRef.current = false;
+    if (capabilityPlan.requestedCapabilities.length > 0 && !setupConfirmed && setupConfidence < 0.7) {
+      const what = capabilityPlan.packs.map((pack) => pack.name).join(', ') || 'this feature';
+      setMessages((prev) => [...prev, {
+        id: generateId(),
+        role: 'assistant',
+        content: `Quick check before I build: do you want ${what} to actually work (saving real requests for you), or just the look of it for now?`,
+        timestamp: new Date(),
+        ask: {
+          question: 'setup-or-design',
+          options: [
+            { label: 'Make it work for real', reply: `Set it up for real: ${userContent}` },
+            { label: 'Just the design', reply: `Design only, no business setup: ${userContent}` },
+          ],
+        },
+      }]);
+      setIsLoading(false);
+      return;
+    }
+    const designOnly = /^Design only, no business setup:/i.test(userContent);
+    if (capabilityPlan.requestedCapabilities.length > 0 && !designOnly) {
       const resolution = resolveCapabilityIntentBindings(
         capabilityPlan.proposal.intentBindings,
         vfsFiles ?? {},
@@ -1016,7 +1052,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
       if (needsRenderableUiPatch) {
         toast.info(canApplyBackend
           ? 'Backend setup applied. Building the requested UI now.'
-          : 'Backend setup is waiting for review. Building the requested UI now.');
+          : 'Building the design now. Tap “Turn on” in the chat when you want it to work for real.');
       } else {
         setMessages((prev) => [...prev, {
           id: generateId(),
@@ -1740,6 +1776,13 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
             if (graphText) previewSnapshot = `${previewSnapshot ?? ''}\n\n${graphText}`.trim();
             emitAgentEvent({ kind: 'discovery', message: 'Read every page, section and button destination', status: 'ok' });
           } catch { /* best-effort */ }
+          if (businessId) {
+            try {
+              const catalog = await agentOperations.inspect_catalog({ files: vfsFiles ?? {}, businessId });
+              previewSnapshot = `${previewSnapshot ?? ''}\n\n${renderCatalogForPrompt(catalog)}`.trim();
+              emitAgentEvent({ kind: 'discovery', message: `Read ${catalog.length} catalog items`, status: 'ok' });
+            } catch { /* best-effort */ }
+          }
 
           // ── Build conversation history for multi-turn awareness ──
           // Include up to 10 prior user/assistant exchanges (compact: only role + content, capped)
@@ -3134,9 +3177,11 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
                 <div className="mb-3 min-w-0 max-w-full overflow-hidden border-l-2 border-amber-500/60 py-1 pl-3 text-xs">
                   <div className="flex items-center gap-2 font-semibold text-foreground">
                     <Database className="h-4 w-4 text-amber-500" />
-                    Business system change required
+                    Turn on {pendingCapabilityProposal.plan.packs.map((pack) => pack.name).join(', ') || 'this feature'} for your site?
                   </div>
                   <p className="mt-2 text-muted-foreground">{pendingCapabilityProposal.plan.proposal.summary}</p>
+                  <details className="mt-2">
+                    <summary className="cursor-pointer text-muted-foreground">Show details</summary>
                   {pendingCapabilityProposal.plan.packs.length > 0 && (
                     <p className="mt-2 text-muted-foreground">
                       Packs to install (in order): {pendingCapabilityProposal.plan.packs.map((pack) => pack.name).join(' → ')}
@@ -3169,6 +3214,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
                       </details>
                     );
                   })()}
+                  </details>
                   {pendingCapabilityProposal.plan.proposal.unsupportedCapabilities.length > 0 && (
                     <p className="mt-1 text-amber-500">
                       Not covered by a pack yet: {pendingCapabilityProposal.plan.proposal.unsupportedCapabilities.join(', ')}
@@ -3190,7 +3236,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
                           pendingCapabilityProposal.resolution,
                         );
                         if (outcome.success) {
-                          toast.success('Business capability plan applied');
+                          toast.success('Done — it is set up and connected to your site');
                           setPendingCapabilityProposal(null);
                         } else {
                           toast.error('Business capability plan was not applied', { description: outcome.error });
@@ -3198,10 +3244,10 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
                         }
                       }}
                     >
-                      {pendingCapabilityProposal.isApplying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Approve and apply'}
+                      {pendingCapabilityProposal.isApplying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Turn on'}
                     </Button>
                     <Button size="sm" variant="outline" disabled={pendingCapabilityProposal.isApplying} onClick={() => setPendingCapabilityProposal(null)}>
-                      Reject
+                      Not now
                     </Button>
                   </div>
                 </div>
@@ -3216,12 +3262,30 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
                 />
               ) : (
                 messages.map((msg) => (
-                  <AIConversationMessage
-                    key={msg.id}
-                    message={msg}
-                    onViewEdits={handleViewEdits}
-                    onRetryError={handleFixError}
-                  />
+                  <div key={msg.id}>
+                    <AIConversationMessage
+                      message={msg}
+                      onViewEdits={handleViewEdits}
+                      onRetryError={handleFixError}
+                    />
+                    {msg.ask && (
+                      <div className="mb-3 ml-10 flex flex-wrap gap-2" role="group" aria-label="Choose an answer">
+                        {msg.ask.answer ? (
+                          <span className="text-xs text-muted-foreground">You chose: {msg.ask.answer}</span>
+                        ) : msg.ask.options.map((option, idx) => (
+                          <Button
+                            key={option.label}
+                            size="sm"
+                            variant={idx === 0 ? 'default' : 'outline'}
+                            disabled={isLoading}
+                            onClick={() => answerAsk(msg.id, option, idx === 0 && msg.ask?.question === 'setup-or-design')}
+                          >
+                            {option.label}
+                          </Button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 ))
               )}
               <AgentActivityFeed active={isLoading} />
@@ -3237,6 +3301,9 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
           />
 
           <AgentCommandPalette files={vfsFiles ?? {}} onApply={onApplyToVFS} onAsk={setInput} businessId={businessId} />
+          <div className="flex justify-end border-t border-border px-2 py-1">
+            <CatalogPanel files={vfsFiles ?? {}} businessId={businessId} onApply={onApplyToVFS} />
+          </div>
           {agentTarget && (
             <div className="flex items-center gap-2 border-t border-border px-3 py-2 text-xs text-muted-foreground" role="status" aria-live="polite">
               <span className="truncate">

@@ -117,7 +117,7 @@ export function AgentCommandPalette({ files, onApply, onAsk, businessId }: Props
             </CommandGroup>
             <CommandGroup heading="Site">
               <CommandItem onSelect={() => setMode('map')}>Show site map and button destinations</CommandItem>
-              <CommandItem onSelect={() => setMode('catalog')}>Edit products, services and prices…</CommandItem>
+              <CommandItem onSelect={() => { setOpen(false); window.dispatchEvent(new Event('unison:open-catalog')); }}>Edit products, services and prices…</CommandItem>
               <CommandItem onSelect={() => setMode('changes')}>Show changes made this session</CommandItem>
               <CommandItem onSelect={() => ask('Add a new page called ')}>Add a page…</CommandItem>
               <CommandItem onSelect={() => ask('Find and repair the current preview error')}>Repair current error</CommandItem>

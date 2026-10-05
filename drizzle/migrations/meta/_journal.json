@@ -43,6 +43,13 @@
       "when": 1791183532878,
       "tag": "0005_apply_canonical_revision_delta_and_timeout_recovery",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791187081091,
+      "tag": "0006_add_business_has_permission",
+      "breakpoints": true
     }
   ]
 }

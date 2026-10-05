@@ -7,6 +7,7 @@
  * B5: rows are inline-editable — edit name / description / price / image and
  * write back to the source table; the preview re-hydrates on save.
  */
+import { createCatalogItem, deleteCatalogItem, updateCatalogItemRow } from '@/services/agent-runtime/catalogOps';
 import { useCallback, useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 import type { SiteBundleSnapshot } from '@/platform/core/canonicalPipeline';
@@ -25,9 +26,6 @@ import {
 } from '@/services/catalogCardBindingService';
 import {
   loadRowsForBinding,
-  updateCatalogRow,
-  createCatalogRow,
-  deleteCatalogRow,
 } from '@/services/catalogRowService';
 import type {
   CatalogCollectionDTO,
@@ -275,12 +273,12 @@ export function CatalogInspectorPanel({
     if (!d || !rd) return;
     updateRowDraft(binding.id, rowId, { saving: true });
     const priceNum = rd.price.trim() === '' ? null : Number(rd.price);
-    const ok = await updateCatalogRow(binding.sourceTable, binding.businessId, rowId, {
+    const ok = await updateCatalogItemRow(binding.businessId, binding.sourceTable, rowId, {
       name: rd.name,
       description: rd.description || null,
       price: Number.isFinite(priceNum as number) ? (priceNum as number) : null,
       image_url: rd.image_url || null,
-    });
+    }).then(() => true, () => false);
     updateRowDraft(binding.id, rowId, { saving: false, dirty: !ok });
     if (ok) {
       await loadRows(binding);
@@ -290,12 +288,12 @@ export function CatalogInspectorPanel({
 
   const createRow = async (binding: SectionDataBindingDTO) => {
     updateDraft(binding.id, { saving: true });
-    const created = await createCatalogRow(binding.sourceTable, binding.businessId, {
+    const created = await createCatalogItem(binding.businessId, binding.sourceTable, {
       name: 'New item',
       description: '',
       price: 0,
       image_url: '',
-    });
+    }).catch(() => null);
     updateDraft(binding.id, { saving: false });
     if (created) {
       await loadRows(binding);
@@ -309,7 +307,7 @@ export function CatalogInspectorPanel({
       if (!ok) return;
     }
     updateRowDraft(binding.id, rowId, { saving: true });
-    const ok = await deleteCatalogRow(binding.sourceTable, binding.businessId, rowId);
+    const ok = await deleteCatalogItem(binding.businessId, binding.sourceTable, rowId).then(() => true, () => false);
     if (ok) {
       await loadRows(binding);
       bumpPreview();
