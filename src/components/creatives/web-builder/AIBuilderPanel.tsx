@@ -3236,7 +3236,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
             className="flex-shrink-0 border-t border-border"
           />
 
-          <AgentCommandPalette files={vfsFiles ?? {}} onApply={onApplyToVFS} onAsk={setInput} />
+          <AgentCommandPalette files={vfsFiles ?? {}} onApply={onApplyToVFS} onAsk={setInput} businessId={businessId} />
           {agentTarget && (
             <div className="flex items-center gap-2 border-t border-border px-3 py-2 text-xs text-muted-foreground" role="status" aria-live="polite">
               <span className="truncate">

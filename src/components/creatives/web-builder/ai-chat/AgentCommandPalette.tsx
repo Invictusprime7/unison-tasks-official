@@ -3,7 +3,7 @@ import { toast } from 'sonner';
 import {
   CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
 } from '@/components/ui/command';
-import { agentOperations } from '@/services/agent-runtime/operations';
+import { agentOperations, type CatalogTable } from '@/services/agent-runtime/operations';
 import { buildSystemGraph } from '@/services/agent-runtime/systemGraph';
 import { emitAgentEvent, onAgentEvent, type AgentEvent } from '@/services/agent-runtime/agentEvents';
 import { applyAIBuilderFiles, type AIBuilderApplyCallback } from '@/services/aiBuilderApply';
@@ -14,16 +14,19 @@ interface Props {
   files: Record<string, string>;
   onApply: AIBuilderApplyCallback;
   onAsk: (prompt: string) => void;
+  businessId?: string | null;
 }
 
-type Mode = 'root' | 'font' | 'map' | 'changes';
+type Mode = 'root' | 'font' | 'map' | 'changes' | 'catalog' | 'price' | 'image';
+type CatalogRow = { table: CatalogTable; id: string; name: string; price: number | null; image: string | null };
+const EDITABLE: CatalogTable[] = ['products', 'services', 'menu_items', 'pricing_plans'];
 type ChangeEntry = AgentEvent & { at: number };
 
 /**
  * Ctrl/Cmd+K. Every action calls the same agent-runtime operations and the
  * same save path the AI uses — the menu has no capabilities of its own.
  */
-export function AgentCommandPalette({ files, onApply, onAsk }: Props) {
+export function AgentCommandPalette({ files, onApply, onAsk, businessId }: Props) {
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<Mode>('root');
   const [query, setQuery] = useState('');
@@ -40,13 +43,45 @@ export function AgentCommandPalette({ files, onApply, onAsk }: Props) {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
+  const [catalog, setCatalog] = useState<CatalogRow[] | null>(null);
+  const [picked, setPicked] = useState<CatalogRow | null>(null);
+  useEffect(() => {
+    if (mode !== 'catalog' || catalog) return;
+    if (!businessId) { setCatalog([]); return; }
+    Promise.all(EDITABLE.map(async (table) => {
+      const rows = (await agentOperations.inspect_data({ files, businessId }, table, 50).catch(() => [])) as Record<string, unknown>[];
+      return rows.map((r) => ({
+        table, id: String(r.id), name: String(r.name ?? 'Untitled'),
+        price: r.price != null ? Number(r.price) : r.price_cents != null ? Number(r.price_cents) / 100 : null,
+        image: typeof r.image_url === 'string' ? r.image_url : null,
+      }));
+    })).then((all) => setCatalog(all.flat()));
+  }, [mode, catalog, businessId, files]);
+
+  const saveCatalog = async (raw: string) => {
+    if (!picked) return;
+    const value = raw.trim();
+    const patch = mode === 'price' ? { price: Number(value.replace(/[^0-9.]/g, '')) } : { image_url: value };
+    if (mode === 'price' && !(patch.price! >= 0 && value)) { toast.error('Type a number, e.g. 49.99'); return; }
+    if (mode === 'image' && !/^https:\/\//.test(value)) { toast.error('Paste an image link starting with https://'); return; }
+    setOpen(false);
+    try {
+      const { change, summary } = await agentOperations.update_catalog_item({ files, businessId }, picked.table, picked.id, patch);
+      emitAgentEvent({ kind: 'data_change', message: summary, status: 'ok' });
+      setCatalog(null);
+      if (change) await run(change); else toast.success(`${summary}. The page didn't show the old value, so only the database changed.`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'The item could not be saved.');
+    }
+  };
+
   const [changes, setChanges] = useState<ChangeEntry[]>([]);
   useEffect(() => onAgentEvent((e, at) => {
     if (e.kind !== 'file_change' && e.kind !== 'commit' && e.kind !== 'rollback') return;
     setChanges((prev) => [{ ...e, at }, ...prev].slice(0, 50));
   }), []);
 
-  useEffect(() => { if (!open) { setMode('root'); setQuery(''); } }, [open]);
+  useEffect(() => { if (!open) { setMode('root'); setQuery(''); setPicked(null); } }, [open]);
 
   const run = async (change: { files: Record<string, string>; summary: string } | null) => {
     setOpen(false);
@@ -62,7 +97,7 @@ export function AgentCommandPalette({ files, onApply, onAsk }: Props) {
   return (
     <CommandDialog open={open} onOpenChange={setOpen}>
       <CommandInput
-        placeholder={mode === 'font' ? 'Choose a font…' : mode === 'map' ? 'Search pages and buttons…' : mode === 'changes' ? 'Search changes…' : 'Type a command or ask Unison…'}
+        placeholder={mode === 'font' ? 'Choose a font…' : mode === 'map' ? 'Search pages and buttons…' : mode === 'changes' ? 'Search changes…' : mode === 'catalog' ? 'Search items…' : mode === 'price' ? `New price for ${picked?.name ?? ''}, then Enter` : mode === 'image' ? `Image link for ${picked?.name ?? ''}, then Enter` : 'Type a command or ask Unison…'}
         value={query}
         onValueChange={setQuery}
         aria-label="Command"
@@ -82,6 +117,7 @@ export function AgentCommandPalette({ files, onApply, onAsk }: Props) {
             </CommandGroup>
             <CommandGroup heading="Site">
               <CommandItem onSelect={() => setMode('map')}>Show site map and button destinations</CommandItem>
+              <CommandItem onSelect={() => setMode('catalog')}>Edit products, services and prices…</CommandItem>
               <CommandItem onSelect={() => setMode('changes')}>Show changes made this session</CommandItem>
               <CommandItem onSelect={() => ask('Add a new page called ')}>Add a page…</CommandItem>
               <CommandItem onSelect={() => ask('Find and repair the current preview error')}>Repair current error</CommandItem>
@@ -98,6 +134,25 @@ export function AgentCommandPalette({ files, onApply, onAsk }: Props) {
             {FONTS.map((f) => (
               <CommandItem key={f} onSelect={() => run(agentOperations.set_font({ files }, f))}>{f}</CommandItem>
             ))}
+          </CommandGroup>
+        )}
+        {mode === 'catalog' && (
+          <CommandGroup heading={catalog === null ? 'Loading…' : catalog.length ? 'Choose what to change' : 'No products or services saved for this business yet'}>
+            {catalog?.flatMap((c) => [
+              <CommandItem key={`${c.id}-p`} value={`${c.name} price ${c.id}`} onSelect={() => { setPicked(c); setQuery(''); setMode('price'); }}>
+                {c.name} — change price{c.price != null ? ` (now ${c.price})` : ''}
+              </CommandItem>,
+              ...(c.table === 'pricing_plans' ? [] : [
+                <CommandItem key={`${c.id}-i`} value={`${c.name} image ${c.id}`} onSelect={() => { setPicked(c); setQuery(''); setMode('image'); }}>
+                  {c.name} — swap image
+                </CommandItem>,
+              ]),
+            ])}
+          </CommandGroup>
+        )}
+        {(mode === 'price' || mode === 'image') && query.trim() && (
+          <CommandGroup heading="Save">
+            <CommandItem value={`save ${query}`} onSelect={() => saveCatalog(query)}>Save “{query}” to {picked?.name}</CommandItem>
           </CommandGroup>
         )}
         {mode === 'changes' && (

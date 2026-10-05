@@ -7,3 +7,5 @@
 - [x] click-to-target from preview
 - [x] Phase 4 rest: site map + session Changes list in command menu
 - [ ] Phase 5: block legacy repair/sync from overwriting committed AI change sets
+- [ ] Verify click-to-target with a real AI edit (label confirmed; full edit needs the user)
+- [x] Product/catalog edits (price, image) write the real database record (command menu)
