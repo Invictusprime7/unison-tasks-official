@@ -143,6 +143,16 @@ const MODELS = {
   gpt4o: { id: "openai/gpt-4o", label: "GPT-4o" },
 } as const;
 
+/** Direct-Gemini composition model; GEMINI_COMPOSER_MODEL can name a newer one the key can use. */
+export function composerGeminiModel(readEnv: EnvReader): { id: string; label: string } {
+  const raw = readEnv('GEMINI_COMPOSER_MODEL')?.trim();
+  if (raw) {
+    const id = raw.startsWith('google/') ? raw : `google/${raw}`;
+    return { id, label: raw };
+  }
+  return MODELS.geminiPro;
+}
+
 function m(spec: typeof MODELS[keyof typeof MODELS], maxTokens: number): ModelSpec {
   return { id: spec.id, maxTokens, label: spec.label };
 }
@@ -214,6 +224,7 @@ export function buildProviderPlan(
         gatewayModels: [
           m(MODELS.gpt41Mini, 16_384),
           m(MODELS.gpt41, 16_384),
+          m(composerGeminiModel(readEnv), 48_000),
           m(MODELS.geminiFlash, 48_000),
         ],
         perModelTimeoutMs: 110_000,
@@ -228,6 +239,8 @@ export function buildProviderPlan(
         gatewayModels: [
           m(MODELS.gpt41, 16_384),
           m(MODELS.gpt4o, 16_384),
+          // Stronger Gemini leads composition when funded Gemini serves the turn.
+          m(composerGeminiModel(readEnv), 48_000),
           m(MODELS.geminiFlash, 48_000),
         ],
         perModelTimeoutMs: 110_000,
