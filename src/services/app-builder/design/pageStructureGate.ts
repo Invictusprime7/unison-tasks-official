@@ -85,7 +85,7 @@ export function findPageStructureIssues(
     issues.push(`${path} renders no site footer. Render the shared site footer at the bottom of the page (one shared component, e.g. SiteFooter in /src/project-components/site/).`);
   }
 
-  const bodyComponents = used.filter((c) => !NAV_NAME.test(c.name) && !FOOTER_NAME.test(c.name) && !/^lucide/.test(c.specifier));
+  const bodyComponents = used.filter((c) => !NAV_NAME.test(c.name) && !FOOTER_NAME.test(c.name) && !/\/(?:components|unison)\/ui(?:\/|$)|\/lib\//.test(c.specifier));
   const sectionTags = (source.match(/<section\b/g) ?? []).length;
   const sections = sectionTags + bodyComponents.length;
   if (sections < requirement.minSections) {
