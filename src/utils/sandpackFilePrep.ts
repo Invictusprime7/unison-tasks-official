@@ -1,4 +1,5 @@
 import { normalizeImageCompatibility } from '@/utils/imageCompatibility';
+import { rewritePreviewModuleSpecifiers } from '@/utils/previewModuleSpecifiers';
 import { GENERATED_RUNTIME_PROFILE } from '@/platform/core/generatedRuntimeCapabilities';
 /**
  * Sandpack File Preparation Utilities
@@ -3658,6 +3659,16 @@ export function processCode(code: string, filePath: string): string {
   }
 
   processed = processed.replace(/\n{3,}/g, '\n\n');
+  if (/\.[cm]?[jt]sx?$/.test(filePath)) {
+    processed = rewritePreviewModuleSpecifiers(processed, (specifier) => {
+      if (specifier === '@/lib/utils') return toRelativeSandpackImport(filePath, '/lib-utils-shim');
+      if (/^@\/components\/ui(?:\/|$)/.test(specifier)) return toRelativeSandpackImport(filePath, '/ui-shim');
+      if (/^@\/hooks(?:\/|$)/.test(specifier) || specifier.startsWith('@/integrations/supabase')) return hooksShimImport;
+      if (specifier.startsWith('@/')) return aliasModuleToRelativeImport(filePath, specifier);
+      if (specifier.startsWith('/src/')) return aliasModuleToRelativeImport(filePath, `@/${specifier.slice(5)}`);
+      return specifier;
+    });
+  }
   return processed;
 }
 

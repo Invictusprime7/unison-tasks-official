@@ -106,8 +106,8 @@ const IMPORT_PATTERNS = [
   /import\s*\(\s*['"]([^'"]+)['"]\s*\)/g,
   // Require: require('package')
   /require\s*\(\s*['"]([^'"]+)['"]\s*\)/g,
-  // Export from: export * from 'package'
-  /export\s+(?:\*|{[^}]*})\s+from\s+['"]([^'"]+)['"]/g,
+  // Re-exports, including namespace barrels: export * as UI from './ui'.
+  /export\s+(?:type\s+)?(?:\*(?:\s+as\s+[\w$]+)?|{[^}]*})\s+from\s+['"]([^'"]+)['"]/g,
 ];
 
 export interface ExtractedDependencies {
