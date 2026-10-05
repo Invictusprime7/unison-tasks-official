@@ -461,6 +461,7 @@ export async function runLaunchPipeline(
     pageRegistry: canonicalPlan.playground.pageRegistry,
     industry: plan.industryOverlay,
     businessName: brand,
+    visionBrief: plan.selections.visionPrompt,
     goals: [plan.selections.primaryGoal, ...plan.selections.secondaryGoals],
     intents: plan.canonicalIntents,
     capabilities: plan.industryProfile?.defaultCapabilities || [],

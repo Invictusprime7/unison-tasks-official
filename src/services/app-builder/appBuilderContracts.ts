@@ -78,6 +78,8 @@ export interface AppBuildContract {
   business: {
     industry: string;
     businessName: string;
+    /** Owner's planning-chat brief carried from WizardSelections.visionPrompt. */
+    visionBrief?: string;
     goals: readonly string[];
     intents: readonly string[];
     capabilities: readonly string[];
@@ -111,6 +113,7 @@ export interface BuildAppBuildContractInput {
   pageRegistry: PageRegistry;
   industry: string;
   businessName: string;
+  visionBrief?: string;
   goals: readonly string[];
   intents: readonly string[];
   capabilities: readonly string[];
@@ -304,6 +307,7 @@ export function buildAppBuildContract(input: BuildAppBuildContractInput): AppBui
     business: {
       industry: input.industry,
       businessName: input.businessName,
+      visionBrief: input.visionBrief?.trim() || undefined,
       goals: [...input.goals],
       intents: [...input.intents],
       capabilities: [...input.capabilities],
