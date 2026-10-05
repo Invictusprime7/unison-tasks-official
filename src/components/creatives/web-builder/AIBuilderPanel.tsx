@@ -56,6 +56,8 @@ import { LaunchReadinessCard } from './ai-chat/LaunchReadinessCard';
 import { AIConversationInput } from './ai-chat/AIConversationInput';
 import { AgentActivityFeed } from './ai-chat/AgentActivityFeed';
 import { emitAgentEvent } from '@/services/agent-runtime/agentEvents';
+import { buildSystemGraph, renderSystemGraphForPrompt } from '@/services/agent-runtime/systemGraph';
+import { AgentCommandPalette } from './ai-chat/AgentCommandPalette';
 import { toast } from 'sonner';
 import type { BusinessSystemType } from '@/data/templates/types';
 import type { SystemsBuildContext } from '@/types/systemsBuildContext';
@@ -1718,6 +1720,11 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
               signature: computeBuilderVfsSignature(vfsFiles ?? {}),
             });
           } catch { /* best-effort */ }
+          try {
+            const graphText = renderSystemGraphForPrompt(buildSystemGraph(vfsFiles ?? {}));
+            if (graphText) previewSnapshot = `${previewSnapshot ?? ''}\n\n${graphText}`.trim();
+            emitAgentEvent({ kind: 'discovery', message: 'Read every page, section and button destination', status: 'ok' });
+          } catch { /* best-effort */ }
 
           // ── Build conversation history for multi-turn awareness ──
           // Include up to 10 prior user/assistant exchanges (compact: only role + content, capped)
@@ -3214,6 +3221,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
             className="flex-shrink-0 border-t border-border"
           />
 
+          <AgentCommandPalette files={vfsFiles ?? {}} onApply={onApplyToVFS} onAsk={setInput} />
           {/* Input */}
           <AIConversationInput
             input={input}

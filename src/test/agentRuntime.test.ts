@@ -28,3 +28,14 @@ describe('agent runtime', () => {
     expect(seen).toEqual(['plan']);
   });
 });
+
+import { buildSystemGraph, renderSystemGraphForPrompt } from '@/services/agent-runtime/systemGraph';
+describe('system graph', () => {
+  it('projects pages, sections and button destinations from source', () => {
+    const files = { '/src/pages/Home.tsx': '<main><section id="hero"><a data-ut-intent="nav.goto" href="/book">Book now</a></section><section id="faq"></section></main>' };
+    const g = buildSystemGraph(files);
+    expect(g.pages[0].sections.map((s) => s.id)).toEqual(['hero', 'faq']);
+    expect(g.pages[0].intents[0]).toMatchObject({ intent: 'nav.goto', target: '/book', label: 'Book now' });
+    expect(renderSystemGraphForPrompt(g)).toContain('→ /book');
+  });
+});

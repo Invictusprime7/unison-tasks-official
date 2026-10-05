@@ -63,5 +63,6 @@ export const defaultWebBuilderShortcuts = {
   bringForward: { key: "]", ctrl: true, description: "Bring forward" },
   sendBackward: { key: "[", ctrl: true, description: "Send backward" },
   togglePreview: { key: "p", ctrl: true, description: "Toggle preview" },
-  toggleCode: { key: "k", ctrl: true, description: "Toggle code" },
+  // Ctrl/Cmd+K is reserved for the Unison command menu.
+  toggleCode: { key: "k", ctrl: true, shift: true, description: "Toggle code" },
 };
