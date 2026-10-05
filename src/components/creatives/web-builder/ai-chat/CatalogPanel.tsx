@@ -82,10 +82,13 @@ export function CatalogPanel({ files, businessId, onApply }: Props) {
     try {
       const { data: auth } = await supabase.auth.getUser();
       const path = `${auth.user?.id ?? 'anon'}/catalog/${item.id}-${Date.now()}-${file.name.replace(/[^\w.-]/g, '_')}`;
-      const { error } = await supabase.storage.from('catalog-images').upload(path, file, { upsert: true });
+      // Workspace blocks public buckets: store in the owner's private files
+      // and use a long-lived signed link (10 years) for the site.
+      const { error } = await supabase.storage.from('user-files').upload(path, file, { upsert: true });
       if (error) throw error;
-      const { data } = supabase.storage.from('catalog-images').getPublicUrl(path);
-      await save(item, { image_url: data.publicUrl });
+      const { data, error: signErr } = await supabase.storage.from('user-files').createSignedUrl(path, 60 * 60 * 24 * 365 * 10);
+      if (signErr || !data?.signedUrl) throw signErr ?? new Error('Could not create a link for the photo.');
+      await save(item, { image_url: data.signedUrl });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Photo upload failed.');
       setBusy(null);
