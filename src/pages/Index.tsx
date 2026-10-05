@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase, isSupabaseConfigured } from "@/integrations/supabase/client";
 import { AlertCircle, Zap } from "lucide-react";
-import { UnisonBackground } from "@/design-system/unison-x-loveable-design-d5be96";
 import { User } from "@supabase/supabase-js";
 import { useToast } from "@/hooks/use-toast";
 import { 
@@ -290,17 +289,32 @@ const Index = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-[#0a0a12] flex items-center justify-center">
         <div className="text-center">
-          <Zap className="h-10 w-10 text-primary animate-pulse mx-auto mb-4" />
-          <p className="text-primary font-medium">Loading...</p>
+          <Zap className="h-10 w-10 text-cyan-400 animate-pulse mx-auto mb-4 drop-shadow-[0_0_15px_rgba(0,255,255,0.6)]" />
+          <p className="text-cyan-400 font-medium">Loading...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <UnisonBackground variant="dots" className="min-h-screen bg-background">
+    <div className="min-h-screen bg-[#0a0a12] relative">
+      {/* Pixelated grid background - entire page */}
+      <div 
+        className="fixed inset-0 opacity-20 pointer-events-none z-0"
+        style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%2300ffff' fill-opacity='0.15'%3E%3Crect x='0' y='0' width='4' height='4'/%3E%3Crect x='20' y='0' width='4' height='4'/%3E%3Crect x='0' y='20' width='4' height='4'/%3E%3Crect x='20' y='20' width='4' height='4'/%3E%3Crect x='10' y='10' width='4' height='4'/%3E%3Crect x='30' y='10' width='4' height='4'/%3E%3Crect x='10' y='30' width='4' height='4'/%3E%3Crect x='30' y='30' width='4' height='4'/%3E%3C/g%3E%3C/svg%3E")`,
+          backgroundSize: '40px 40px'
+        }}
+      />
+      {/* Scanline effect - entire page */}
+      <div 
+        className="fixed inset-0 pointer-events-none opacity-[0.03] z-0"
+        style={{
+          backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,255,255,0.1) 2px, rgba(0,255,255,0.1) 4px)',
+        }}
+      />
       {/* Configuration Warning */}
       {!isSupabaseConfigured && (
         <div className="bg-destructive/10 border-b border-destructive/20 px-4 py-3">
@@ -366,7 +380,7 @@ const Index = () => {
       {/* Footer */}
       <FooterSection />
 
-    </UnisonBackground>
+    </div>
   );
 };
 
