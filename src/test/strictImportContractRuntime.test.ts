@@ -110,6 +110,26 @@ describe('strict import-contract runtime', () => {
     expect(fallbackCheck).toHaveBeenCalledWith({ '/App.tsx': 'x' }, '/App.tsx', 'modern');
   });
 
+  it('falls back after a worker starts but never reaches its first checkpoint', async () => {
+    vi.useFakeTimers();
+    const worker = {
+      onmessage: null as ((event: MessageEvent) => void) | null,
+      onerror: null as ((event: ErrorEvent) => void) | null,
+      postMessage: vi.fn(), terminate: vi.fn(),
+    };
+    const fallbackCompute = vi.fn(() => ({ '/App.tsx': 'compiled after startup stall' }));
+    const pending = runPrepareSandpackFilesOffThread({
+      files: { '/App.tsx': 'worker-startup-stall-test' },
+      workerFactory: () => worker,
+      fallbackCompute,
+    });
+    await vi.advanceTimersByTimeAsync(10_000);
+    await expect(pending).resolves.toEqual({ '/App.tsx': 'compiled after startup stall' });
+    expect(fallbackCompute).toHaveBeenCalledOnce();
+    expect(worker.terminate).toHaveBeenCalledOnce();
+    vi.useRealTimers();
+  });
+
   it('does not cache uncompiled source returned by a side-effect-only strict-check fallback', async () => {
     const files = { '/src/App.tsx': 'strict-fallback-cache-test' };
     // Simulate a worker bootstrap failure using its supported error channel.

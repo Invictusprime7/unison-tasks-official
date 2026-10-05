@@ -111,6 +111,11 @@ function createRequestId(): string {
 // module, so that benefit survives regardless of which side (worker or
 // main-thread fallback) actually computed a given result.
 const PREPARED_FILES_CACHE_LIMIT = 20;
+// A healthy module worker emits `loading compiler` before importing the large
+// preview compiler. If it cannot do that, it is blocked by the host/CSP or a
+// stale deploy asset; waiting for the full source-compilation budget cannot
+// recover it.
+const STRICT_IMPORT_WORKER_STARTUP_TIMEOUT_MS = 10_000;
 const STRICT_IMPORT_WORKER_MIN_TIMEOUT_MS = 60_000;
 const STRICT_IMPORT_WORKER_MAX_TIMEOUT_MS = 180_000;
 const preparedFilesCache = new Map<string, Record<string, string>>();
@@ -194,8 +199,15 @@ function runInWorker(
         `Preview compiler timed out after ${Math.round(responseTimeoutMs / 1000)} seconds while ${location()}.`,
       )));
     }, responseTimeoutMs);
+    const startupTimeout = setTimeout(() => {
+      if (lastProgress.phase !== 'starting worker') return;
+      settle(() => reject(new StrictImportContractWorkerBootstrapError(
+        `Preview compiler worker did not start within ${Math.round(STRICT_IMPORT_WORKER_STARTUP_TIMEOUT_MS / 1000)} seconds.`,
+      )));
+    }, STRICT_IMPORT_WORKER_STARTUP_TIMEOUT_MS);
     const cleanup = () => {
       clearTimeout(responseTimeout);
+      clearTimeout(startupTimeout);
       worker.onmessage = null;
       worker.onerror = null;
       signal?.removeEventListener('abort', handleAbort);
