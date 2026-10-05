@@ -716,6 +716,17 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
     return () => window.removeEventListener('unison:builder-prompt', onBuilderPrompt);
   }, []);
 
+  // Click-to-target: an element picked in the preview scopes the next message.
+  const [agentTarget, setAgentTarget] = useState<{ tagName: string; text?: string; selector?: string; section?: string; intent?: string } | null>(null);
+  useEffect(() => {
+    const onTarget = (event: Event) => {
+      const detail = (event as CustomEvent).detail;
+      if (detail?.tagName) setAgentTarget(detail);
+    };
+    window.addEventListener('unison:builder-target', onTarget);
+    return () => window.removeEventListener('unison:builder-target', onTarget);
+  }, []);
+
 
   // ── File processing helpers ───────────────────────────────────────────────
   const classifyFile = (file: File): DroppedFile['type'] => {
@@ -893,7 +904,11 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
     queueMicrotask(() => emitAgentEvent({ kind: 'understanding', message: input.trim().slice(0, 140) || 'Reading your attached files' }));
 
     // Build file context suffix
-    const fileContext = droppedFiles.length > 0 ? (() => {
+    const targetContext = agentTarget
+      ? `\n\n[Target element — apply this request to it only: <${agentTarget.tagName}>${agentTarget.text ? ` "${agentTarget.text}"` : ''}${agentTarget.section ? ` in section "${agentTarget.section}"` : ''}${agentTarget.selector ? ` (selector ${agentTarget.selector})` : ''}${agentTarget.intent ? `; its button action "${agentTarget.intent}" and destination must stay unchanged` : ''}]`
+      : '';
+    setAgentTarget(null);
+    const fileContext = targetContext + (droppedFiles.length > 0 ? (() => {
       const parts: string[] = [];
       for (const f of droppedFiles) {
         if (f.type === 'image') {
@@ -903,7 +918,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
         }
       }
       return parts.join('');
-    })() : '';
+    })() : '');
 
     // Build attachments for the edge function
     const attachments = droppedFiles
@@ -3222,6 +3237,21 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
           />
 
           <AgentCommandPalette files={vfsFiles ?? {}} onApply={onApplyToVFS} onAsk={setInput} />
+          {agentTarget && (
+            <div className="flex items-center gap-2 border-t border-border px-3 py-2 text-xs text-muted-foreground" role="status" aria-live="polite">
+              <span className="truncate">
+                Editing: <span className="text-foreground">&lt;{agentTarget.tagName}&gt;{agentTarget.text ? ` “${agentTarget.text}”` : ''}</span>
+              </span>
+              <button
+                type="button"
+                className="ml-auto shrink-0 rounded px-1 text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                onClick={() => setAgentTarget(null)}
+                aria-label="Stop targeting this element"
+              >
+                ×
+              </button>
+            </div>
+          )}
           {/* Input */}
           <AIConversationInput
             input={input}
