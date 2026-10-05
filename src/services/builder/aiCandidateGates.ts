@@ -179,7 +179,7 @@ export async function prepareAICandidate(input: {
   };
 }): Promise<PreparedCandidate> {
   // Dead placeholder image hosts never reach a committed revision.
-  input = { ...input, aiFiles: repairAuthoredImages(input.aiFiles) };
+  input = { ...input, aiFiles: repairAuthoredImages(input.aiFiles, input.baseFiles) };
   let build = buildAICandidateChangeSet({
     aiFiles: input.aiFiles,
     deletions: input.deletions,
@@ -198,9 +198,10 @@ export async function prepareAICandidate(input: {
       build.changeSet.fileOps.filter((o) => o.type !== 'delete').map((o) => [o.path, (o as { content: string }).content]),
     );
     const repaired = input.preflight(changed);
+    const repairedFiles = repairAuthoredImages({ ...input.aiFiles, ...repaired }, input.baseFiles);
     // Rebuild so ops/id reflect the repaired bytes.
     build = buildAICandidateChangeSet({
-      aiFiles: { ...input.aiFiles, ...repaired },
+      aiFiles: repairedFiles,
       deletions: input.deletions,
       baseFiles: input.baseFiles,
       baseRevisionId: input.baseRevisionId,
