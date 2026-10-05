@@ -54,6 +54,8 @@ import { AIConversationMessage } from './ai-chat/AIConversationMessage';
 import { AIConversationWelcome } from './ai-chat/AIConversationWelcome';
 import { LaunchReadinessCard } from './ai-chat/LaunchReadinessCard';
 import { AIConversationInput } from './ai-chat/AIConversationInput';
+import { AgentActivityFeed } from './ai-chat/AgentActivityFeed';
+import { emitAgentEvent } from '@/services/agent-runtime/agentEvents';
 import { toast } from 'sonner';
 import type { BusinessSystemType } from '@/data/templates/types';
 import type { SystemsBuildContext } from '@/types/systemsBuildContext';
@@ -886,6 +888,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
   // Send message to AI
   const handleSend = async () => {
     if ((!input.trim() && droppedFiles.length === 0) || isLoading) return;
+    queueMicrotask(() => emitAgentEvent({ kind: 'understanding', message: input.trim().slice(0, 140) || 'Reading your attached files' }));
 
     // Build file context suffix
     const fileContext = droppedFiles.length > 0 ? (() => {
@@ -3199,12 +3202,8 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
                   />
                 ))
               )}
-              {isLoading && messages[messages.length - 1]?.role === 'user' && !messages.some(m => m.isStreaming) && (
-                <div className="flex items-center gap-2 text-muted-foreground text-sm py-2">
-                  <Loader2 className="w-4 h-4 animate-spin text-primary" />
-                  <span>Processing...</span>
-                </div>
-              )}
+              <AgentActivityFeed active={isLoading} />
+
             </div>
           </ScrollArea>
 
