@@ -5,7 +5,7 @@ import {
 } from '@/components/ui/command';
 import { agentOperations } from '@/services/agent-runtime/operations';
 import { buildSystemGraph } from '@/services/agent-runtime/systemGraph';
-import { emitAgentEvent } from '@/services/agent-runtime/agentEvents';
+import { emitAgentEvent, onAgentEvent, type AgentEvent } from '@/services/agent-runtime/agentEvents';
 import { applyAIBuilderFiles, type AIBuilderApplyCallback } from '@/services/aiBuilderApply';
 
 const FONTS = ['Inter', 'Playfair Display', 'DM Sans', 'Cormorant Garamond', 'Space Grotesk'];
@@ -16,7 +16,8 @@ interface Props {
   onAsk: (prompt: string) => void;
 }
 
-type Mode = 'root' | 'font' | 'map';
+type Mode = 'root' | 'font' | 'map' | 'changes';
+type ChangeEntry = AgentEvent & { at: number };
 
 /**
  * Ctrl/Cmd+K. Every action calls the same agent-runtime operations and the
@@ -39,6 +40,12 @@ export function AgentCommandPalette({ files, onApply, onAsk }: Props) {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
+  const [changes, setChanges] = useState<ChangeEntry[]>([]);
+  useEffect(() => onAgentEvent((e, at) => {
+    if (e.kind !== 'file_change' && e.kind !== 'commit' && e.kind !== 'rollback') return;
+    setChanges((prev) => [{ ...e, at }, ...prev].slice(0, 50));
+  }), []);
+
   useEffect(() => { if (!open) { setMode('root'); setQuery(''); } }, [open]);
 
   const run = async (change: { files: Record<string, string>; summary: string } | null) => {
@@ -55,7 +62,7 @@ export function AgentCommandPalette({ files, onApply, onAsk }: Props) {
   return (
     <CommandDialog open={open} onOpenChange={setOpen}>
       <CommandInput
-        placeholder={mode === 'font' ? 'Choose a font…' : mode === 'map' ? 'Search pages and buttons…' : 'Type a command or ask Unison…'}
+        placeholder={mode === 'font' ? 'Choose a font…' : mode === 'map' ? 'Search pages and buttons…' : mode === 'changes' ? 'Search changes…' : 'Type a command or ask Unison…'}
         value={query}
         onValueChange={setQuery}
         aria-label="Command"
@@ -75,6 +82,7 @@ export function AgentCommandPalette({ files, onApply, onAsk }: Props) {
             </CommandGroup>
             <CommandGroup heading="Site">
               <CommandItem onSelect={() => setMode('map')}>Show site map and button destinations</CommandItem>
+              <CommandItem onSelect={() => setMode('changes')}>Show changes made this session</CommandItem>
               <CommandItem onSelect={() => ask('Add a new page called ')}>Add a page…</CommandItem>
               <CommandItem onSelect={() => ask('Find and repair the current preview error')}>Repair current error</CommandItem>
             </CommandGroup>
@@ -89,6 +97,24 @@ export function AgentCommandPalette({ files, onApply, onAsk }: Props) {
           <CommandGroup heading="Fonts">
             {FONTS.map((f) => (
               <CommandItem key={f} onSelect={() => run(agentOperations.set_font({ files }, f))}>{f}</CommandItem>
+            ))}
+          </CommandGroup>
+        )}
+        {mode === 'changes' && (
+          <CommandGroup heading={changes.length ? 'Newest first' : 'No changes saved yet this session'}>
+            {changes.map((c, idx) => (
+              <CommandItem
+                key={`${c.at}-${idx}`}
+                value={`${c.message} ${c.path ?? ''} ${idx}`}
+                onSelect={() => c.path && ask(`In ${c.path}, `)}
+              >
+                <span className="truncate">
+                  {new Date(c.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · {c.path ?? c.message}
+                  {c.kind === 'file_change' && ` (+${c.added ?? 0} −${c.removed ?? 0})`}
+                  {c.kind === 'commit' && ' — saved'}
+                  {c.kind === 'rollback' && ' — undone'}
+                </span>
+              </CommandItem>
             ))}
           </CommandGroup>
         )}
