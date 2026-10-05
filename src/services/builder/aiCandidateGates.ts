@@ -30,7 +30,7 @@ export interface CandidateGateResult {
 }
 
 /** Optional per-file check run on touched page sources; returns diagnostics. */
-export type PageCheck = (path: string, source: string) => string[];
+export type PageCheck = (path: string, source: string, files?: Readonly<Record<string, string>>) => string[];
 
 const CODE_RE = /\.(tsx?|jsx?)$/;
 const EXTENSIONS = ['', '.tsx', '.ts', '.jsx', '.js', '/index.tsx', '/index.ts', '/index.jsx', '/index.js'];
@@ -140,7 +140,7 @@ export async function runCandidateGates(build: CandidateBuildResult, affinity?: 
   }
   if (pageCheck) {
     for (const path of touched.filter((p) => /\/src\/pages\/.+\.(?:tsx|jsx)$/.test(p))) {
-      failures.push(...pageCheck(path, files[path]).map((message) => ({ gate: 'design-source' as const, path, message })));
+      failures.push(...pageCheck(path, files[path], files).map((message) => ({ gate: 'design-source' as const, path, message })));
     }
   }
   return { passed: failures.length === 0, failures, advisories };
