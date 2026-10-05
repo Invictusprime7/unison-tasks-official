@@ -1,10 +1,24 @@
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
+import "@/design-system/unison-x-loveable-design-d5be96/design-system/unison/styles/tokens.css";
+import "./styles/unison-theme.css";
+import { UNISON_FONT_LINKS } from "@/design-system/unison-x-loveable-design-d5be96/design-system/unison/styles/fonts";
 import { installPipelineBypassGuard } from "@/platform/core";
 
 // Enforce global dark theme (dark premium) across the whole app
 document.documentElement.classList.add('dark');
+document.documentElement.dataset.theme = 'dark';
+
+// Load the attached library's fonts through head links, not CSS @imports.
+for (const descriptor of UNISON_FONT_LINKS) {
+  if (document.head.querySelector(`link[href="${descriptor.href}"]`)) continue;
+  const link = document.createElement('link');
+  link.rel = descriptor.rel;
+  link.href = descriptor.href;
+  if ('crossOrigin' in descriptor) link.crossOrigin = descriptor.crossOrigin;
+  document.head.appendChild(link);
+}
 
 // Install the dev-mode pipeline bypass guard (PR4). In DEV this throws when
 // any caller invokes executeCanonicalPipeline / recompileFromPlayground
