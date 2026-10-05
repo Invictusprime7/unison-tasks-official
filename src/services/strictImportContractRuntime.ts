@@ -13,6 +13,7 @@
  * own check — reuse the first caller's result instead of recomputing.
  */
 import { prepareSandpackFiles } from '@/utils/sandpackFilePrep';
+import { PreviewPipelineError, type PreviewPipelineStage } from '@/services/previewPipelineError';
 
 export interface StrictImportContractWorkerRequest {
   requestId: string;
@@ -22,11 +23,12 @@ export interface StrictImportContractWorkerRequest {
 }
 
 export type StrictImportContractWorkerResponse =
+  | { requestId: string; progress: { phase: string; path?: string } }
   | { requestId: string; ok: true; files: Record<string, string> }
   | {
       requestId: string;
       ok: false;
-      error: { name: string; message: string; stack?: string };
+      error: { name: string; message: string; stack?: string; stage?: PreviewPipelineStage; summary?: string; blockedFiles?: string[] };
     };
 
 interface StrictImportContractWorkerLike {
@@ -60,6 +62,8 @@ export interface RunPrepareSandpackFilesOffThreadOptions {
     entryPoint?: string,
     themePresetId?: string | null,
   ) => Record<string, string>;
+  /** A side-effect-only validation fallback has no compiled artifact to cache. */
+  cacheFallbackResult?: boolean;
 }
 
 class StrictImportContractWorkerBootstrapError extends Error {
@@ -110,13 +114,17 @@ const PREPARED_FILES_CACHE_LIMIT = 20;
 const STRICT_IMPORT_WORKER_MIN_TIMEOUT_MS = 60_000;
 const STRICT_IMPORT_WORKER_MAX_TIMEOUT_MS = 180_000;
 const preparedFilesCache = new Map<string, Record<string, string>>();
-const preparedFilesInFlight = new Map<string, Promise<Record<string, string>>>();
+interface PreparedFilesJob {
+  promise: Promise<Record<string, string>>;
+  controller: AbortController;
+  subscribers: number;
+  checkpoint: string;
+}
+const preparedFilesInFlight = new Map<string, PreparedFilesJob>();
 
 /**
  * The import-contract pass scales with both module count and source size.
- * A fixed 30s watchdog killed healthy generated projects (the current
- * 126-file Wizard artifact takes about 62s on a cold worker), then cached the
- * rejection for every Preview caller sharing that job. Give larger artifacts
+ * A fixed 30s watchdog killed large generated projects on cold workers. Give larger artifacts
  * a proportional budget while retaining a bounded watchdog for dead workers.
  */
 function workerTimeoutFor(files: Record<string, string>): number {
@@ -173,13 +181,17 @@ function runInWorker(
   worker: StrictImportContractWorkerLike,
   request: StrictImportContractWorkerRequest,
   signal?: AbortSignal,
+  onProgress?: (checkpoint: string) => void,
 ): Promise<Record<string, string>> {
   return new Promise((resolve, reject) => {
     let settled = false;
+    let lastProgress = { phase: 'starting worker', path: undefined as string | undefined };
+    const startedAt = Date.now();
+    const location = () => `${lastProgress.phase}${lastProgress.path ? ` (${lastProgress.path})` : ''}`;
     const responseTimeoutMs = workerTimeoutFor(request.files);
     const responseTimeout = setTimeout(() => {
       settle(() => reject(new Error(
-        `Strict import-contract worker did not respond within ${Math.round(responseTimeoutMs / 1000)} seconds.`,
+        `Preview compiler timed out after ${Math.round(responseTimeoutMs / 1000)} seconds while ${location()}.`,
       )));
     }, responseTimeoutMs);
     const cleanup = () => {
@@ -197,13 +209,22 @@ function runInWorker(
     };
     const handleAbort = () => {
       if (!signal) return;
-      settle(() => reject(toAbortError(signal)));
+      const error = toAbortError(signal);
+      settle(() => reject(/timed out/i.test(error.message)
+        ? new Error(`${error.message} Last compiler checkpoint: ${location()}.`)
+        : error));
     };
 
     worker.onmessage = (event) => {
       const response = event.data;
       if (!response || response.requestId !== request.requestId) return;
+      if ('progress' in response) {
+        lastProgress = { phase: response.progress.phase, path: response.progress.path };
+        onProgress?.(location());
+        return;
+      }
       if (response.ok) {
+        console.info('[previewCompiler] completed', { elapsedMs: Date.now() - startedAt, inputFiles: Object.keys(request.files).length });
         settle(() => resolve(response.files));
         return;
       }
@@ -211,7 +232,9 @@ function runInWorker(
         settle(() => reject(new Error('Strict import-contract worker returned an invalid response.')));
         return;
       }
-      const error = new Error(response.error.message);
+      const error = response.error.stage && response.error.summary
+        ? new PreviewPipelineError(response.error.stage, response.error.summary, { blockedFiles: response.error.blockedFiles })
+        : new Error(response.error.message);
       error.name = response.error.name;
       if (response.error.stack) error.stack = response.error.stack;
       settle(() => reject(error));
@@ -251,13 +274,7 @@ export async function runStrictImportContractCheck({
   themePresetId,
   signal,
   workerFactory,
-  fallbackCheck = (fallbackFiles, fallbackEntryPoint, fallbackThemePresetId) => {
-    prepareSandpackFiles(fallbackFiles, {
-      entryPoint: fallbackEntryPoint,
-      themePresetId: fallbackThemePresetId,
-      strict: true,
-    });
-  },
+  fallbackCheck,
 }: RunStrictImportContractCheckOptions): Promise<void> {
   await runPrepareSandpackFilesOffThread({
     files,
@@ -265,9 +282,15 @@ export async function runStrictImportContractCheck({
     themePresetId,
     signal,
     workerFactory,
+    cacheFallbackResult: !fallbackCheck,
     fallbackCompute: (fallbackFiles, fallbackEntryPoint, fallbackThemePresetId) => {
-      fallbackCheck(fallbackFiles, fallbackEntryPoint, fallbackThemePresetId);
-      return fallbackFiles;
+      if (fallbackCheck) {
+        fallbackCheck(fallbackFiles, fallbackEntryPoint, fallbackThemePresetId);
+        return fallbackFiles;
+      }
+      return prepareSandpackFiles(fallbackFiles, {
+        entryPoint: fallbackEntryPoint, themePresetId: fallbackThemePresetId, strict: true,
+      });
     },
   });
 }
@@ -285,32 +308,36 @@ export async function runPrepareSandpackFilesOffThread({
   themePresetId,
   signal,
   workerFactory = defaultWorkerFactory,
+  cacheFallbackResult = true,
   fallbackCompute = (fallbackFiles, fallbackEntryPoint, fallbackThemePresetId) => prepareSandpackFiles(fallbackFiles, {
     entryPoint: fallbackEntryPoint,
     themePresetId: fallbackThemePresetId,
   }),
 }: RunPrepareSandpackFilesOffThreadOptions): Promise<Record<string, string>> {
+  if (signal?.aborted) throw toAbortError(signal);
   const cacheKey = cacheKeyFor(files, entryPoint, themePresetId);
   const cached = preparedFilesCache.get(cacheKey);
   if (cached) return { ...cached };
-  let computation = preparedFilesInFlight.get(cacheKey);
-  if (!computation) {
-    computation = (async () => {
+  let job = preparedFilesInFlight.get(cacheKey);
+  if (!job) {
+    const controller = new AbortController();
+    job = { controller, subscribers: 0, checkpoint: 'starting worker', promise: undefined! };
+    const currentJob = job;
+    currentJob.promise = (async () => {
       try {
         const worker = workerFactory();
-        // The computation is shared by cache key, so it must not be owned by
-        // the first caller's AbortSignal. Each caller independently races the
-        // shared promise through awaitWithSignal below; a launcher unmount can
-        // no longer cancel the Builder preview that is reusing the same job.
+        // The job owns its signal. Individual callers may detach without
+        // cancelling another preview that still needs the same artifact.
         const result = await runInWorker(worker, {
           requestId: createRequestId(),
           files,
           entryPoint,
           themePresetId,
-        });
+        }, controller.signal, (checkpoint) => { currentJob.checkpoint = checkpoint; });
         storeInCache(cacheKey, result);
         return result;
       } catch (error) {
+        if (controller.signal.aborted) throw error;
         if (!(error instanceof StrictImportContractWorkerBootstrapError)) throw error;
         console.warn('[strictImportContractRuntime] worker unavailable; using compatibility fallback', {
           error: error.message,
@@ -318,14 +345,28 @@ export async function runPrepareSandpackFilesOffThread({
       }
 
       const result = fallbackCompute(files, entryPoint, themePresetId);
-      storeInCache(cacheKey, result);
+      if (cacheFallbackResult) storeInCache(cacheKey, result);
       return result;
     })().finally(() => {
-      preparedFilesInFlight.delete(cacheKey);
+      if (preparedFilesInFlight.get(cacheKey) === currentJob) preparedFilesInFlight.delete(cacheKey);
     });
-    preparedFilesInFlight.set(cacheKey, computation);
+    preparedFilesInFlight.set(cacheKey, currentJob);
   }
-  const result = await awaitWithSignal(computation, signal);
-  return { ...result };
+  job.subscribers += 1;
+  try {
+    return { ...await awaitWithSignal(job.promise, signal) };
+  } catch (error) {
+    if (signal?.aborted && error instanceof Error && /timed out/i.test(error.message)) {
+      throw new Error(`${error.message} Last compiler checkpoint: ${job.checkpoint}.`);
+    }
+    throw error;
+  } finally {
+    job.subscribers -= 1;
+    if (job.subscribers === 0 && preparedFilesInFlight.get(cacheKey) === job) {
+      // Evict before aborting so an immediate Retry starts a fresh worker.
+      preparedFilesInFlight.delete(cacheKey);
+      job.controller.abort(signal?.reason ?? new Error('Preview compile has no remaining subscribers.'));
+    }
+  }
 }
 

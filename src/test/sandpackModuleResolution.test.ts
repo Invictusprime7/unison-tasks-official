@@ -79,4 +79,16 @@ export default function App() { return <Button className={cn('action')}>Continue
     expect(files['/App.tsx']).toContain("from './lib-utils-shim'");
     expect(files['/App.tsx']).not.toContain('@/');
   });
+
+  it('resolves a declared sibling component before trusting an external export-star', () => {
+    const files = prepareSandpackFiles({
+      '/src/App.tsx': `import { Reveal as Panel, RevealGroup, AnimatePresence as Presence } from './components/animation';
+export default function App() { return <RevealGroup><Presence><Panel>Ready</Panel></Presence></RevealGroup>; }`,
+      '/src/components/animation.tsx': "export * from 'framer-motion'; export function RevealGroup({ children }) { return <div>{children}</div>; }",
+      '/src/components/motion.tsx': 'export function Reveal({ children }) { return <section>{children}</section>; }',
+    });
+    expect(files['/App.tsx']).toContain("import { Reveal as Panel } from './components/motion';");
+    expect(files['/App.tsx']).toContain("import { RevealGroup, AnimatePresence as Presence } from './components/animation';");
+    expect(files['/App.tsx']).toContain('<Panel>Ready</Panel>');
+  });
 });

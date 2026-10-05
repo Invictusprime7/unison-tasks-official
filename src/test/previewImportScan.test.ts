@@ -46,4 +46,27 @@ export default function App() { return <main>{caption}</main>; }`,
       filename: 'App.tsx', presets: ['typescript', 'react'],
     })).not.toThrow();
   });
+
+  it('compiles multiline JSX whitespace without rescanning every remaining blank line', () => {
+    const files = prepareSandpackFiles({
+      '/src/App.tsx': `import * as React from 'react';
+export default function App() { return <main>${'\n'.repeat(200_000)}Preview</main>; }`,
+    });
+    expect(files['/App.tsx']).toContain('Preview</main>');
+    expect(files['/App.tsx'].match(/import \* as React/g)).toHaveLength(1);
+  }, 5_000);
+
+  it.each([
+    "import React, {\n useState\n} from 'react';",
+    "import {\n default as React, useState\n} from 'react';",
+    "import * as React from 'react';",
+  ])('preserves a real React value import: %s', (reactImport) => {
+    const files = prepareSandpackFiles({
+      '/src/App.tsx': `${reactImport}\nexport default function App() { return <main>React import</main>; }`,
+    });
+    expect(files['/App.tsx']).not.toContain("import * as React from 'react';\n" + reactImport);
+    expect(() => Babel.transform(files['/App.tsx'], {
+      filename: 'App.tsx', presets: ['typescript', 'react'],
+    })).not.toThrow();
+  });
 });

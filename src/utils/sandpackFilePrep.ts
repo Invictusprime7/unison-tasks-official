@@ -1095,6 +1095,7 @@ class PreviewErrorBoundary extends Component<{ children: React.ReactNode }, { ha
   }
   componentDidCatch(error: Error, info: any) {
     console.error('[Preview] Render crash:', error.message, info?.componentStack?.slice(0, 500));
+    window.parent.postMessage({ type: 'UNISON_PREVIEW_RENDER_ERROR', error: error.message }, '*');
   }
   render() {
     if (this.state.hasError) {
@@ -1120,18 +1121,33 @@ class PreviewErrorBoundary extends Component<{ children: React.ReactNode }, { ha
   }
 }
 
+// Sandpack's "running" status confirms its bundler connected, before React
+// necessarily mounts. Only a successful app commit may unlock launch review.
+function __PreviewRenderReady({ children }: { children: React.ReactNode }) {
+  React.useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      window.parent.postMessage({ type: 'UNISON_PREVIEW_RENDER_READY' }, '*');
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
+  return children;
+}
+
 const __mountPreview = () => {
 if (App) {
   ReactDOM.createRoot(document.getElementById('root')!).render(
     <React.StrictMode>
       <PreviewErrorBoundary>
+        <__PreviewRenderReady>
         <__RouterGuard>
           <App />
         </__RouterGuard>
+        </__PreviewRenderReady>
       </PreviewErrorBoundary>
     </React.StrictMode>
   );
 } else {
+  window.parent.postMessage({ type: 'UNISON_PREVIEW_RENDER_ERROR', error: 'App.tsx does not export a renderable component.' }, '*');
   // App module has no valid export — render diagnostic
   ReactDOM.createRoot(document.getElementById('root')!).render(
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'system-ui', padding: 32 }}>
@@ -2562,7 +2578,7 @@ function repairLocalImportContracts(sandpackFiles: Record<string, string>): void
         new RegExp(`<${escapeRegExp(local)}(?:\\s|/|>)`).test(content)
       ));
 
-      if (missingPascalExports.length === 0 || moduleExports.hasStarReExport) return statement;
+      if (missingPascalExports.length === 0) return statement;
 
       // Sibling-module resolution: a missing named component is very often
       // exported by a neighbouring module in the same folder (e.g. `Label`
@@ -2601,9 +2617,14 @@ function repairLocalImportContracts(sandpackFiles: Record<string, string>): void
           console.warn(`[sandpackFilePrep] Re-pointing missing named import in ${filePath}: ${specs.join(', ')} -> ${modulePath}`);
           lines.push(`import { ${specs.join(', ')} } from '${modulePath}';`);
         }
-        if (relocated.size === missingPascalExports.length) return lines.join('\n');
+        return lines.join('\n');
       }
 
+      // An external export-star does not prove a local component exists. For
+      // example animation re-exports Framer Motion, but Reveal is owned by the
+      // sibling motion facade. Try declared sibling exports before deferring
+      // genuinely external names to the package runtime.
+      if (moduleExports.hasStarReExport) return statement;
 
       if (moduleExports.hasDefault && missingPascalExports.length === 1) {
         const missing = missingPascalExports[0];
@@ -2985,8 +3006,8 @@ function repairMalformedDefaultExportClosures(content: string): string {
 
 function hasReactValueImport(content: string): boolean {
   return (
-    /^\s*import\s+(?:React\b(?:\s*,[\s\S]*?)?|\*\s+as\s+React\b)\s+from\s+['"]react['"]/m.test(content) ||
-    /^\s*import\s+\{[\s\S]*\bdefault\s+as\s+React\b[\s\S]*\}\s+from\s+['"]react['"]/m.test(content)
+    /^[ \t]*import\s+(?:React\b(?:\s*,[^;{}]*(?:\{[^}]*\})?)?|\*\s+as\s+React\b)\s+from\s+['"]react['"]/m.test(content) ||
+    /^[ \t]*import\s+\{[^}]*\bdefault\s+as\s+React\b[^}]*\}\s+from\s+['"]react['"]/m.test(content)
   );
 }
 
@@ -3000,11 +3021,11 @@ function forceClassicReactJsxRuntime(content: string): string {
 
   if (hasCompiledJsxRuntimeImport) {
     patched = patched.replace(
-      /^\s*import\s+\{?\s*jsx(?:DEV| as \w+)?\s*,?\s*jsxs?(?: as \w+)?\s*,?\s*Fragment(?: as \w+)?\s*\}?\s+from\s+['"]react\/jsx-runtime['"];?\s*$/gm,
+      /^[ \t]*import\s+\{?\s*jsx(?:DEV| as \w+)?\s*,?\s*jsxs?(?: as \w+)?\s*,?\s*Fragment(?: as \w+)?\s*\}?\s+from\s+['"]react\/jsx-runtime['"];?\s*$/gm,
       ''
     );
     patched = patched.replace(
-      /^\s*import\s+\{?\s*jsxDEV(?: as \w+)?\s*,?\s*Fragment(?: as \w+)?\s*\}?\s+from\s+['"]react\/jsx-dev-runtime['"];?\s*$/gm,
+      /^[ \t]*import\s+\{?\s*jsxDEV(?: as \w+)?\s*,?\s*Fragment(?: as \w+)?\s*\}?\s+from\s+['"]react\/jsx-dev-runtime['"];?\s*$/gm,
       ''
     );
     patched = patched.replace(/\b_jsxDEV\(/g, 'React.createElement(');
@@ -3026,10 +3047,13 @@ function forceClassicReactJsxRuntime(content: string): string {
     return patched.replace(/\n{3,}/g, '\n\n');
   }
 
-  patched = patched.replace(/^\s*\/\*\*?\s*@jsxRuntime\s+[^\n*]+\*\/\s*\n?/gm, '');
-  patched = patched.replace(/^\s*\/\*\*?\s*@jsxImportSource\s+[^\n*]+\*\/\s*\n?/gm, '');
-  patched = patched.replace(/^\s*\/\*\*?\s*@jsx\s+[^\n*]+\*\/\s*\n?/gm, '');
-  patched = patched.replace(/^\s*\/\*\*?\s*@jsxFrag\s+[^\n*]+\*\/\s*\n?/gm, '');
+  // Multiline anchors must consume horizontal indentation only. With \s*,
+  // each blank line restarts a scan of every remaining blank line: six such
+  // passes can exhaust the worker budget on whitespace-heavy generated JSX.
+  patched = patched.replace(/^[ \t]*\/\*\*?\s*@jsxRuntime\s+[^\n*]+\*\/\s*\n?/gm, '');
+  patched = patched.replace(/^[ \t]*\/\*\*?\s*@jsxImportSource\s+[^\n*]+\*\/\s*\n?/gm, '');
+  patched = patched.replace(/^[ \t]*\/\*\*?\s*@jsx\s+[^\n*]+\*\/\s*\n?/gm, '');
+  patched = patched.replace(/^[ \t]*\/\*\*?\s*@jsxFrag\s+[^\n*]+\*\/\s*\n?/gm, '');
 
   const pragmaBlock = [
     '/** @jsxRuntime classic */',
@@ -4153,8 +4177,9 @@ function hashFilesRecord(files: Record<string, string>): string {
 
 export function prepareSandpackFiles(
   files: Record<string, string>,
-  options?: { strict?: boolean; entryPoint?: string; aesthetic?: string; themePresetId?: string | null }
+  options?: { strict?: boolean; entryPoint?: string; aesthetic?: string; themePresetId?: string | null; onProgress?: (phase: string, path?: string) => void }
 ): Record<string, string> {
+  options?.onProgress?.('projecting runtime');
   const effectiveAesthetic = options?.themePresetId ? null : (options?.aesthetic || null);
   const preparedCacheKey =
     `${hashFilesRecord(files)}::${options?.entryPoint || ''}::${options?.themePresetId || ''}::${effectiveAesthetic || ''}`;
@@ -4252,6 +4277,7 @@ export function prepareSandpackFiles(
   console.log('[sandpackFilePrep] Input VFS files:', Object.keys(finalFiles));
 
   for (const [path, content] of Object.entries(finalFiles)) {
+    options?.onProgress?.('preparing module', path);
     let normalizedPath = path.startsWith('/') ? path : `/${path}`;
 
     // Skip files Sandpack doesn't need
@@ -4630,6 +4656,7 @@ export function prepareSandpackFiles(
   // producing "'X' is declared but its value is never read" warnings.
   for (const [filePath, content] of Object.entries(sandpackFiles)) {
     if (!/\.(tsx|jsx|ts|js)$/.test(filePath)) continue;
+    options?.onProgress?.('checking imports', filePath);
     sandpackFiles[filePath] = removeUnusedImports(content);
   }
 
@@ -4682,6 +4709,7 @@ export function prepareSandpackFiles(
   }
 
   console.log('[sandpackFilePrep] Prepared files:', Object.keys(sandpackFiles));
+  options?.onProgress?.('applying runtime shims');
   const prepared = applySandpackRuntimeShims(sandpackFiles);
   if (hasApp) {
     if (preparedFilesCache.size >= PREPARED_FILES_CACHE_LIMIT) preparedFilesCache.clear();

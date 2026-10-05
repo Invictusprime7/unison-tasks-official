@@ -255,8 +255,8 @@ const SandpackErrorListener: React.FC<{
       }
     } else if (status === 'running') {
       lastReportedRef.current = '';
-      // P0.4: the preview compiled and is rendering the committed revision.
-      reportPreviewRunning();
+      // Connection is not proof of a successful React render. The canonical
+      // entry shell reports readiness (or its error boundary) from the iframe.
       onRunning?.();
     } else if (status === 'idle') {
       lastReportedRef.current = '';
@@ -930,6 +930,18 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
       const data = event.data;
       if (!data?.type) return;
 
+      if (data.type === 'UNISON_PREVIEW_RENDER_READY') {
+        reportPreviewRunning();
+        onReady?.();
+        return;
+      }
+      if (data.type === 'UNISON_PREVIEW_RENDER_ERROR') {
+        const message = typeof data.error === 'string' ? data.error : 'The preview application failed to render.';
+        reportPreviewError(message);
+        onError?.(message);
+        return;
+      }
+
       // ── Selection bridge ────────────────────────────────────────────────
       if (data.type === 'EDIT_MODE_BRIDGE_READY' || data.type === 'EDIT_MODE_READY') {
         bridgeReadyRef.current = true;
@@ -1062,7 +1074,7 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
 
     window.addEventListener('message', handlePreviewMessage);
     return () => window.removeEventListener('message', handlePreviewMessage);
-  }, [builderSession.projectId, builderSession.runtimeContext?.projectId, onNavigate, onIntentTrigger, businessId, siteId, onError, onElementSelect, enableSelection, getPreviewWindow, clearDirectPreviewSelection]);
+  }, [builderSession.projectId, builderSession.runtimeContext?.projectId, onNavigate, onIntentTrigger, businessId, siteId, onError, onReady, onElementSelect, enableSelection, getPreviewWindow, clearDirectPreviewSelection]);
 
 
   
@@ -1132,8 +1144,7 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
   const handleSandpackRunning = useCallback(() => {
     timeoutRecoveryCountRef.current = 0;
     setSandpackTimeoutExhausted(false);
-    onReady?.();
-  }, [onReady]);
+  }, []);
 
   const handleRetrySandpackConnection = useCallback(() => {
     if (timeoutRecoveryTimerRef.current !== null) {

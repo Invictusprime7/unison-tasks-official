@@ -110,6 +110,45 @@ describe('strict import-contract runtime', () => {
     expect(fallbackCheck).toHaveBeenCalledWith({ '/App.tsx': 'x' }, '/App.tsx', 'modern');
   });
 
+  it('does not cache uncompiled source returned by a side-effect-only strict-check fallback', async () => {
+    const files = { '/src/App.tsx': 'strict-fallback-cache-test' };
+    // Simulate a worker bootstrap failure using its supported error channel.
+    const failed = {
+      onmessage: null as ((event: MessageEvent) => void) | null,
+      onerror: null as ((event: ErrorEvent) => void) | null,
+      postMessage: vi.fn(() => queueMicrotask(() => failed.onerror?.({ message: 'CSP blocked worker', preventDefault: vi.fn() } as unknown as ErrorEvent))),
+      terminate: vi.fn(),
+    };
+    await runStrictImportContractCheck({ files, workerFactory: () => failed, fallbackCheck: vi.fn() });
+    const prepared = { '/App.tsx': 'compiled source', '/index.tsx': 'controlled entry' };
+    const worker = {
+      onmessage: null as ((event: MessageEvent) => void) | null,
+      onerror: null as ((event: ErrorEvent) => void) | null,
+      postMessage: vi.fn((request: { requestId: string }) => queueMicrotask(() => worker.onmessage?.({ data: { requestId: request.requestId, ok: true, files: prepared } } as MessageEvent))),
+      terminate: vi.fn(),
+    };
+    const factory = vi.fn(() => worker);
+    await expect(runPrepareSandpackFilesOffThread({ files, workerFactory: factory })).resolves.toEqual(prepared);
+    expect(factory).toHaveBeenCalledOnce();
+  });
+
+  it('shares the compiled artifact from the default strict fallback with the preview', async () => {
+    const files = { '/src/App.tsx': 'export default function App(){ return <main>Default fallback projection</main>; }' };
+    const worker = {
+      onmessage: null as ((event: MessageEvent) => void) | null,
+      onerror: null as ((event: ErrorEvent) => void) | null,
+      postMessage: vi.fn(() => queueMicrotask(() => worker.onerror?.({ message: 'CSP blocked worker', preventDefault: vi.fn() } as unknown as ErrorEvent))),
+      terminate: vi.fn(),
+    };
+    await runStrictImportContractCheck({ files, workerFactory: () => worker });
+    const nextFactory = vi.fn(() => worker);
+    const result = await runPrepareSandpackFilesOffThread({ files, workerFactory: nextFactory });
+    expect(nextFactory).not.toHaveBeenCalled();
+    expect(result['/App.tsx']).toContain('Default fallback projection');
+    expect(result['/index.tsx']).toContain('UNISON_PREVIEW_RENDER_READY');
+    expect(result['/src/App.tsx']).toBeUndefined();
+  });
+
   it('terminates the worker and rejects when the caller aborts before it responds', async () => {
     const controller = new AbortController();
     const terminate = vi.fn();
@@ -129,9 +168,9 @@ describe('strict import-contract runtime', () => {
     controller.abort(new Error('stage timed out'));
 
     await expect(pending).rejects.toThrow('stage timed out');
-    // Caller cancellation no longer owns/terminates the shared keyed worker;
-    // another preview caller may still be awaiting the same computation.
-    expect(terminate).not.toHaveBeenCalled();
+    // This was the last subscriber. The old implementation left this worker
+    // running until its watchdog, competing with every subsequent retry.
+    expect(terminate).toHaveBeenCalledOnce();
   });
 
   it('lets one caller cancel without rejecting another caller sharing the same computation', async () => {
@@ -163,5 +202,62 @@ describe('strict import-contract runtime', () => {
     await expect(cancelled).rejects.toThrow('launcher unmounted');
     await expect(surviving).resolves.toEqual(preparedFiles);
     expect(worker.terminate).toHaveBeenCalledOnce();
+  });
+
+  it('evicts a cancelled job before retrying and preserves the new job when the old one settles', async () => {
+    const controller = new AbortController();
+    const makeWorker = () => ({
+      onmessage: null as ((event: MessageEvent) => void) | null,
+      onerror: null as ((event: ErrorEvent) => void) | null,
+      postMessage: vi.fn(), terminate: vi.fn(),
+    });
+    const abandoned = makeWorker();
+    const replacement = makeWorker();
+    const files = { '/App.tsx': 'cancel-and-retry-worker' };
+    const pending = runPrepareSandpackFilesOffThread({ files, signal: controller.signal, workerFactory: () => abandoned });
+    controller.abort(new Error('user changed site'));
+    await expect(pending).rejects.toThrow('user changed site');
+    const retry = runPrepareSandpackFilesOffThread({ files, workerFactory: () => replacement });
+    await Promise.resolve();
+    const extraWorker = vi.fn(() => makeWorker());
+    const secondSubscriber = runPrepareSandpackFilesOffThread({ files, workerFactory: extraWorker });
+    expect(extraWorker).not.toHaveBeenCalled();
+    const requestId = replacement.postMessage.mock.calls[0][0].requestId;
+    replacement.onmessage?.({ data: { requestId, ok: true, files: { '/App.tsx': 'retry success' } } } as MessageEvent);
+    await expect(retry).resolves.toEqual({ '/App.tsx': 'retry success' });
+    await expect(secondSubscriber).resolves.toEqual({ '/App.tsx': 'retry success' });
+    expect(abandoned.terminate).toHaveBeenCalledOnce();
+  });
+
+  it('reports the last compiler phase and file when a preview deadline cancels the worker', async () => {
+    const controller = new AbortController();
+    const worker = {
+      onmessage: null as ((event: MessageEvent) => void) | null,
+      onerror: null as ((event: ErrorEvent) => void) | null,
+      postMessage: vi.fn(), terminate: vi.fn(),
+    };
+    const pending = runPrepareSandpackFilesOffThread({
+      files: { '/App.tsx': 'phase-timeout-test' }, signal: controller.signal, workerFactory: () => worker,
+    });
+    const requestId = worker.postMessage.mock.calls[0][0].requestId;
+    worker.onmessage?.({ data: { requestId, progress: { phase: 'preparing module', path: '/src/pages/Home.tsx' } } } as MessageEvent);
+    controller.abort(new Error('Preview artifact compilation timed out after 180 seconds.'));
+    await expect(pending).rejects.toThrow('Last compiler checkpoint: preparing module (/src/pages/Home.tsx)');
+    expect(worker.terminate).toHaveBeenCalledOnce();
+  });
+
+  it('preserves a worker-reported pipeline stage and blocked module', async () => {
+    const worker = {
+      onmessage: null as ((event: MessageEvent) => void) | null,
+      onerror: null as ((event: ErrorEvent) => void) | null,
+      postMessage: vi.fn((request: { requestId: string }) => queueMicrotask(() => {
+        worker.onmessage?.({ data: { requestId: request.requestId, ok: false, error: {
+          name: 'PreviewPipelineError', message: '[prep] Missing module', stage: 'prep', summary: 'Missing module',
+          blockedFiles: ['/pages/Home.tsx'],
+        } } } as MessageEvent);
+      })), terminate: vi.fn(),
+    };
+    await expect(runPrepareSandpackFilesOffThread({ files: { '/App.tsx': 'structured-error-test' }, workerFactory: () => worker }))
+      .rejects.toMatchObject({ stage: 'prep', summary: 'Missing module', details: { blockedFiles: ['/pages/Home.tsx'] } });
   });
 });

@@ -458,8 +458,8 @@ export const LauncherWizard = ({
           <section className="flex max-h-[94dvh] min-h-0 flex-col" data-testid="wizard-generated-review">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4 pr-14 sm:px-7 sm:pr-16">
               <div>
-                <h2 className="text-lg font-semibold">Your site is ready to review</h2>
-                <p className="text-xs text-muted-foreground">Check the result before opening it in the builder.</p>
+                <h2 className="text-lg font-semibold">{previewReady ? 'Your site is ready to review' : 'Preparing your site preview'}</h2>
+                <p className="text-xs text-muted-foreground">{previewReady ? 'Check the result before opening it in the builder.' : 'Your pages are generated. We’re checking that they render correctly.'}</p>
               </div>
               <div className="flex items-center gap-1 rounded-md border border-border bg-muted/40 p-1">
                 <Button size="icon" variant={previewDevice === 'desktop' ? 'secondary' : 'ghost'} aria-label="Desktop preview" aria-pressed={previewDevice === 'desktop'} onClick={() => setPreviewDevice('desktop')} className="h-8 w-8"><Monitor /></Button>

@@ -2,6 +2,7 @@ import type {
   StrictImportContractWorkerRequest,
   StrictImportContractWorkerResponse,
 } from '@/services/strictImportContractRuntime';
+import { isPreviewPipelineError } from '@/services/previewPipelineError';
 
 interface StrictImportContractWorkerScope {
   onmessage: ((event: MessageEvent<StrictImportContractWorkerRequest>) => void) | null;
@@ -24,7 +25,11 @@ const sandpackModule = import('@/utils/sandpackFilePrep').finally(() => {
 
 workerScope.onmessage = async (event) => {
   const request = event.data;
+  const progress = (phase: string, path?: string) => workerScope.postMessage({
+    requestId: request.requestId, progress: { phase, path },
+  });
   try {
+    progress('loading compiler');
     const { prepareSandpackFiles } = await sandpackModule;
     // Always computed in strict mode: strict only changes behavior when the
     // VFS has no App.tsx, which canonical wizard sites always have — so the
@@ -34,6 +39,7 @@ workerScope.onmessage = async (event) => {
       entryPoint: request.entryPoint,
       themePresetId: request.themePresetId,
       strict: true,
+      onProgress: progress,
     });
     workerScope.postMessage({ requestId: request.requestId, ok: true, files });
   } catch (error) {
@@ -45,6 +51,9 @@ workerScope.onmessage = async (event) => {
         name: normalized.name,
         message: normalized.message,
         stack: normalized.stack,
+        ...(isPreviewPipelineError(error) ? {
+          stage: error.stage, summary: error.summary, blockedFiles: error.details.blockedFiles,
+        } : {}),
       },
     });
   }
