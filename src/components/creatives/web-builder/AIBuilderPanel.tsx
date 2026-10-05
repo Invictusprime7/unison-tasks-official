@@ -888,6 +888,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
   // Send message to AI
   const handleSend = async () => {
     if ((!input.trim() && droppedFiles.length === 0) || isLoading) return;
+    queueMicrotask(() => emitAgentEvent({ kind: 'understanding', message: input.trim().slice(0, 140) || 'Reading your attached files' }));
 
     // Build file context suffix
     const fileContext = droppedFiles.length > 0 ? (() => {
