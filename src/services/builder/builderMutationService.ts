@@ -24,6 +24,8 @@ import {
   type CommitMutationResult,
   type PublishBlockerSummary,
 } from '@/services/vfsCommitService';
+import { emitAgentEvent, lineDelta } from '@/services/agent-runtime/agentEvents';
+import { findIntentRetargets } from '@/services/agent-runtime/intentInvariant';
 
 /** Terminal states of a builder mutation transaction. */
 export type BuilderMutationState =
@@ -74,12 +76,32 @@ export async function runBuilderAiMutation(
   ctx: AiCommitContext,
   hooks: BuilderMutationHooks,
 ): Promise<BuilderMutationOutcome> {
+  const proposed = changedPathsBetween(ctx.beforeFiles, ctx.nextFiles);
+  for (const path of proposed) {
+    emitAgentEvent({ kind: 'file_change', message: path, path, ...lineDelta(ctx.beforeFiles[path], ctx.nextFiles[path]) });
+  }
+
+  // Intent invariant: buttons keep their destinations regardless of UI edits.
+  emitAgentEvent({ kind: 'verification', message: 'Buttons still go to the same places', status: 'running' });
+  const retargets = findIntentRetargets(ctx.beforeFiles, ctx.nextFiles);
+  if (retargets.length > 0) {
+    const reason = `This edit would change where ${retargets.map((v) => `"${v.intent}"`).join(', ')} leads (was ${retargets[0].before.join(', ')}). Button destinations stay fixed during design edits.`;
+    emitAgentEvent({ kind: 'error', message: reason, status: 'failed' });
+    return { state: 'rejected', success: false, errors: [reason], blockers: [], reason, changedPaths: [] };
+  }
+  emitAgentEvent({ kind: 'verification', message: 'Checking code and preview, then saving', status: 'running' });
+
   let commit: CommitMutationResult;
   try {
     // One pipeline run validates AND persists — the accepted bytes are, by
     // construction, the persisted bytes.
     commit = await persistAiCommit(ctx);
   } catch (error) {
+    emitAgentEvent({
+      kind: 'error',
+      status: 'failed',
+      message: error instanceof Error ? error.message : String(error),
+    });
     if (error instanceof CommitRejectedError) {
       const blockers = error.result.publishBlockers ?? [];
       const primary = blockers.find((b) => b.source === 'preview' || b.source === 'publishGate');
@@ -125,6 +147,12 @@ export async function runBuilderAiMutation(
     };
   }
 
+  emitAgentEvent({
+    kind: 'commit',
+    status: 'ok',
+    message: `${changedPaths.length} file${changedPaths.length === 1 ? '' : 's'} saved as a new checkpoint`,
+    revisionId: commit.persistedRevisionId ?? null,
+  });
   return {
     state: 'applied',
     success: true,

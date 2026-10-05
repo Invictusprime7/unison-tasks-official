@@ -40,7 +40,8 @@ export type VFSEventType =
   | 'ai:terminal:exec'
   | 'build:log'
   | 'build:error'
-  | 'build:success';
+  | 'build:success'
+  | 'agent:event';
 
 export interface VFSEvent<T = unknown> {
   type: VFSEventType;
