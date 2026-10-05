@@ -1,0 +1,3 @@
+# Shared edge rules
+- App Builder providers are hybrid (`_shared/providerRouter.ts` `gatewayLeads`, `_shared/aiProviderLoop.ts`): launch page writing/repair goes to the managed Lovable gateway first with funded Gemini as the in-deadline backup; Builder source edits lead with funded Gemini. Why: the Oct 1 rich baseline was written by the gateway model, and the Gemini-only switch on Oct 4 degraded composition; the user chose hybrid on 2026-10-05.
+- Direct-Gemini composition leads with a stronger model (`composerGeminiModel` in `_shared/providerRouter.ts`, mirrored in `runDirectGemini`), overridable by the `GEMINI_COMPOSER_MODEL` secret, with Flash as backup; why: Flash produced generic compositions when it served page writing.
