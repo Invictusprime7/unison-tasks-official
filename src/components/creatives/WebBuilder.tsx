@@ -7393,14 +7393,17 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                 businessId={businessId ?? null}
                 layoutOps={layoutOpsForAI}
                 onApproveCapabilityPlan={approveCapabilityPlanFromPanel}
-                onApplyToVFS={async (rawFiles, applyMeta) => {
-                  console.log('[WebBuilder] onApplyToVFS called with files:', Object.keys(rawFiles));
-                  // End-to-end preflight: syntax repair → nav-intent stamping →
-                  // industry forbidden-intent strip → final syntax repair.
-                  // Mirrors the System Launcher pipeline so AI Builder chat
-                  // edits cannot crash preview, ship un-stamped nav links, or
-                  // leak intents disallowed by the active industry profile.
-                  const beforeFiles = virtualFS.getSandpackFiles();
+                 onApplyToVFS={async (rawFiles, applyMeta) => {
+                   console.log('[WebBuilder] onApplyToVFS called with files:', Object.keys(rawFiles));
+                   // End-to-end preflight: syntax repair → nav-intent stamping →
+                   // industry forbidden-intent strip → final syntax repair.
+                   // Mirrors the System Launcher pipeline so AI Builder chat
+                   // edits cannot crash preview, ship un-stamped nav links, or
+                   // leak intents disallowed by the active industry profile.
+                   // Read live refs, not render-time closures: sequential
+                   // multi-task applies call this callback again after an
+                   // earlier task already committed a new revision.
+                   const beforeFiles = virtualFSRef.current.getSandpackFiles();
                   const snapshotForPreflight = resolveSnapshot(beforeFiles, effectiveRouteState as any).snapshot
                     ?? (hydratedRevision?.siteBundleSnapshot as SiteBundleSnapshot | null)
                     ?? null;
@@ -7412,7 +7415,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                     deletions: applyMeta?.deletions,
                     routeOps: applyMeta?.candidate?.routeOps ?? applyMeta?.routeOps,
                     baseFiles: beforeFiles,
-                    baseRevisionId: applyMeta?.candidate?.baseRevisionId ?? currentRevisionId ?? undefined,
+                    baseRevisionId: applyMeta?.candidate?.baseRevisionId ?? currentRevisionIdRef.current ?? undefined,
                     origin: applyMeta?.candidate?.provenance.origin ?? 'builder',
                     intent: applyMeta?.candidate?.provenance.intent ?? applyMeta?.actionType ?? 'builder-ai-edit',
                     evidence: applyMeta?.candidate?.provenance.evidence,
@@ -7426,9 +7429,9 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                   let candidate = firstCandidate;
                   if (!firstCandidate.ok && firstCandidate.gates.failures.length) {
                     toast.message('Repairing the AI edit…');
-                    const repaired = await repairBuilderCandidate({
-                      rawFiles, failed: firstCandidate, baseFiles: beforeFiles,
-                      baseRevisionId: currentRevisionId ?? undefined,
+                      const repaired = await repairBuilderCandidate({
+                        rawFiles, failed: firstCandidate, baseFiles: beforeFiles,
+                        baseRevisionId: currentRevisionIdRef.current ?? undefined,
                       prompt: applyMeta?.prompt,
                       routeOps: applyMeta?.routeOps,
                       preflight: (changed) => runFullPreflight(changed, { siteBundleSnapshot: snapshotForPreflight, industry: snapshotForPreflight?.industry, allowQuarantine: false }).files,
@@ -7451,7 +7454,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                         businessId,
                         projectId: projectIdForCommit,
                         draftId: currentDraftId,
-                        revisionId: currentRevisionId,
+                        revisionId: currentRevisionIdRef.current,
                         beforeFiles,
                         nextFiles: proposedFiles,
                         snapshotForPreflight,
@@ -7497,8 +7500,13 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                     return { success: false, errors: outcome.errors };
                   }
 
-                  const mergedFiles = outcome.committedFiles ?? beforeSnapshotFiles;
-                  recordPendingVfsMutation({
+                   const mergedFiles = outcome.committedFiles ?? beforeSnapshotFiles;
+                   // Keep the live revision ref in step immediately so a
+                   // follow-up sequential task commits against this revision,
+                   // not the pre-edit one (avoids the 40001 draft-pointer
+                   // conflict when one AI edit spans 3+ files).
+                   if (outcome.revisionId) currentRevisionIdRef.current = outcome.revisionId;
+                   recordPendingVfsMutation({
                     scope: pendingProjectionScope,
                     baseRevisionId: currentRevisionIdRef.current || null,
                     candidateRevisionId: outcome.revisionId ?? null,
@@ -7956,8 +7964,9 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
               businessId={businessId ?? null}
               layoutOps={layoutOpsForAI}
               onApproveCapabilityPlan={approveCapabilityPlanFromPanel}
-              onApplyToVFS={async (rawFiles, applyMeta) => {
-                const beforeFiles = virtualFS.getSandpackFiles();
+               onApplyToVFS={async (rawFiles, applyMeta) => {
+                 // Live refs, not render-time closures (see desktop mount above).
+                 const beforeFiles = virtualFSRef.current.getSandpackFiles();
                 const snapshotForPreflight = resolveSnapshot(beforeFiles, effectiveRouteState as any).snapshot
                   ?? (hydratedRevision?.siteBundleSnapshot as SiteBundleSnapshot | null)
                   ?? null;
@@ -7967,8 +7976,8 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                   deletions: applyMeta?.deletions,
                   routeOps: applyMeta?.candidate?.routeOps ?? applyMeta?.routeOps,
                   baseFiles: beforeFiles,
-                  baseRevisionId: applyMeta?.candidate?.baseRevisionId ?? currentRevisionId ?? undefined,
-                  origin: applyMeta?.candidate?.provenance.origin ?? 'builder',
+                   baseRevisionId: applyMeta?.candidate?.baseRevisionId ?? currentRevisionIdRef.current ?? undefined,
+                   origin: applyMeta?.candidate?.provenance.origin ?? 'builder',
                   intent: applyMeta?.candidate?.provenance.intent ?? applyMeta?.actionType ?? 'builder-ai-edit',
                   evidence: applyMeta?.candidate?.provenance.evidence,
                   attempt: applyMeta?.candidate?.attempt,
@@ -7982,8 +7991,8 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                 if (!firstCandidate.ok && firstCandidate.gates.failures.length) {
                   toast.message('Repairing the AI edit…');
                   const repaired = await repairBuilderCandidate({
-                    rawFiles, failed: firstCandidate, baseFiles: beforeFiles,
-                    baseRevisionId: currentRevisionId ?? undefined,
+                     rawFiles, failed: firstCandidate, baseFiles: beforeFiles,
+                     baseRevisionId: currentRevisionIdRef.current ?? undefined,
                     prompt: applyMeta?.prompt,
                     routeOps: applyMeta?.routeOps,
                     preflight: (changed) => runFullPreflight(changed, { siteBundleSnapshot: snapshotForPreflight, industry: snapshotForPreflight?.industry, allowQuarantine: false }).files,
@@ -8002,9 +8011,9 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                   ? {
                       businessId,
                       projectId: projectIdForCommit,
-                      draftId: currentDraftId,
-                      revisionId: currentRevisionId,
-                      beforeFiles,
+                       draftId: currentDraftId,
+                       revisionId: currentRevisionIdRef.current,
+                       beforeFiles,
                       nextFiles: proposedFiles,
                       snapshotForPreflight,
                       playground: {
@@ -8046,8 +8055,9 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                   return { success: false, errors: outcome.errors };
                 }
 
-                const mergedFiles = outcome.committedFiles ?? beforeFiles;
-                recordPendingVfsMutation({
+                 const mergedFiles = outcome.committedFiles ?? beforeFiles;
+                 if (outcome.revisionId) currentRevisionIdRef.current = outcome.revisionId;
+                 recordPendingVfsMutation({
                   scope: pendingProjectionScope,
                   baseRevisionId: currentRevisionIdRef.current || null,
                   candidateRevisionId: outcome.revisionId ?? null,
