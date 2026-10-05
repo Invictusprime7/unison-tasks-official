@@ -67,6 +67,8 @@ export interface SiteAuthoringInput {
   homePageId?: string;
   designContext: ResolvedSiteDesignContext | null;
   businessName: string;
+  /** Owner's own description from the home-page planning chat. */
+  visionBrief?: string;
   files: Record<string, string>;
   revisionId?: string | null;
   commitPage: (nextFiles: Record<string, string>, page: AuthoringPage, beforeFiles: Record<string, string>, candidate: AICandidateChangeSet) =>
@@ -219,6 +221,7 @@ export async function authorSitePages(input: SiteAuthoringInput): Promise<SiteAu
       task: 'site_page_author',
       page: { role: page.role, title: page.title, route: page.route, filePath: page.filePath },
       brief: [
+        input.visionBrief ? `OWNER VISION (from the planning chat; honour its content, never its styling over the sealed design): ${input.visionBrief.slice(0, 1200)}` : '',
         renderPageBrief(input.designContext, page, input.businessName, establishedLanguage),
         renderCompositionBrief(planned, visualMemory.entries(), redundancy),
       ].filter(Boolean).join('\n').slice(0, 6500),

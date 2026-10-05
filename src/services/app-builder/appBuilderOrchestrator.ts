@@ -43,6 +43,7 @@ export async function orchestrateAppBuild(
     homePageId: input.contract.topology.sitePlan.homePageId,
     designContext: input.contract.design.resolvedSiteDesignContext,
     businessName: input.contract.business.businessName,
+    visionBrief: input.contract.business.visionBrief,
     files: { ...baseFiles },
     revisionId: input.baseRevisionId,
     signal: input.signal,
