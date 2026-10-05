@@ -9,3 +9,5 @@
 - [ ] Phase 5: block legacy repair/sync from overwriting committed AI change sets
 - [ ] Verify click-to-target with a real AI edit (label confirmed; full edit needs the user)
 - [x] Product/catalog edits (price, image) write the real database record (command menu)
+- [ ] Conversational backend setup: AI asks inline questions in chat (saved with the conversation), user answers inline, AI wires backend + authors UI
+- [ ] Catalog panel (products/services) on the canonical catalog writer; preview reads live data
