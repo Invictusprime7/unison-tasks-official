@@ -2575,7 +2575,7 @@ function repairLocalImportContracts(sandpackFiles: Record<string, string>): void
       const missingPascalExports = specifiers.filter(({ imported, local }) => (
         /^[A-Z]/.test(imported) &&
         !moduleExports.named.has(imported) &&
-        new RegExp(`<${escapeRegExp(local)}(?:\\s|/|>)`).test(content)
+        new RegExp(`(?<![\\w$.])<${escapeRegExp(local)}(?:\\s|/|>)`).test(content)
       ));
 
       if (missingPascalExports.length === 0) return statement;
@@ -2698,7 +2698,7 @@ function assertLocalJsxImportContracts(sandpackFiles: Record<string, string>): v
         const local = localAlias || imported;
         if (
           /^[A-Z]/.test(imported) &&
-          new RegExp(`<${escapeRegExp(local)}(?:\\s|/|>)`).test(content) &&
+          new RegExp(`(?<![\\w$.])<${escapeRegExp(local)}(?:\\s|/|>)`).test(content) &&
           !moduleExports.named.has(imported)
         ) {
           const available = [...moduleExports.named].join(', ') || (moduleExports.hasDefault ? 'default' : 'none');
@@ -2714,7 +2714,7 @@ function assertLocalJsxImportContracts(sandpackFiles: Record<string, string>): v
     let defaultMatch: RegExpExecArray | null;
     while ((defaultMatch = defaultImportRegex.exec(content)) !== null) {
       const local = defaultMatch[1];
-      if (!new RegExp(`<${escapeRegExp(local)}(?:\\s|/|>)`).test(content)) continue;
+      if (!new RegExp(`(?<![\\w$.])<${escapeRegExp(local)}(?:\\s|/|>)`).test(content)) continue;
       const targetPath = resolveRelativeModuleTarget(filePath, defaultMatch[2], existingPaths);
       if (!targetPath) continue;
       const moduleExports = inspectModuleExports(sandpackFiles[targetPath] || '');
