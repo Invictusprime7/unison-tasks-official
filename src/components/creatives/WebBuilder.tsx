@@ -737,6 +737,15 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       section: el.section,
       scopeAncestors: el.scopeAncestors,
     });
+    // Click-to-target: the AI chat scopes its next message to this element.
+    const attrs = (el.attributes ?? {}) as Record<string, string>;
+    window.dispatchEvent(new CustomEvent('unison:builder-target', { detail: {
+      tagName: String(el.tagName ?? '').toLowerCase(),
+      text: String(el.textContent ?? '').trim().slice(0, 80),
+      selector: el.selector,
+      section: typeof el.section === 'string' ? el.section : el.section?.id ?? el.section?.label,
+      intent: attrs['data-ut-intent'],
+    } }));
   }, [setSelectedHTMLElement]);
 
   // Handle element-level edits from floating toolbar.
