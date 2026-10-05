@@ -12,3 +12,4 @@
 - [ ] Conversational backend setup: AI asks inline questions in chat (saved with the conversation), user answers inline, AI wires backend + authors UI
 - [ ] Catalog panel (products/services) on the canonical catalog writer; preview reads live data
 - [ ] agentOperations is the sole catalog read/write surface (registry-aware); retire catalogOperations row ops and migrate their callers
+- [ ] Move remaining catalog writers (crm-managers, TemplateRuntimeProvider, backendOpExecutor) onto agentOperations
