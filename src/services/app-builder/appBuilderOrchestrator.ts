@@ -67,7 +67,7 @@ export async function orchestrateAppBuild(
   const compatibilityMode = Boolean(input.acceptPage);
   let candidateFiles = { ...authored.files };
   if (!compatibilityMode && input.preflight) candidateFiles = input.preflight(candidateFiles);
-  let closure = await validateAppBuildCandidate({
+  let closure = validateAppBuildCandidate({
     contract: input.contract,
     files: candidateFiles,
     initialFiles: baseFiles,
@@ -121,7 +121,7 @@ export async function orchestrateAppBuild(
       if (repaired.ok && repaired.prepared) {
         candidateFiles = repaired.prepared.nextFiles;
         if (input.preflight) candidateFiles = input.preflight(candidateFiles);
-        closure = await validateAppBuildCandidate({
+        closure = validateAppBuildCandidate({
           contract: input.contract,
           files: candidateFiles,
           initialFiles: baseFiles,

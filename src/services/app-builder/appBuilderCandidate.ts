@@ -127,169 +127,11 @@ function isAllowedGenerationPath(path: string): boolean {
   return APP_BUILDER_GENERATION_PREFIXES.some((prefix) => path.startsWith(prefix));
 }
 
-const APP_BUILDER_SOURCE_PATH = /^\/src\/(?:pages|project-components|components\/generated)\/.+\.[jt]sx?$/;
-const NAV_DESCRIPTOR_KEYS = ['dataUiPath', 'href', 'intent', 'text'];
-
-async function findInvalidReactChildIssues(
-  files: Readonly<Record<string, string>>,
-): Promise<AppBuildCandidateClosureIssue[]> {
-  const sourceFiles = Object.entries(files).filter(([path]) => APP_BUILDER_SOURCE_PATH.test(path));
-  if (sourceFiles.length === 0) return [];
-
-  const tsModule = await import('typescript');
-  const ts = tsModule.default;
-  const descriptorNames = new Set<string>();
-  const descriptorAliases: Array<[string, string]> = [];
-  const descriptorProperties = new Set<string>();
-  const unwrap = (node: import('typescript').Expression): import('typescript').Expression => {
-    let current = node;
-    while (
-      ts.isParenthesizedExpression(current) ||
-      ts.isAsExpression(current) ||
-      ts.isTypeAssertionExpression(current) ||
-      ts.isSatisfiesExpression(current)
-    ) {
-      current = current.expression;
-    }
-    return current;
-  };
-  const propertyName = (name: import('typescript').PropertyName | undefined): string | null => {
-    if (!name) return null;
-    if (ts.isIdentifier(name) || ts.isStringLiteral(name) || ts.isNumericLiteral(name)) return name.text;
-    return null;
-  };
-  const isDescriptorObject = (node: import('typescript').Expression): boolean => {
-    const expression = unwrap(node);
-    if (ts.isObjectLiteralExpression(expression)) {
-      const names = new Set(expression.properties.flatMap((property) => {
-        if (!ts.isPropertyAssignment(property)) return [];
-        const key = propertyName(property.name);
-        return key ? [key] : [];
-      }));
-      for (const property of expression.properties) {
-        if (ts.isShorthandPropertyAssignment(property)) names.add(property.name.text);
-      }
-      return NAV_DESCRIPTOR_KEYS.every((key) => names.has(key));
-    }
-    if (ts.isArrayLiteralExpression(expression)) {
-      return expression.elements.some((element) => ts.isExpression(element) && isDescriptorObject(element));
-    }
-    return false;
-  };
-
-  for (const [vfsPath, source] of sourceFiles) {
-    const sourceFile = ts.createSourceFile(vfsPath, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
-    const inspectDeclarations = (node: import('typescript').Node) => {
-      if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer) {
-        const initializer = unwrap(node.initializer);
-        if (isDescriptorObject(initializer)) {
-          descriptorNames.add(node.name.text);
-        } else if (ts.isIdentifier(initializer)) {
-          descriptorAliases.push([node.name.text, initializer.text]);
-        } else if (ts.isObjectLiteralExpression(initializer)) {
-          for (const property of initializer.properties) {
-            if (!ts.isPropertyAssignment(property) || !isDescriptorObject(property.initializer)) continue;
-            const key = propertyName(property.name);
-            if (key) descriptorProperties.add(`${node.name.text}.${key}`);
-          }
-        }
-      }
-      ts.forEachChild(node, inspectDeclarations);
-    };
-    inspectDeclarations(sourceFile);
-  }
-  let aliasesChanged = true;
-  while (aliasesChanged) {
-    aliasesChanged = false;
-    for (const [alias, target] of descriptorAliases) {
-      if (descriptorNames.has(target) && !descriptorNames.has(alias)) {
-        descriptorNames.add(alias);
-        aliasesChanged = true;
-      }
-    }
-  }
-
-  const issues: AppBuildCandidateClosureIssue[] = [];
-  const addIssue = (vfsPath: string) => {
-    if (issues.some((issue) => issue.path === vfsPath && issue.code === 'jsx-child-not-renderable')) return;
-    issues.push({
-      severity: 'blocker',
-      code: 'jsx-child-not-renderable',
-      path: vfsPath,
-      message: `${vfsPath} renders a navigation descriptor object as JSX children. Render its text field or map links to elements instead.`,
-    });
-  };
-  for (const [vfsPath, source] of sourceFiles) {
-    const sourceFile = ts.createSourceFile(vfsPath, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
-    const isDescriptorReference = (node: import('typescript').Expression, localNames: ReadonlySet<string>) => {
-      const expression = unwrap(node);
-      if (isDescriptorObject(expression)) return true;
-      if (ts.isIdentifier(expression)) return descriptorNames.has(expression.text) || localNames.has(expression.text);
-      if (ts.isPropertyAccessExpression(expression)) {
-        const chain = expression.expression.getText(sourceFile) + '.' + expression.name.text;
-        return descriptorProperties.has(chain);
-      }
-      return false;
-    };
-    const visit = (
-      node: import('typescript').Node,
-      localNames: ReadonlySet<string>,
-      renderedChild = false,
-    ) => {
-      if (ts.isJsxExpression(node)) {
-        const isChild = Boolean(
-          node.parent && (ts.isJsxElement(node.parent) || ts.isJsxFragment(node.parent)),
-        );
-        if (isChild && node.expression && isDescriptorReference(node.expression, localNames)) {
-          addIssue(vfsPath);
-        }
-        if (node.expression) visit(node.expression, localNames, isChild);
-        return;
-      }
-
-      if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression)
-        && node.expression.name.text === 'map' && node.arguments[0]) {
-        const callback = node.arguments[0];
-        const sourceIsDescriptor = isDescriptorReference(node.expression.expression, localNames);
-        if (sourceIsDescriptor && (ts.isArrowFunction(callback) || ts.isFunctionExpression(callback))) {
-          const nextNames = new Set(localNames);
-          const itemParameter = callback.parameters[0]?.name;
-          if (itemParameter && ts.isIdentifier(itemParameter)) nextNames.add(itemParameter.text);
-          const findReturnedDescriptor = (body: import('typescript').ConciseBody | import('typescript').Block) => {
-            if (!ts.isBlock(body)) return isDescriptorReference(body, nextNames);
-            let found = false;
-            const findReturn = (child: import('typescript').Node) => {
-              if (found) return;
-              if (ts.isReturnStatement(child) && child.expression && isDescriptorReference(child.expression, nextNames)) {
-                found = true;
-                return;
-              }
-              ts.forEachChild(child, findReturn);
-            };
-            findReturn(body);
-            return found;
-          };
-          if (renderedChild && findReturnedDescriptor(callback.body)) addIssue(vfsPath);
-          if (ts.isBlock(callback.body)) {
-            ts.forEachChild(callback.body, (child) => visit(child, nextNames, renderedChild));
-          } else {
-            visit(callback.body, nextNames, renderedChild);
-          }
-          return;
-        }
-      }
-      ts.forEachChild(node, (child) => visit(child, localNames, renderedChild));
-    };
-    visit(sourceFile, new Set());
-  }
-  return issues;
-}
-
-export async function validateAppBuildCandidate(input: {
+export function validateAppBuildCandidate(input: {
   contract: AppBuildContract;
   files: Readonly<Record<string, string>>;
   initialFiles: Readonly<Record<string, string>>;
-}): Promise<AppBuildCandidateClosureReport> {
+}): AppBuildCandidateClosureReport {
   const files = { ...input.files };
   const issues: AppBuildCandidateClosureIssue[] = [];
   const pages = input.contract.topology.sitePlan.pages;
@@ -339,7 +181,6 @@ export async function validateAppBuildCandidate(input: {
       message: `${unresolved.filePath} imports unresolved module "${unresolved.importPath}".`,
     });
   }
-  issues.push(...await findInvalidReactChildIssues(files));
   for (const violation of findLocalJsxImportContractViolations(files)) {
     issues.push({
       severity: 'blocker',

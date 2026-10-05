@@ -47,7 +47,7 @@ Deno.test('preserves tool-only fallback success after billing exhaustion and a m
     });
     assert(result.modelUsed === 'openai/gpt-4o-mini', 'successful fallback must be returned');
     assert(result.toolCalls?.[0].id === 'call_test', 'tool call must survive');
-    assert(calls[0] === 'google/gemini-3.6-flash' && calls.length === 4, 'Lovable AI first, then no further providers after tool-only success: ' + calls.join(','));
+    assert(calls[0] === 'gemini-2.5-flash' && calls.length === 3, 'Gemini first, then no further providers after tool-only success: ' + calls.join(','));
     const body = buildResponseBody(result);
     assert(Array.isArray(body.tool_calls) && body.tool_calls.length === 1, 'HTTP response must forward the tool call');
   } finally {
@@ -57,6 +57,114 @@ Deno.test('preserves tool-only fallback success after billing exhaustion and a m
       else Deno.env.set(name, value);
     }
   }
+});
+
+const integrationEnvNames = ['AI_PROVIDER_MODE', 'GEMINI_API_KEY', 'GOOGLE_API_KEY', 'UNISONGEMINI_API_KEY', 'OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'LOVABLE_API_KEY'];
+async function withProviderEnv(config: Record<string, string>, run: () => Promise<void>) {
+  const originalEnv = new Map(integrationEnvNames.map(name => [name, Deno.env.get(name)]));
+  const originalFetch = globalThis.fetch;
+  try {
+    for (const name of integrationEnvNames) Deno.env.delete(name);
+    for (const [name, value] of Object.entries(config)) Deno.env.set(name, value);
+    await run();
+  } finally {
+    globalThis.fetch = originalFetch;
+    for (const [name, value] of originalEnv) {
+      if (value === undefined) Deno.env.delete(name); else Deno.env.set(name, value);
+    }
+  }
+}
+const hybridPlan = { gatewayModels: [
+  { id: 'google/gemini-2.5-flash', label: 'Gemini', maxTokens: 1000 },
+  { id: 'openai/gpt-4.1', label: 'OpenAI', maxTokens: 1000 },
+], perModelTimeoutMs: 110_000, fallbackMaxTokens: 1000, preferLongLeadAttempt: true, fallbackReserveMs: 30_000 };
+
+Deno.test('funded Gemini answers before configured Lovable or OpenAI fallbacks', async () => {
+  await withProviderEnv({ AI_PROVIDER_MODE: 'hybrid', GEMINI_API_KEY: 'test', OPENAI_API_KEY: 'test', LOVABLE_API_KEY: 'test' }, async () => {
+    const calls: string[] = [];
+    globalThis.fetch = (async (url: RequestInfo | URL) => {
+      calls.push(String(url));
+      return new Response(JSON.stringify({ choices: [{ message: { content: 'Gemini page' } }] }));
+    }) as typeof fetch;
+    const result = await runProviderLoop({ aiMessages: messages, providerPlan: hybridPlan, navPageGen: false });
+    assert(result.providerUsed === 'gemini', 'Gemini must own the successful page');
+    assert(calls.length === 1 && calls[0].includes('generativelanguage.googleapis.com'), 'fallbacks must not preempt Gemini');
+  });
+});
+
+Deno.test('hybrid fallbacks reach Lovable after Gemini and OpenAI failures', async () => {
+  await withProviderEnv({ AI_PROVIDER_MODE: 'hybrid', GEMINI_API_KEY: 'test', OPENAI_API_KEY: 'test', LOVABLE_API_KEY: 'test' }, async () => {
+    const calls: string[] = [];
+    globalThis.fetch = (async (url: RequestInfo | URL) => {
+      calls.push(String(url));
+      if (String(url).includes('lovable')) return new Response(JSON.stringify({ choices: [{ message: { content: 'Recovered page' } }] }));
+      return new Response('{"error":{"message":"Billing is required"}}', { status: 402 });
+    }) as typeof fetch;
+    const result = await runProviderLoop({ aiMessages: messages, providerPlan: hybridPlan, navPageGen: false });
+    assert(result.providerUsed === 'lovable' && result.content === 'Recovered page', 'managed fallback should recover');
+    assert(calls.length === 3 && calls[0].includes('googleapis') && calls[1].includes('openai') && calls[2].includes('lovable'), 'expected Gemini, OpenAI, Lovable');
+  });
+});
+
+Deno.test('provider failover respects the remaining Composer request budget', async () => {
+  await withProviderEnv({ AI_PROVIDER_MODE: 'hybrid', GEMINI_API_KEY: 'test', OPENAI_API_KEY: 'test' }, async () => {
+    const originalNow = Date.now;
+    let now = 1000, calls = 0;
+    Date.now = () => now;
+    try {
+      globalThis.fetch = (async () => {
+        calls++; now += 18_000;
+        return new Response('{"error":{"message":"Billing is required"}}', { status: 402 });
+      }) as typeof fetch;
+      try {
+        await runProviderLoop({ aiMessages: messages, providerPlan: hybridPlan, navPageGen: false, totalBudgetMs: 20_000 });
+        throw new Error('Expected a failed provider request');
+      } catch (error) {
+        assert(error instanceof Error && error.message.includes('All AI providers failed'), 'failure should retain provider diagnostics');
+      }
+      assert(calls === 1, 'the fallback must not start a new 135 second budget');
+    } finally { Date.now = originalNow; }
+  });
+});
+
+Deno.test('gateway body parsing remains cancellable after response headers arrive', async () => {
+  await withProviderEnv({ AI_PROVIDER_MODE: 'hybrid', LOVABLE_API_KEY: 'test' }, async () => {
+    const controller = new AbortController();
+    globalThis.fetch = (async (_url: RequestInfo | URL, init?: RequestInit) => {
+      return new Response(new ReadableStream({
+        pull(stream) {
+          controller.abort(new DOMException('Composer deadline exceeded', 'TimeoutError'));
+          assert(init?.signal?.aborted === true, 'provider cancellation must remain linked while reading the body');
+          stream.error(init?.signal?.reason);
+        },
+      }, { highWaterMark: 0 }));
+    }) as typeof fetch;
+    try {
+      await runProviderLoop({ aiMessages: messages, providerPlan: hybridPlan, navPageGen: false, signal: controller.signal });
+      throw new Error('Expected cancellation');
+    } catch (error) {
+      assert(error instanceof Error && error.name === 'TimeoutError', 'request deadline must terminate body parsing');
+    }
+  });
+});
+
+Deno.test('request cancellation interrupts managed gateway retry backoff', async () => {
+  await withProviderEnv({ AI_PROVIDER_MODE: 'hybrid', LOVABLE_API_KEY: 'test' }, async () => {
+    const controller = new AbortController();
+    let calls = 0;
+    globalThis.fetch = (async () => {
+      calls++;
+      return new Response('{"message":"Rate limited"}', { status: 429, headers: { 'retry-after': '10' } });
+    }) as typeof fetch;
+    const timer = setTimeout(() => controller.abort(new DOMException('Composer deadline exceeded', 'TimeoutError')), 5);
+    try {
+      await runProviderLoop({ aiMessages: messages, providerPlan: hybridPlan, navPageGen: false, signal: controller.signal });
+      throw new Error('Expected cancellation');
+    } catch (error) {
+      assert(error instanceof Error && error.name === 'TimeoutError', 'deadline should interrupt retry backoff');
+      assert(calls === 1, 'no provider replay should occur after cancellation');
+    } finally { clearTimeout(timer); }
+  });
 });
 
 function assert(condition: boolean, message: string): void {

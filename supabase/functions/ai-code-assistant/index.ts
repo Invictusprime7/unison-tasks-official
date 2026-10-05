@@ -89,7 +89,7 @@ serve(async (req: Request) => {
   } catch (error) {
     console.error("Error in ai-code-assistant:", error);
 
-    if (error instanceof Error && error.name === "AbortError") {
+    if (error instanceof Error && (error.name === "AbortError" || error.name === "TimeoutError")) {
       return errorResponse(
         "Request timed out. The AI service is taking too long. Please try again.",
         504,

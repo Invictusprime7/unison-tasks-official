@@ -10,14 +10,7 @@ const DEAD_IMAGE_URL =
   /https?:\/\/(?:via\.placeholder\.com|placeholder\.com|placehold\.(?:it|co)|dummyimage\.com|fakeimg\.pl|source\.unsplash\.com|picsum\.photos|(?:www\.)?example\.com|cdn\.shopify\.com\/s\/files\/[^"'`\s)]*placeholder)[^"'`\s)]*/gi;
 const AVATAR_URL = /https?:\/\/(?:randomuser\.me|i\.pravatar\.cc|ui-avatars\.com)[^"'`\s)]*/gi;
 
-const UNSPLASH_PHOTO = /https?:\/\/images\.unsplash\.com\/(photo-[\w-]+)[^"'`\s)]*/gi;
-const photoId = (url: string): string => /photo-[\w-]+/i.exec(url)?.[0].toLowerCase() ?? '';
-const VERIFIED_PHOTO_IDS = new Set(
-  [...Object.values(CONTEXTUAL_IMAGES).flat(), ...PORTRAIT_IMAGES].map(photoId),
-);
-
 const INDUSTRY_HINTS: Array<[string, RegExp]> = [
-  ['ecommerce', /\b(fashion|apparel|boutique|clothing|garment|wardrobe|streetwear|couture)\b/i],
   ['restaurant', /\b(menu|restaurant|dining|chef|cuisine|reservation|bistro|trattoria|cafe)\b/i],
   ['salon', /\b(salon|spa|stylist|hair|nail|beauty|barber)\b/i],
   ['fitness', /\b(gym|fitness|workout|trainer|yoga|pilates)\b/i],
@@ -35,46 +28,23 @@ function poolFor(code: string): string[] {
   return CONTEXTUAL_IMAGES.default;
 }
 
-function knownPhotoIds(baseFiles: Record<string, string> | undefined): Set<string> {
-  const known = new Set(VERIFIED_PHOTO_IDS);
-  for (const content of Object.values(baseFiles ?? {})) {
-    if (typeof content !== 'string') continue;
-    for (const match of content.matchAll(UNSPLASH_PHOTO)) known.add(photoId(match[0]));
-  }
-  return known;
-}
-
-/**
- * `known` lists photo ids that may stay. An id outside it was invented by the
- * author (the composer prompt supplies no image catalog) and would 404 as a
- * blank hero or "Image unavailable" product card.
- */
-export function repairAuthoredImageSource(code: string, known: ReadonlySet<string> = VERIFIED_PHOTO_IDS): string {
-  const hasUnsplash = /images\.unsplash\.com\/photo-/i.test(code);
+export function repairAuthoredImageSource(code: string): string {
+  if (!DEAD_IMAGE_URL.test(code) && !AVATAR_URL.test(code)) return code;
   DEAD_IMAGE_URL.lastIndex = 0;
   AVATAR_URL.lastIndex = 0;
-  const dead = DEAD_IMAGE_URL.test(code) || AVATAR_URL.test(code);
-  DEAD_IMAGE_URL.lastIndex = 0;
-  AVATAR_URL.lastIndex = 0;
-  if (!dead && !hasUnsplash) return code;
   const pool = poolFor(code);
   let i = 0;
   let p = 0;
   return code
     .replace(DEAD_IMAGE_URL, () => pool[i++ % pool.length])
-    .replace(AVATAR_URL, () => PORTRAIT_IMAGES[p++ % PORTRAIT_IMAGES.length])
-    .replace(UNSPLASH_PHOTO, (url) => (known.has(photoId(url)) ? url : pool[i++ % pool.length]));
+    .replace(AVATAR_URL, () => PORTRAIT_IMAGES[p++ % PORTRAIT_IMAGES.length]);
 }
 
-export function repairAuthoredImages(
-  files: Record<string, string>,
-  baseFiles?: Record<string, string>,
-): Record<string, string> {
-  const known = knownPhotoIds(baseFiles);
+export function repairAuthoredImages(files: Record<string, string>): Record<string, string> {
   const out: Record<string, string> = {};
   for (const [path, content] of Object.entries(files)) {
     out[path] = /\.(?:[cm]?[jt]sx?|json)$/.test(path) && typeof content === 'string'
-      ? repairAuthoredImageSource(content, known)
+      ? repairAuthoredImageSource(content)
       : content;
   }
   return out;

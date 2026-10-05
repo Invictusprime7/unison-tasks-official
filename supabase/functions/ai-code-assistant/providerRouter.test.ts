@@ -73,7 +73,18 @@ Deno.test("Composer has a dedicated 48k budget and honors explicit lower caps", 
 
 Deno.test("parses explicit Gemini/OpenAI traffic weights", () => {
   assertEquals(parseProviderDistribution("gemini=70,openai=30"), { gemini: 70, openai: 30 });
-  assertEquals(parseProviderDistribution("invalid"), { gemini: 20, openai: 80 });
+  assertEquals(parseProviderDistribution("invalid"), { gemini: 100, openai: 0 });
+});
+
+Deno.test('App Builder always leads with funded Gemini while retaining hybrid fallbacks', () => {
+  for (const type of ['site_page_author', 'site_page_repair', 'builder_source_edit'] as const) {
+    const plan = buildProviderPlan({ ...task, type }, true, undefined, 'complex', 'composer',
+      name => name === 'AI_PROVIDER_DISTRIBUTION' ? 'gemini=0,openai=100' : bothProviders(name));
+    assertEquals(plan.primaryProvider, 'gemini');
+    assertEquals(plan.gatewayModels[0].id, 'google/gemini-2.5-flash');
+    assertEquals(plan.gatewayModels.some(model => model.id.startsWith('openai/')), true);
+    assertEquals(plan.raceGateway, undefined);
+  }
 });
 
 Deno.test("honors fixed Gemini and OpenAI distributions", () => {

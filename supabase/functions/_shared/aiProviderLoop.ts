@@ -102,6 +102,8 @@ export async function runProviderLoop(opts: {
   toolChoice?: "auto" | "none" | "required";
   /** Cancels provider work when the browser request disconnects or expires. */
   signal?: AbortSignal;
+  /** Remaining request budget, shared with Composer's format-repair turn. */
+  totalBudgetMs?: number;
 }): Promise<ProviderCallResult> {
   const { aiMessages, providerPlan, reasoningEffort, allowDirectFallbacks = true, tools, toolChoice, signal } = opts;
   const hasTools = Array.isArray(tools) && tools.length > 0;
@@ -120,14 +122,17 @@ export async function runProviderLoop(opts: {
   // Provider failover is owned here; providerClient must not nest another
   // fallback chain inside these attempts.
   const startedAt = Date.now();
-  const budgetRemaining = () => PROVIDER_LOOP_TOTAL_BUDGET_MS - (Date.now() - startedAt);
+  const totalBudgetMs = Math.min(PROVIDER_LOOP_TOTAL_BUDGET_MS, Math.max(1, opts.totalBudgetMs ?? PROVIDER_LOOP_TOTAL_BUDGET_MS));
+  const budgetRemaining = () => totalBudgetMs - (Date.now() - startedAt);
+  const activeAttempts = new Set<() => void>();
   const geminiExclusive = isGeminiExclusiveProviderMode();
   const hasDirectOpenAI = allowDirectFallbacks && !geminiExclusive && Boolean(Deno.env.get('OPENAI_API_KEY'));
   const hasDirectGemini = allowDirectFallbacks && Boolean(Deno.env.get('GEMINI_API_KEY') || Deno.env.get('GOOGLE_API_KEY') || Deno.env.get('UNISONGEMINI_API_KEY'));
-  const hasLastResortGateway = allowDirectFallbacks && !geminiExclusive && Boolean(Deno.env.get('LOVABLE_API_KEY'));
+  // A configured managed fallback remains available if Gemini cannot answer.
+  const hasLastResortGateway = allowDirectFallbacks && Boolean(Deno.env.get('LOVABLE_API_KEY'));
   // The managed gateway is the final safety net; a 20 s slice is not enough for
   // a real generation, so reserve a usable window for it.
-  const lastResortReserveMs = 0; // Lovable AI now runs first, so no end-of-budget reserve is needed.
+  const lastResortReserveMs = hasLastResortGateway ? 30_000 : 0;
   const providerErrors: string[] = [];
   let deferredEarlyError: ProviderEarlyError | undefined;
   // A 429 whose body says billing/quota is exhausted is not a transient rate
@@ -169,6 +174,7 @@ export async function runProviderLoop(opts: {
   };
 
 
+  try {
   const createAttemptSignal = (timeoutMs: number) => {
     const controller = new AbortController();
     const onOuterAbort = () => controller.abort(signal?.reason);
@@ -176,18 +182,20 @@ export async function runProviderLoop(opts: {
       if (signal.aborted) controller.abort(signal.reason);
       else signal.addEventListener('abort', onOuterAbort, { once: true });
     }
-    const timeoutId = setTimeout(() => controller.abort(new DOMException('Provider attempt timed out', 'TimeoutError')), timeoutMs);
+    const timeoutId = setTimeout(() => controller.abort(new DOMException('Provider attempt timed out', 'TimeoutError')), Math.max(1, Math.min(timeoutMs, budgetRemaining())));
+    const cleanup = () => {
+      clearTimeout(timeoutId);
+      signal?.removeEventListener('abort', onOuterAbort);
+      activeAttempts.delete(cleanup);
+    };
+    activeAttempts.add(cleanup);
     return {
       signal: controller.signal,
       abort: () => {
-        clearTimeout(timeoutId);
-        signal?.removeEventListener('abort', onOuterAbort);
+        cleanup();
         if (!controller.signal.aborted) controller.abort(new DOMException('Race lost', 'AbortError'));
       },
-      cleanup: () => {
-        clearTimeout(timeoutId);
-        signal?.removeEventListener('abort', onOuterAbort);
-      },
+      cleanup,
     };
   };
   const throwIfCancelled = () => {
@@ -257,7 +265,6 @@ export async function runProviderLoop(opts: {
           body: JSON.stringify(requestBody),
           signal: attempt.signal,
         });
-        attempt.cleanup();
 
         if (resp.status === 429 || resp.status === 402) {
           const errText = await resp.text().catch(() => '');
@@ -378,7 +385,6 @@ export async function runProviderLoop(opts: {
           }),
           signal: attempt.signal,
         });
-        attempt.cleanup();
 
         if (resp.status === 429 || resp.status === 402) {
           const errText = await resp.text().catch(() => '');
@@ -448,14 +454,10 @@ export async function runProviderLoop(opts: {
     }
   };
 
-  // ── Managed gateway (Lovable AI) — primary provider ─────────────────────
-  // Lovable AI runs first with nearly the whole budget; direct OpenAI/Gemini
-  // keys are only used when it fails. No short slice: large page prompts need
-  // the time, and cutting them off discards billed work.
+  // Managed gateway (Lovable AI) hybrid fallback.
+  // Funded Gemini leads. Lovable is a bounded hybrid fallback.
   let gatewayTriedFirst = false;
-  // The gateway's own terminal answer (status + safe message). When Lovable AI
-  // is the primary provider, this — not a dead direct key's billing text — is
-  // the error the user must see.
+  // Preserve the gateway's safe status/message if it refuses a fallback.
   let gatewayFailure: ProviderEarlyError | undefined;
   const runManagedGatewayAttempt = async (label: string, windowMs: number) => {
     const gatewayModel: ModelSpec = {
@@ -484,7 +486,6 @@ export async function runProviderLoop(opts: {
           }),
           attempt.signal,
         );
-        attempt.cleanup();
         if (resp.ok) {
           const data = await resp.json();
           const message = data.choices?.[0]?.message ?? {};
@@ -521,7 +522,19 @@ export async function runProviderLoop(opts: {
         const waitMs = Math.min(backoffMs, 15_000);
         if (deadline - Date.now() - waitMs < 20_000) return; // no room left for a real generation
         console.warn(`[AI-Hybrid] ${label} returned ${resp.status}; retrying in ${Math.round(waitMs / 1000)}s`);
-        await new Promise((resolve) => setTimeout(resolve, waitMs));
+        await new Promise<void>((resolve, reject) => {
+          const onAbort = () => {
+            clearTimeout(timer);
+            signal?.removeEventListener('abort', onAbort);
+            reject(signal?.reason ?? new DOMException('Request aborted', 'AbortError'));
+          };
+          const timer = setTimeout(() => {
+            signal?.removeEventListener('abort', onAbort);
+            resolve();
+          }, waitMs);
+          if (signal?.aborted) onAbort();
+          else signal?.addEventListener('abort', onAbort, { once: true });
+        });
       } catch (err) {
         throwIfCancelled();
         recordProviderError(label, err instanceof Error ? err.message : 'unknown');
@@ -530,16 +543,19 @@ export async function runProviderLoop(opts: {
     }
   };
 
-  if (hasLastResortGateway) {
+  if (hasLastResortGateway && !hasDirectGemini) {
     gatewayTriedFirst = true;
-    await runManagedGatewayAttempt('Lovable AI (primary)', budgetRemaining() - 5_000);
+    const fallbackReserveMs = (hasDirectOpenAI || hasDirectGemini) && budgetRemaining() >= 60_000
+      ? 30_000 : 5_000;
+    await runManagedGatewayAttempt('Lovable AI fallback (Gemini unavailable)',
+      Math.min(providerPlan.perModelTimeoutMs, budgetRemaining() - fallbackReserveMs));
   }
 
   // ── Phase 0: Hybrid race (lead OpenAI model vs managed gateway) ────────
   // Composer tasks start both at once; the first usable answer wins and the
   // other request is aborted. A quick failure on one side leaves the other
   // running, so a dead key never costs a sequential fallback round.
-  if (!hasResponse() && !gatewayTriedFirst && providerPlan.raceGateway && allowDirectFallbacks && hasLastResortGateway && providerPlan.gatewayModels.length > 0) {
+  if (!hasResponse() && !hasDirectGemini && !gatewayTriedFirst && providerPlan.raceGateway && allowDirectFallbacks && hasLastResortGateway && providerPlan.gatewayModels.length > 0) {
     const lead = providerPlan.gatewayModels[0];
     const gatewayModel: ModelSpec = {
       id: 'google/gemini-3.6-flash',
@@ -616,6 +632,9 @@ export async function runProviderLoop(opts: {
         continue;
       }
       const remaining = budgetRemaining();
+      // The user's selected primary provider owns generation; unavailable
+      // direct keys are skipped rather than charged a timeout window.
+      if (isGeminiModelId(model.id) ? !hasDirectGemini : !hasDirectOpenAI) continue;
 
       if (remaining < 8000) {
         console.warn(`[AI-Hybrid] Budget exhausted (${remaining}ms left), skipping remaining gateway models`);
@@ -628,9 +647,7 @@ export async function runProviderLoop(opts: {
       // return quickly and can still fall through to the remaining providers.
       const isLeadModel = model.id === providerPlan.gatewayModels[0]?.id;
       const cap = providerPlan.perModelTimeoutMs;
-      const reserveMs = providerPlan.preferLongLeadAttempt && isLeadModel
-        ? 8_000
-        : lastResortReserveMs;
+      const reserveMs = Math.min(lastResortReserveMs, Math.max(0, remaining * 0.25));
       const headroom = Math.max(8000, remaining - 2000 - reserveMs);
       const leadShare = Math.max(30000, Math.floor(headroom * 0.6));
       const remainingModels = providerPlan.gatewayModels.length - modelIndex;
@@ -646,7 +663,8 @@ export async function runProviderLoop(opts: {
       const hasFastFallback = providerPlan.gatewayModels.slice(modelIndex + 1)
         .some((candidate) => /(?:^|\/)gpt-4\.1(?:-|$)/.test(candidate.id));
       if (providerPlan.fallbackReserveMs && hasFastFallback && !openaiQuotaExhausted) {
-        perModelMs = reserveFallbackWindow(perModelMs, remaining, providerPlan.fallbackReserveMs);
+        perModelMs = reserveFallbackWindow(perModelMs, remaining,
+          Math.min(providerPlan.fallbackReserveMs, Math.max(0, remaining * 0.25)));
       }
 
       const attempt = createAttemptSignal(perModelMs);
@@ -798,7 +816,6 @@ export async function runProviderLoop(opts: {
             }),
             signal: attempt.signal,
           });
-          attempt.cleanup();
 
           if (!resp.ok) {
             const errText = await resp.text();
@@ -840,10 +857,9 @@ export async function runProviderLoop(opts: {
     // different reason (timeout, 500, empty response), the 429 from one
     // provider is misleading — fall through to the detailed "all providers
     // failed" error so the client shows the real failure.
-    // Lovable AI is the primary provider: its own refusal is the real cause.
-    // A dead direct key's billing text (e.g. "add credits to your OpenAI
-    // account") must never mask it.
-    if (gatewayFailure) {
+    // Keep concrete credit refusals only if all attempts failed for that
+    // reason; otherwise retain the primary provider's timeout diagnostics.
+    if (gatewayFailure && !hadNonRateLimitError) {
       return { content: '', reasoning: '', modelUsed: undefined, earlyError: gatewayFailure };
     }
     if (deferredEarlyError && !hadNonRateLimitError && !hasLastResortGateway) {
@@ -863,4 +879,7 @@ export async function runProviderLoop(opts: {
   }
 
   return { content, reasoning, modelUsed, providerUsed, toolCalls };
+  } finally {
+    for (const cleanup of activeAttempts) cleanup();
+  }
 }

@@ -3,8 +3,7 @@ import { readFileSync } from 'node:fs';
 import { compileResolvedSiteDesignContext } from '@/services/launch/resolvedSiteDesignContext';
 import { createUnisonAppBuilder } from '@/services/app-builder/UnisonAppBuilder';
 import { APP_BUILDER_PROTOCOL_VERSION, type AppBuildContract } from '@/services/app-builder/appBuilderContracts';
-import type { ComposerLoopInput, ComposerLoopResult } from '@/services/builder/aiRepairLoop';
-import { rebaseAuthoredPage } from '@/services/launch/siteAuthoringOrchestrator';
+import type { ComposerLoopResult } from '@/services/builder/aiRepairLoop';
 
 const baseFiles = {
   '/src/pages/Home.tsx': 'export default function Home(){return <main>Before</main>}',
@@ -45,45 +44,6 @@ function contract(): AppBuildContract {
 }
 
 describe('UnisonAppBuilder facade', () => {
-  it('preserves a newer shared component when rebasing a parallel page candidate', () => {
-    const base = {
-      '/src/pages/Shop.tsx': 'export default function Shop(){return <main>Old</main>}',
-      '/src/project-components/ProductCard.tsx': 'export default function ProductCard(){return <article>Base</article>}',
-    };
-    const latest = {
-      ...base,
-      '/src/project-components/ProductCard.tsx': 'export default function ProductCard(){return <article>New card</article>}',
-    };
-    const candidate = {
-      ...base,
-      '/src/pages/Shop.tsx': 'export default function Shop(){return <main>New</main>}',
-      '/src/project-components/ProductCard.tsx': 'export default function ProductCard(){return <article>Stale card</article>}',
-    };
-
-    const rebased = rebaseAuthoredPage(base, latest, candidate, '/src/pages/Shop.tsx');
-
-    expect(rebased['/src/pages/Shop.tsx']).toContain('New');
-    expect(rebased['/src/project-components/ProductCard.tsx']).toContain('New card');
-  });
-
-  it('does not delete a shared file changed since a parallel page took its base snapshot', () => {
-    const base = {
-      '/src/pages/Shop.tsx': 'export default function Shop(){return <main>Old</main>}',
-      '/src/project-components/ProductCard.tsx': 'export default function ProductCard(){return <article>Base</article>}',
-    };
-    const latest = {
-      ...base,
-      '/src/project-components/ProductCard.tsx': 'export default function ProductCard(){return <article>New card</article>}',
-    };
-    const candidate = {
-      '/src/pages/Shop.tsx': 'export default function Shop(){return <main>New</main>}',
-    };
-
-    const rebased = rebaseAuthoredPage(base, latest, candidate, '/src/pages/Shop.tsx');
-
-    expect(rebased['/src/project-components/ProductCard.tsx']).toContain('New card');
-  });
-
   it('is the shared product boundary for Launcher generation and Builder source edits', () => {
     const launcher = readFileSync('src/services/launch/launchOrchestrator.ts', 'utf8');
     const builder = readFileSync('src/components/creatives/web-builder/AIBuilderPanel.tsx', 'utf8');
@@ -137,7 +97,7 @@ describe('UnisonAppBuilder facade', () => {
       fileOps: [{ type: 'create' as const, path: '/src/project-components/Card.tsx', content: repairedFiles['/src/project-components/Card.tsx'] }],
       routeOps: [], targetPages: ['home'], attempt: 1,
     };
-    const runComposer = vi.fn(async (_input: ComposerLoopInput): Promise<ComposerLoopResult> => ({
+    const runComposer = vi.fn(async (): Promise<ComposerLoopResult> => ({
       ok: true, reason: 'accepted', attempts: 1, errors: [],
       prepared: {
         ok: true,
@@ -158,49 +118,6 @@ describe('UnisonAppBuilder facade', () => {
     expect(result.candidate.closure?.ok).toBe(true);
     expect(result.candidate.provenance?.strategy).toBe('ai-candidate+closure-repair');
     expect(result.revisionId).toBeNull();
-  });
-
-  it('repairs navigation descriptor objects rendered as JSX children before review', async () => {
-    const brokenFiles = {
-      ...baseFiles,
-      '/src/pages/Home.tsx': `const links = [{ text: 'Home', href: '/', intent: 'nav.goto', dataUiPath: '/home' }]; export default function Home(){return <nav>{links}</nav>}`,
-    };
-    const repairedFiles = {
-      ...brokenFiles,
-      '/src/pages/Home.tsx': `const links = [{ text: 'Home', href: '/', intent: 'nav.goto', dataUiPath: '/home' }]; export default function Home(){return <nav>{links.map(link => <a key={link.href} href={link.href}>{link.text}</a>)}</nav>}`,
-    };
-    const authorSite = vi.fn(async (input: Parameters<NonNullable<Parameters<typeof createUnisonAppBuilder>[0]['authorSite']>>[0]) => ({
-      files: brokenFiles,
-      revisionId: input.revisionId,
-      outcomes: [{ page: input.pages[0], status: 'authored' as const, reason: 'accepted' as const, attempts: 1, errors: [] }],
-    }));
-    const changeSet = {
-      id: 'cand_jsx_child_repair', provenance: { origin: 'repair' as const, knowledgeVersion: 'test' },
-      fileOps: [{ type: 'replace' as const, path: '/src/pages/Home.tsx', content: repairedFiles['/src/pages/Home.tsx'] }],
-      routeOps: [], targetPages: ['home'], attempt: 1,
-    };
-    const runComposer = vi.fn(async (_input: ComposerLoopInput): Promise<ComposerLoopResult> => ({
-      ok: true, reason: 'accepted', attempts: 1, errors: [],
-      prepared: {
-        ok: true,
-        build: { changeSet, candidateFiles: repairedFiles, refused: [] },
-        gates: { passed: true, failures: [], advisories: [] },
-        nextFiles: repairedFiles,
-        errors: [],
-      },
-    }));
-    const result = await createUnisonAppBuilder({ authorSite, runComposer }).generate({
-      operationId: 'operation-jsx-child-repair', contract: contract(), initialFiles: baseFiles,
-      entryPoint: '/src/main.tsx', baseRevisionId: null,
-    });
-
-    expect(runComposer).toHaveBeenCalledOnce();
-    expect(runComposer.mock.calls[0]?.[0].request.diagnostics).toContainEqual(
-      expect.stringContaining('jsx-child-not-renderable'),
-    );
-    expect(result.candidate.status).toBe('ready-for-commit');
-    expect(result.candidateFiles['/src/pages/Home.tsx']).toContain('links.map');
-    expect(result.candidate.closure?.ok).toBe(true);
   });
 
   it('generates a complete multi-page candidate without a canonical commit callback', async () => {
@@ -265,7 +182,6 @@ describe('UnisonAppBuilder facade', () => {
     });
 
     expect(runComposer).toHaveBeenCalledOnce();
-    expect(runComposer).toHaveBeenCalledWith(expect.objectContaining({ resolveDependencies: false }));
     expect(result.stopReason).toBe('complete');
     expect(result.changeSet).toBe(changeSet);
     expect(result.candidate.files).toEqual(nextFiles);

@@ -57,8 +57,8 @@ export function isGeminiExclusiveProviderMode(
   return true;
 }
 
-// Prefer configured OpenAI while retaining Gemini in the fallback chain.
-const DEFAULT_PROVIDER_DISTRIBUTION: ProviderDistribution = { gemini: 20, openai: 80 };
+// Funded Gemini leads; configured OpenAI remains a hybrid fallback.
+const DEFAULT_PROVIDER_DISTRIBUTION: ProviderDistribution = { gemini: 100, openai: 0 };
 
 /** Parses `gemini=50,openai=50` or `gemini:50,openai:50`. */
 export function parseProviderDistribution(raw?: string): ProviderDistribution {
@@ -217,8 +217,7 @@ export function buildProviderPlan(
         perModelTimeoutMs: 110_000,
         fallbackMaxTokens: 32_000,
         preferLongLeadAttempt: true,
-        fallbackReserveMs: 60_000,
-        raceGateway: true,
+        fallbackReserveMs: 30_000,
       };
       break;
     case "site_page_author":
@@ -232,9 +231,7 @@ export function buildProviderPlan(
         perModelTimeoutMs: 110_000,
         fallbackMaxTokens: 32_000,
         preferLongLeadAttempt: true,
-        fallbackReserveMs: 60_000,
-        // OpenAI leads; the managed gateway races it in parallel.
-        raceGateway: true,
+        fallbackReserveMs: 30_000,
       };
       break;
     // ── Lane B: Wizard seed (full builder-brain path — sole wizard lane) ──
@@ -427,8 +424,9 @@ export function buildProviderPlan(
     && Boolean(readEnv('GEMINI_API_KEY') || readEnv('GOOGLE_API_KEY') || readEnv('UNISONGEMINI_API_KEY'));
   const isComposerTask = task.type === "site_page_author" || task.type === "site_page_repair" || task.type === "builder_source_edit";
   if (!hasExplicitModel && isComposerTask) {
-    plan.primaryProvider = 'openai';
-    plan.gatewayModels = prioritizeProviderModels(plan.gatewayModels, 'openai');
+    plan.primaryProvider = Boolean(readEnv('GEMINI_API_KEY') || readEnv('GOOGLE_API_KEY') || readEnv('UNISONGEMINI_API_KEY'))
+      ? 'gemini' : selectPrimaryProvider(routingKey, readEnv);
+    plan.gatewayModels = prioritizeProviderModels(plan.gatewayModels, plan.primaryProvider);
   } else if (!hasExplicitModel) {
     plan.primaryProvider = wizardGeminiConfigured
       ? 'gemini'

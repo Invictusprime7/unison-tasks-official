@@ -135,26 +135,6 @@ export function orderAuthoringPages(pages: AuthoringPage[], homePageId?: string)
   });
 }
 
-/** Rebase one page result without overwriting shared files changed by a newer page commit. */
-export function rebaseAuthoredPage(
-  baseFiles: Readonly<Record<string, string>>,
-  latestFiles: Readonly<Record<string, string>>,
-  candidateFiles: Readonly<Record<string, string>>,
-  pagePath: string,
-): Record<string, string> {
-  const nextFiles = { ...latestFiles };
-  for (const [path, content] of Object.entries(candidateFiles)) {
-    if (baseFiles[path] === content) continue;
-    if (path === pagePath || baseFiles[path] === latestFiles[path] || latestFiles[path] === content) {
-      nextFiles[path] = content;
-    }
-  }
-  for (const path of Object.keys(baseFiles)) {
-    if (!(path in candidateFiles) && baseFiles[path] === latestFiles[path]) delete nextFiles[path];
-  }
-  return nextFiles;
-}
-
 export function renderPageBrief(
   ctx: ResolvedSiteDesignContext | null,
   page: AuthoringPage,
@@ -318,9 +298,15 @@ export async function authorSitePages(input: SiteAuthoringInput): Promise<SiteAu
     const run = commitChain.then(async () => {
       try {
         // Rebase only the keys this candidate changed onto the latest commit,
-        // preserving newer shared-file edits made by pages authored in parallel.
+        // so pages authored in parallel never overwrite each other.
         const candidate = stampAuthoredPage(prepared.nextFiles, page, input.designContext?.fingerprint);
-        const nextFiles = rebaseAuthoredPage(baseFiles, files, candidate, page.filePath);
+        const nextFiles: Record<string, string> = { ...files };
+        for (const [path, content] of Object.entries(candidate)) {
+          if (baseFiles[path] !== content) nextFiles[path] = content;
+        }
+        for (const path of Object.keys(baseFiles)) {
+          if (!(path in candidate)) delete nextFiles[path];
+        }
         // Rebuild after the authorship stamp so the committed operation record
         // describes the exact bytes handed to the canonical writer.
         const finalCandidate = buildAICandidateChangeSet({
