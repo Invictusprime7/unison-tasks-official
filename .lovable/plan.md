@@ -8,15 +8,19 @@
 - **Site pages aren't linked to the data.** Pages show typed-in text, not live items. So changing a price can only update the preview by find-and-replace.
 - **DREAM. Design. has no products, services or links to data yet.** A real price edit can't be tested there until items exist.
 
-## 1. Plain-language setup card (AI chat)
-Replace the technical card with a short, friendly one:
-- **Title:** "Turn on Bookings for your site?" (named after the feature, not the system)
-- **One sentence on what the visitor gets:** "Visitors can pick a time and you'll get the request in your Leads."
-- **Two buttons:** **Turn on** and **Not now**.
-- **"Show details"** (collapsed) keeps the current table/database list for advanced users.
-- When the AI is unsure (under 70% confidence), don't show the card. Ask one quick question instead: "Do you want a real booking system, or just a calendar-style design?"
-- Pure design edits never trigger the card.
-- Safe item-list setups (services, products, menu) turn on automatically when your Backend permission allows it. Bookings, payments and sign-in always ask first.
+## 1. Conversational setup in the chat (replaces the technical card)
+The AI asks for what it needs as part of the conversation, and does all the building itself:
+- **No more blocking card.** When an edit needs something new on the business side (bookings, a service list, a contact form inbox), the AI replies in the chat with a short message and **answer controls right inside the message**:
+  - "To take real bookings, I'll set up appointments for you. Which days are you open?" → day chips plus a time field
+  - "Should new requests go to your email?" → **Yes / No** buttons, with an email box prefilled from your account
+  - "Turn on Bookings?" → **Turn on** / **Just the design for now**
+- **When the AI is unsure** (under 70% confidence), it asks one plain question with choice buttons ("A real booking system" / "Just a calendar look") instead of guessing.
+- **After you answer,** the AI sets up the business side, builds the matching page changes, links the buttons, and reports each step in the activity list. You never see tables or code. A collapsed "Show details" stays available.
+- **Saved with the conversation.** Questions, your answers, and where the setup got to are stored in the chat history. Reloading, or opening the site on another device, picks up exactly where it stopped, with any unanswered question still answerable.
+- **Safety stays the same:**
+  - pure design edits never trigger setup
+  - item lists (services, products, menu) turn on automatically when your Backend permission allows it
+  - bookings, payments and sign-in always need your "Turn on" answer first
 
 ## 2. Products & Services panel (GoHighLevel-style)
 A new **Catalog** button in the Builder top bar opens a side panel:
@@ -47,9 +51,10 @@ On DREAM. Design.:
   - delete `agentOperations.update_catalog_item`, keeping a thin wrapper that calls `catalogOperations`
   - update the AGENTS.md rule
 - **Photo uploads:** the existing private `user-files` bucket with signed URLs, or a new public `catalog-images` bucket so live sites can show photos. Images on a published site must be public, so this needs a bucket with a public-read policy.
-- **Setup card:**
-  - rewrite the `pendingCapabilityProposal` block in `AIBuilderPanel.tsx`
-  - add a confidence threshold in front of `capabilityPlan`
-  - auto-apply only for catalog packs when `canAutoApply('backend')`
+- **Conversational setup:**
+  - Chat messages gain an optional `ask` payload: question id, kind (`choice` | `confirm` | `text` | `days`), options, answer, status. It's stored inside the existing `builder_chat_history.messages` JSON, so no database change is needed.
+  - `pendingCapabilityProposal` becomes derived from the latest unanswered setup message, not from in-memory-only state.
+  - Answers feed `capabilityPlan` settings and then `onApproveCapabilityPlan`. After that, the AI's normal edit authors the page changes through `runBuilderAiMutation` → `commitMutation`.
+  - Confidence gate sits in front of `capabilityPlan`. Auto-apply only for catalog packs when `canAutoApply('backend')`.
 - **New file:** `CatalogPanel.tsx` under `src/components/creatives/web-builder/`, built from existing UI parts (no new design system).
 - **No breaking database changes.** Only possible addition: the public image bucket.
