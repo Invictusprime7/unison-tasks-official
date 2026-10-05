@@ -449,6 +449,8 @@ export interface Message {
   taskPlan?: TaskPlan;
   /** Rich metadata from the AI response */
   meta?: MessageMeta;
+  /** Inline question the AI asks; saved with the conversation. */
+  ask?: { question: string; options: Array<{ label: string; reply: string }>; answer?: string };
 }
 
 export interface VFSEdit {
@@ -653,6 +655,15 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pendingPromptRef = useRef<string | null>(null);
+  // Set when the owner confirms (via an inline answer) that they want the
+  // real business setup, so the next request skips the uncertainty question.
+  const confirmedSetupRef = useRef(false);
+  const answerAsk = (messageId: string, option: { label: string; reply: string }, confirmsSetup: boolean) => {
+    setMessages((prev) => prev.map((m) => (m.id === messageId && m.ask ? { ...m, ask: { ...m.ask, answer: option.label } } : m)));
+    confirmedSetupRef.current = confirmsSetup;
+    pendingPromptRef.current = option.reply;
+    setInput(option.reply);
+  };
 
   useEffect(() => {
     try {
@@ -994,7 +1005,29 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
       userContent,
     );
     let backendAutoApplied = false;
-    if (capabilityPlan.requestedCapabilities.length > 0) {
+    const setupConfidence = capabilityInterpretation.degraded ? 0 : (capabilityInterpretation.envelope?.confidence ?? 0);
+    const setupConfirmed = confirmedSetupRef.current;
+    confirmedSetupRef.current = false;
+    if (capabilityPlan.requestedCapabilities.length > 0 && !setupConfirmed && setupConfidence < 0.7) {
+      const what = capabilityPlan.packs.map((pack) => pack.name).join(', ') || 'this feature';
+      setMessages((prev) => [...prev, {
+        id: generateId(),
+        role: 'assistant',
+        content: `Quick check before I build: do you want ${what} to actually work (saving real requests for you), or just the look of it for now?`,
+        timestamp: new Date(),
+        ask: {
+          question: 'setup-or-design',
+          options: [
+            { label: 'Make it work for real', reply: `Set it up for real: ${userContent}` },
+            { label: 'Just the design', reply: `Design only, no business setup: ${userContent}` },
+          ],
+        },
+      }]);
+      setIsLoading(false);
+      return;
+    }
+    const designOnly = /^Design only, no business setup:/i.test(userContent);
+    if (capabilityPlan.requestedCapabilities.length > 0 && !designOnly) {
       const resolution = resolveCapabilityIntentBindings(
         capabilityPlan.proposal.intentBindings,
         vfsFiles ?? {},
@@ -3226,12 +3259,30 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
                 />
               ) : (
                 messages.map((msg) => (
-                  <AIConversationMessage
-                    key={msg.id}
-                    message={msg}
-                    onViewEdits={handleViewEdits}
-                    onRetryError={handleFixError}
-                  />
+                  <div key={msg.id}>
+                    <AIConversationMessage
+                      message={msg}
+                      onViewEdits={handleViewEdits}
+                      onRetryError={handleFixError}
+                    />
+                    {msg.ask && (
+                      <div className="mb-3 ml-10 flex flex-wrap gap-2" role="group" aria-label="Choose an answer">
+                        {msg.ask.answer ? (
+                          <span className="text-xs text-muted-foreground">You chose: {msg.ask.answer}</span>
+                        ) : msg.ask.options.map((option, idx) => (
+                          <Button
+                            key={option.label}
+                            size="sm"
+                            variant={idx === 0 ? 'default' : 'outline'}
+                            disabled={isLoading}
+                            onClick={() => answerAsk(msg.id, option, idx === 0 && msg.ask?.question === 'setup-or-design')}
+                          >
+                            {option.label}
+                          </Button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 ))
               )}
               <AgentActivityFeed active={isLoading} />
