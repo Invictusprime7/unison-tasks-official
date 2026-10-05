@@ -742,6 +742,20 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
   }, []);
 
 
+  // Floating toolbar requests run through this same agent, scoped to the clicked element.
+  useEffect(() => {
+    const onBuilderSend = (event: Event) => {
+      const detail = (event as CustomEvent<{ prompt?: string; target?: typeof agentTarget }>).detail;
+      const prompt = detail?.prompt?.trim();
+      if (!prompt) return;
+      if (detail?.target?.tagName) setAgentTarget(detail.target);
+      pendingPromptRef.current = prompt;
+      setInput(prompt);
+    };
+    window.addEventListener('unison:builder-send', onBuilderSend);
+    return () => window.removeEventListener('unison:builder-send', onBuilderSend);
+  }, []);
+
   // ── File processing helpers ───────────────────────────────────────────────
   const classifyFile = (file: File): DroppedFile['type'] => {
     if (file.type.startsWith('image/')) return 'image';
