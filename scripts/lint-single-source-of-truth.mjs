@@ -46,6 +46,8 @@ const FORBIDDEN_FILE_REGEX_PATTERNS = [
   },
 ];
 
+const CATALOG_WRITE = /\.from\(\s*["'](?:products|services|menu_items|pricing_plans)["']\s*(?:as\s+\w+\s*)?\)[\s\S]{0,300}?\.(?:insert|update|upsert|delete)\(/;
+
 const violations = [];
 
 function walk(dir) {
@@ -86,6 +88,13 @@ function walk(dir) {
           violations.push({ file: rel, line: idx + 1, label, text: line.trim() });
         }
       });
+    }
+
+    // Catalog rows are written only through agentOperations (src/services/agent-runtime)
+    // or the server-side cms-records function.
+    if (rel.startsWith('src/') && !rel.startsWith('src/services/agent-runtime/')) {
+      const m = CATALOG_WRITE.exec(text);
+      if (m) violations.push({ file: rel, line: text.slice(0, m.index).split('\n').length, label: 'direct catalog table write (use agentOperations)', text: m[0].split('\n')[0].trim() });
     }
 
     for (const { pattern, label } of FORBIDDEN_FILE_REGEX_PATTERNS) {
