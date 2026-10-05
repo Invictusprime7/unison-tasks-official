@@ -5,5 +5,5 @@
 - [ ] Phase 3: extend change sets (topology/data/migrations); edge function streams same events
 - [x] Phase 4 (slice): Ctrl/Cmd+K command menu with site map + fonts
 - [x] click-to-target from preview
-- [ ] Phase 4 rest: visual site map panel, Changes tab
+- [x] Phase 4 rest: site map + session Changes list in command menu
 - [ ] Phase 5: block legacy repair/sync from overwriting committed AI change sets
