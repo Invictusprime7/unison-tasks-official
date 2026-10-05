@@ -36,6 +36,13 @@
       "when": 1791100676514,
       "tag": "0004_builder_chat_history",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791183532878,
+      "tag": "0005_apply_canonical_revision_delta_and_timeout_recovery",
+      "breakpoints": true
     }
   ]
 }
