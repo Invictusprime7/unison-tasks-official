@@ -116,9 +116,10 @@ const Index = () => {
           }
           const projects: RecentProject[] = rows.map((row) => {
             // The legacy previewCode snapshot is written once at launch and
-            // never updated by later saves, so it showed the original site.
-            // Only use it for drafts that have no saved revisions.
-            const previewCode = !row.last_revision_id && typeof row.previewCode === 'string' ? row.previewCode : '';
+            // never updated by later saves, so it can lag behind the latest
+            // revision — but it is still the only thumbnail source we have.
+            // Showing it beats a blank "Open to see latest version" tile.
+            const previewCode = typeof row.previewCode === 'string' ? row.previewCode : '';
             const savedAt = (row.last_revision_id && revisionTimes.get(row.last_revision_id)) || row.updated_at;
             return {
               id: row.id,
