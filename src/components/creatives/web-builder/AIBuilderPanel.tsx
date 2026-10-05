@@ -1052,7 +1052,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
       if (needsRenderableUiPatch) {
         toast.info(canApplyBackend
           ? 'Backend setup applied. Building the requested UI now.'
-          : 'Backend setup is waiting for review. Building the requested UI now.');
+          : 'Building the design now. Tap “Turn on” in the chat when you want it to work for real.');
       } else {
         setMessages((prev) => [...prev, {
           id: generateId(),
@@ -3177,9 +3177,11 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
                 <div className="mb-3 min-w-0 max-w-full overflow-hidden border-l-2 border-amber-500/60 py-1 pl-3 text-xs">
                   <div className="flex items-center gap-2 font-semibold text-foreground">
                     <Database className="h-4 w-4 text-amber-500" />
-                    Business system change required
+                    Turn on {pendingCapabilityProposal.plan.packs.map((pack) => pack.name).join(', ') || 'this feature'} for your site?
                   </div>
                   <p className="mt-2 text-muted-foreground">{pendingCapabilityProposal.plan.proposal.summary}</p>
+                  <details className="mt-2">
+                    <summary className="cursor-pointer text-muted-foreground">Show details</summary>
                   {pendingCapabilityProposal.plan.packs.length > 0 && (
                     <p className="mt-2 text-muted-foreground">
                       Packs to install (in order): {pendingCapabilityProposal.plan.packs.map((pack) => pack.name).join(' → ')}
@@ -3212,6 +3214,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
                       </details>
                     );
                   })()}
+                  </details>
                   {pendingCapabilityProposal.plan.proposal.unsupportedCapabilities.length > 0 && (
                     <p className="mt-1 text-amber-500">
                       Not covered by a pack yet: {pendingCapabilityProposal.plan.proposal.unsupportedCapabilities.join(', ')}
@@ -3233,7 +3236,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
                           pendingCapabilityProposal.resolution,
                         );
                         if (outcome.success) {
-                          toast.success('Business capability plan applied');
+                          toast.success('Done — it is set up and connected to your site');
                           setPendingCapabilityProposal(null);
                         } else {
                           toast.error('Business capability plan was not applied', { description: outcome.error });
@@ -3241,10 +3244,10 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
                         }
                       }}
                     >
-                      {pendingCapabilityProposal.isApplying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Approve and apply'}
+                      {pendingCapabilityProposal.isApplying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Turn on'}
                     </Button>
                     <Button size="sm" variant="outline" disabled={pendingCapabilityProposal.isApplying} onClick={() => setPendingCapabilityProposal(null)}>
-                      Reject
+                      Not now
                     </Button>
                   </div>
                 </div>
