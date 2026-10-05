@@ -381,7 +381,7 @@ export function describeSiteDesignContract(contract: SiteDesignContract): string
     `  spacing: site rhythm ${contract.spacing.rhythm}, density ${contract.spacing.density}. Pages modulate spacing only.`,
     `  media: ${contract.media.treatment}, gradient ${contract.media.gradient}, accent ${contract.media.accentPolicy}.`,
     `  motion: ${contract.motion.profile} / ${contract.motion.interaction}, entrance ${contract.motion.entrance}.`,
-    `  site chrome is compiler-owned and identical on every page: ${list(contract.chromeFamilies)}.`,
+    `  site chrome (${list(contract.chromeFamilies)}) is identical on every page: every page must render the same shared nav and footer components; the router does not add them.`,
     `  reach for: ${list(preferred)}; avoid: ${list(discouraged)} (${contract.negativeVocabularyEnforced ? 'enforced' : 'advisory — exceptions must be deliberate'}).`,
     ...Object.values(contract.pages).map(page => [
       `  page "${page.role}" — ${page.purpose}`,
