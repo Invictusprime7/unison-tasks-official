@@ -20,3 +20,4 @@
 
 - Chat and Wizard share one launch plan (`src/services/launch/chatLaunchPlan.ts`): the chat brief prefills the Wizard, and `buildSyncedVisionBrief` puts final selections first; page briefs put composition target + design contract before that vision. Why: separate chat/Wizard inputs drifted and crowded out composition vocabulary.
 - AI provider order rules live in `supabase/functions/_shared/AGENTS.md`.
+- Agent activity and typed operations live in `src/services/agent-runtime/` (events ride `vfsEventBus` as `agent:event`; operations only propose files that go through `runBuilderAiMutation` → `commitMutation`), and every AI commit runs the intent-retarget check first; why: one capability surface for AI and command menu, no second bus or writer, and button destinations stay invariant under UI edits.
