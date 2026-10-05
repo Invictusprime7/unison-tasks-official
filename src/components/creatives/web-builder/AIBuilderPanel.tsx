@@ -58,6 +58,9 @@ import { AgentActivityFeed } from './ai-chat/AgentActivityFeed';
 import { emitAgentEvent } from '@/services/agent-runtime/agentEvents';
 import { buildSystemGraph, renderSystemGraphForPrompt } from '@/services/agent-runtime/systemGraph';
 import { AgentCommandPalette } from './ai-chat/AgentCommandPalette';
+import { CatalogPanel } from './ai-chat/CatalogPanel';
+import { agentOperations } from '@/services/agent-runtime/operations';
+import { renderCatalogForPrompt } from '@/services/agent-runtime/catalogOps';
 import { toast } from 'sonner';
 import type { BusinessSystemType } from '@/data/templates/types';
 import type { SystemsBuildContext } from '@/types/systemsBuildContext';
@@ -1740,6 +1743,13 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
             if (graphText) previewSnapshot = `${previewSnapshot ?? ''}\n\n${graphText}`.trim();
             emitAgentEvent({ kind: 'discovery', message: 'Read every page, section and button destination', status: 'ok' });
           } catch { /* best-effort */ }
+          if (businessId) {
+            try {
+              const catalog = await agentOperations.inspect_catalog({ files: vfsFiles ?? {}, businessId });
+              previewSnapshot = `${previewSnapshot ?? ''}\n\n${renderCatalogForPrompt(catalog)}`.trim();
+              emitAgentEvent({ kind: 'discovery', message: `Read ${catalog.length} catalog items`, status: 'ok' });
+            } catch { /* best-effort */ }
+          }
 
           // ── Build conversation history for multi-turn awareness ──
           // Include up to 10 prior user/assistant exchanges (compact: only role + content, capped)
@@ -3237,6 +3247,9 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
           />
 
           <AgentCommandPalette files={vfsFiles ?? {}} onApply={onApplyToVFS} onAsk={setInput} businessId={businessId} />
+          <div className="flex justify-end border-t border-border px-2 py-1">
+            <CatalogPanel files={vfsFiles ?? {}} businessId={businessId} onApply={onApplyToVFS} />
+          </div>
           {agentTarget && (
             <div className="flex items-center gap-2 border-t border-border px-3 py-2 text-xs text-muted-foreground" role="status" aria-live="polite">
               <span className="truncate">
