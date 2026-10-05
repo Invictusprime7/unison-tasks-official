@@ -49,6 +49,15 @@ function knownPhotoIds(baseFiles: Record<string, string> | undefined): Set<strin
  * author (the composer prompt supplies no image catalog) and would 404 as a
  * blank hero or "Image unavailable" product card.
  */
+// AI authors sometimes reference an image-base constant they never define
+// (e.g. PLACEHELDER_IMAGE_BASE, including misspellings), which crashes the
+// page with a ReferenceError at render time. Replace any such expression —
+// plain reference, string concatenation, or template literal — with a real
+// photo from the pool.
+const UNDEFINED_IMAGE_BASE_TEMPLATE = /`[^`]*\b[A-Z][A-Z0-9_]*IMAGE[A-Z0-9_]*BASE[A-Z0-9_]*\b[^`]*`/g;
+const UNDEFINED_IMAGE_BASE_EXPR =
+  /\b[A-Z][A-Z0-9_]*IMAGE[A-Z0-9_]*BASE[A-Z0-9_]*\b(?:\s*\+\s*['"`][^'"`]*['"`])?/g;
+
 export function repairAuthoredImageSource(code: string, known: ReadonlySet<string> = VERIFIED_PHOTO_IDS): string {
   const hasUnsplash = /images\.unsplash\.com\/photo-/i.test(code);
   DEAD_IMAGE_URL.lastIndex = 0;
@@ -56,11 +65,19 @@ export function repairAuthoredImageSource(code: string, known: ReadonlySet<strin
   const dead = DEAD_IMAGE_URL.test(code) || AVATAR_URL.test(code);
   DEAD_IMAGE_URL.lastIndex = 0;
   AVATAR_URL.lastIndex = 0;
-  if (!dead && !hasUnsplash) return code;
+  UNDEFINED_IMAGE_BASE_TEMPLATE.lastIndex = 0;
+  UNDEFINED_IMAGE_BASE_EXPR.lastIndex = 0;
+  const hasUndefinedBase =
+    UNDEFINED_IMAGE_BASE_TEMPLATE.test(code) || UNDEFINED_IMAGE_BASE_EXPR.test(code);
+  UNDEFINED_IMAGE_BASE_TEMPLATE.lastIndex = 0;
+  UNDEFINED_IMAGE_BASE_EXPR.lastIndex = 0;
+  if (!dead && !hasUnsplash && !hasUndefinedBase) return code;
   const pool = poolFor(code);
   let i = 0;
   let p = 0;
   return code
+    .replace(UNDEFINED_IMAGE_BASE_TEMPLATE, () => `'${pool[i++ % pool.length]}'`)
+    .replace(UNDEFINED_IMAGE_BASE_EXPR, () => `'${pool[i++ % pool.length]}'`)
     .replace(DEAD_IMAGE_URL, () => pool[i++ % pool.length])
     .replace(AVATAR_URL, () => PORTRAIT_IMAGES[p++ % PORTRAIT_IMAGES.length])
     .replace(UNSPLASH_PHOTO, (url) => (known.has(photoId(url)) ? url : pool[i++ % pool.length]));
