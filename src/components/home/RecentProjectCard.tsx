@@ -66,13 +66,21 @@ export function RecentProjectCard({
             tabIndex={-1}
           />
         ) : (
-          <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
-            <div className="text-center">
-              <div className="w-10 h-10 rounded-lg bg-muted-foreground/10 flex items-center justify-center mx-auto mb-2">
-                <ExternalLink className="h-5 w-5" />
-              </div>
-              <span className="text-xs">Open to see latest version</span>
+          // No stored snapshot: show a distinctive identity tile so saved
+          // sites are still distinguishable at a glance.
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-primary/15 via-muted to-accent/10">
+            <div className="w-12 h-12 rounded-xl bg-background/80 border border-border shadow-sm flex items-center justify-center">
+              <span className="text-lg font-bold text-primary">
+                {(name || "U").trim().charAt(0).toUpperCase()}
+              </span>
             </div>
+            <span className="text-xs font-medium text-foreground/70 max-w-[80%] truncate">
+              {name || "Untitled Project"}
+            </span>
+            <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+              <ExternalLink className="h-3 w-3" />
+              Open to see latest version
+            </span>
           </div>
         )}
 
