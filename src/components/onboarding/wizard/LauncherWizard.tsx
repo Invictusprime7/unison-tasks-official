@@ -23,6 +23,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
+import { deriveChatLaunchPlan, buildSyncedVisionBrief, type ChatLaunchPlan } from "@/services/launch/chatLaunchPlan";
 import {
   Dialog,
   DialogContent,
@@ -161,6 +162,7 @@ export const LauncherWizard = ({
 
   const [socialLinks, setSocialLinks] = useState<Record<string, string>>({});
   const [visionPrompt, setVisionPrompt] = useState("");
+  const chatPlanRef = useRef<ChatLaunchPlan | null>(null);
 
   const [isLaunching, setIsLaunching] = useState(false);
   const [launchStatus, setLaunchStatus] = useState("");
@@ -210,22 +212,22 @@ export const LauncherWizard = ({
   useEffect(() => {
     if (!open) return;
     if (prefill?.businessName) setBusinessName(prefill.businessName);
-    if (!initialVisionPrompt) return;
+    if (!initialVisionPrompt) { chatPlanRef.current = null; return; }
 
     setVisionPrompt(initialVisionPrompt);
-    const analysis = classifyPromptForWizard(initialVisionPrompt);
-    if (!analysis || analysis.confidence <= 0.55) return;
-
-    setSelectedIndustry(analysis.industry);
-    setSystemId(analysis.systemId);
-    setBusinessName(analysis.businessName ?? prefill?.businessName ?? "");
-    setPrimaryGoal(analysis.primaryGoal);
-    setCustomerNeeds(analysis.customerNeeds);
-    setSelectedPages(analysis.selectedPages);
-    const matchedTheme = THEME_PRESETS.find(
-      (preset) => preset.id === analysis.themePresetId,
-    );
+    // One synced plan: everything the chat settled prefills the Wizard.
+    const plan = deriveChatLaunchPlan(initialVisionPrompt);
+    chatPlanRef.current = plan;
+    if (plan.businessName) setBusinessName(plan.businessName);
+    if (plan.selectedPages.length) setSelectedPages(plan.selectedPages);
+    const matchedTheme = THEME_PRESETS.find((preset) => preset.id === plan.themePresetId);
     if (matchedTheme) setTheme(matchedTheme);
+    if (!plan.industry || !plan.systemId) return;
+
+    setSelectedIndustry(plan.industry);
+    setSystemId(plan.systemId);
+    if (plan.primaryGoal) setPrimaryGoal(plan.primaryGoal);
+    setCustomerNeeds(plan.customerNeeds);
     setStep("goals");
   }, [open, initialVisionPrompt, prefill?.businessName]);
 
@@ -345,7 +347,15 @@ export const LauncherWizard = ({
     const input: LaunchOrchestratorInput = {
       systemId,
       industry: selectedIndustry || undefined,
-      visionPrompt,
+      visionPrompt: chatPlanRef.current
+        ? buildSyncedVisionBrief(chatPlanRef.current, {
+            industry: selectedIndustry,
+            businessName,
+            primaryGoal,
+            selectedPages,
+            themePresetId: theme?.id ?? null,
+          })
+        : visionPrompt,
       theme,
       designSelection: createWizardDesignSelection({
         mode: artDirectionPackId ? "guided" : "auto",

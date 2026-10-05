@@ -354,6 +354,8 @@ export async function runProviderLoop(opts: {
 
     const geminiModels = [
       // 65 536 output tokens — ideal for multi-page wizard generation
+      // Strongest composition model first (overridable via GEMINI_COMPOSER_MODEL).
+      { id: (Deno.env.get('GEMINI_COMPOSER_MODEL')?.trim() || 'gemini-2.5-pro').replace(/^google\//, ''), maxTokens: Math.min(providerPlan.fallbackMaxTokens, 65536), label: 'Gemini composer' },
       { id: 'gemini-2.5-flash', maxTokens: Math.min(providerPlan.fallbackMaxTokens, 65536), label: 'Gemini 2.5 Flash' },
       { id: 'gemini-2.5-flash-lite', maxTokens: Math.min(providerPlan.fallbackMaxTokens, 8192), label: 'Gemini 2.5 Flash Lite' },
     ];
