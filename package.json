@@ -1,44 +1,8 @@
 {
-  "name": "vite_react_shadcn_ts",
-  "private": true,
-  "version": "0.0.0",
-  "type": "module",
-  "engines": {
-    "node": ">=22.0.0 <23"
-  },
-  "scripts": {
-    "unison": "node scripts/unison.mjs",
-    "recipes:build": "node scripts/build-stylex-recipes.mjs",
-    "recipes:check": "node scripts/build-stylex-recipes.mjs --check",
-    "prebuild": "npm run recipes:check",
-    "dev": "vite",
-    "build": "vite build",
-    "build:dev": "vite build --mode development",
-    "build:analyze": "vite build --mode analyze",
-    "lint": "eslint .",
-    "lint:pipeline-bypass": "node scripts/lint-pipeline-bypass.mjs",
-    "lint:canonical-vfs-writes": "node scripts/lint-canonical-vfs-writes.mjs",
-    "lint:app-builder-authority": "node scripts/lint-app-builder-authority.mjs",
-    "lint:single-source-of-truth": "node scripts/lint-single-source-of-truth.mjs",
-    "lint:catalog-contracts": "node scripts/lint-catalog-contracts.mjs",
-    "test:edge": "npx --yes deno@2 test --allow-all --no-check supabase/functions/",
-    "type-check": "tsc --build --noEmit",
-    "preview": "vite preview",
-    "deploy": "node scripts/check-clean-git-tree.mjs && vercel --prod",
-    "deploy:preview": "vercel",
-    "deploy:watch": "powershell -ExecutionPolicy Bypass -File ./scripts/vercel-deploy.ps1 -Watch -Production",
-    "supabase:update": "powershell -ExecutionPolicy Bypass -File ./scripts/supabase-auto-update.ps1",
-    "supabase:check": "powershell -ExecutionPolicy Bypass -File ./scripts/supabase-auto-update.ps1 -CheckOnly",
-    "supabase:sync-secrets": "powershell -ExecutionPolicy Bypass -File ./scripts/supabase-auto-update.ps1 -SyncSecrets",
-    "supabase:deploy": "powershell -ExecutionPolicy Bypass -File ./scripts/supabase-auto-update.ps1 -Force",
-    "supabase:watch": "powershell -ExecutionPolicy Bypass -File ./scripts/supabase-auto-update.ps1 -Watch",
-    "inngest:dev": "npx inngest-cli@latest dev -u http://localhost:3000/api/inngest",
-    "inngest:deploy": "npx inngest-cli@latest deploy",
-    "automation:dev": "concurrently \"npm run dev\" \"npm run inngest:dev\""
-  },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.63",
     "@babel/standalone": "^7.28.4",
+    "@cloudflare/vite-plugin": "1.39.2",
     "@codemirror/lang-css": "^6.3.1",
     "@codemirror/lang-html": "^6.4.11",
     "@codemirror/lang-javascript": "^6.2.4",
@@ -80,7 +44,11 @@
     "@radix-ui/react-tooltip": "^1.2.8",
     "@stripe/stripe-js": "^8.7.0",
     "@supabase/supabase-js": "2.39.7",
+    "@tailwindcss/vite": "4.3.3",
     "@tanstack/react-query": "^5.90.3",
+    "@tanstack/react-router": "1.170.16",
+    "@tanstack/react-start": "1.168.26",
+    "@tanstack/router-plugin": "1.168.18",
     "@testing-library/jest-dom": "^6.6.0",
     "@testing-library/react": "^16.0.0",
     "@trigger.dev/sdk": "^4.4.6",
@@ -121,19 +89,9 @@
     "tailwind-merge": "^3.3.1",
     "tailwindcss-animate": "^1.0.7",
     "vaul": "^1.1.2",
+    "vite-tsconfig-paths": "6.1.1",
     "ws": "^8.18.3",
     "zod": "^4.4.3"
-  },
-  "overrides": {
-    "prismjs": "^1.30.0",
-    "monaco-editor": {
-      "dompurify": "^3.3.0"
-    },
-    "tar": "^7.5.11",
-    "systeminformation": "^5.31.0",
-    "cookie": "^0.7.0",
-    "undici": "^7.10.0",
-    "esbuild": "^0.25.0"
   },
   "devDependencies": {
     "@babel/core": "7.29.7",
@@ -164,5 +122,53 @@
     "vite": "^7.3.6",
     "vite-plugin-static-copy": "^4.1.1",
     "vitest": "^4.1.10"
-  }
+  },
+  "engines": {
+    "node": ">=22.0.0 <23"
+  },
+  "name": "vite_react_shadcn_ts",
+  "overrides": {
+    "cookie": "^0.7.0",
+    "esbuild": "^0.25.0",
+    "monaco-editor": {
+      "dompurify": "^3.3.0"
+    },
+    "prismjs": "^1.30.0",
+    "systeminformation": "^5.31.0",
+    "tar": "^7.5.11",
+    "undici": "^7.10.0"
+  },
+  "private": true,
+  "scripts": {
+    "automation:dev": "concurrently \"npm run dev\" \"npm run inngest:dev\"",
+    "build": "vite build",
+    "build:analyze": "vite build --mode analyze",
+    "build:dev": "vite build --mode development",
+    "deploy": "node scripts/check-clean-git-tree.mjs && vercel --prod",
+    "deploy:preview": "vercel",
+    "deploy:watch": "powershell -ExecutionPolicy Bypass -File ./scripts/vercel-deploy.ps1 -Watch -Production",
+    "dev": "vite",
+    "inngest:deploy": "npx inngest-cli@latest deploy",
+    "inngest:dev": "npx inngest-cli@latest dev -u http://localhost:3000/api/inngest",
+    "lint": "eslint .",
+    "lint:app-builder-authority": "node scripts/lint-app-builder-authority.mjs",
+    "lint:canonical-vfs-writes": "node scripts/lint-canonical-vfs-writes.mjs",
+    "lint:catalog-contracts": "node scripts/lint-catalog-contracts.mjs",
+    "lint:pipeline-bypass": "node scripts/lint-pipeline-bypass.mjs",
+    "lint:single-source-of-truth": "node scripts/lint-single-source-of-truth.mjs",
+    "prebuild": "npm run recipes:check",
+    "preview": "vite preview",
+    "recipes:build": "node scripts/build-stylex-recipes.mjs",
+    "recipes:check": "node scripts/build-stylex-recipes.mjs --check",
+    "supabase:check": "powershell -ExecutionPolicy Bypass -File ./scripts/supabase-auto-update.ps1 -CheckOnly",
+    "supabase:deploy": "powershell -ExecutionPolicy Bypass -File ./scripts/supabase-auto-update.ps1 -Force",
+    "supabase:sync-secrets": "powershell -ExecutionPolicy Bypass -File ./scripts/supabase-auto-update.ps1 -SyncSecrets",
+    "supabase:update": "powershell -ExecutionPolicy Bypass -File ./scripts/supabase-auto-update.ps1",
+    "supabase:watch": "powershell -ExecutionPolicy Bypass -File ./scripts/supabase-auto-update.ps1 -Watch",
+    "test:edge": "npx --yes deno@2 test --allow-all --no-check supabase/functions/",
+    "type-check": "tsc --build --noEmit",
+    "unison": "node scripts/unison.mjs"
+  },
+  "type": "module",
+  "version": "0.0.0"
 }

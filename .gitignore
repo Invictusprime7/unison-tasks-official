@@ -54,3 +54,6 @@ zip_extract/
 # Reproducible composition reports and browser fixtures
 .artifacts/
 .artifacts/composition/
+
+# Lovable sandbox workspace directory
+.workspace/

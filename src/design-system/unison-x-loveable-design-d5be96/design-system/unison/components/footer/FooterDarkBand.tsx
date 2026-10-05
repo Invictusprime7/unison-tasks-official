@@ -1,0 +1,124 @@
+/**
+ * Footer Variant: Dark Band
+ * Full-width dark footer with brand, columns, newsletter, and social icons.
+ */
+
+import React from 'react';
+import type { BaseSectionProps } from '../../types';
+import { hsl, hsla } from '../../themeUtils';
+import { SocialIcon, socialAriaLabel } from '../../components/SocialIcon';
+
+export const FooterDarkBand: React.FC<BaseSectionProps<'footer'>> = ({ section, theme }) => {
+  const { brand, columns = [], socials = [], copyright, newsletter } = section.props;
+
+  return (
+    <footer
+      data-ut-variant="footer:dark-band"
+      className="px-6"
+      style={{
+        overflowWrap: 'anywhere',
+        paddingTop: '3.5rem',
+        paddingBottom: '1.5rem',
+        background: hsl(theme.colors.foreground),
+        color: hsl(theme.colors.background),
+      }}
+    >
+      <div className="mx-auto" style={{ maxWidth: theme.containerWidth }}>
+        <div className="grid grid-cols-1 gap-8 mb-10 sm:grid-cols-2 lg:grid-cols-[var(--ut-footer-columns)]" style={{ "--ut-footer-columns": `minmax(0, 2fr) ${columns.map(() => 'minmax(0, 1fr)').join(' ')}` } as React.CSSProperties}>
+          <div>
+            <h3
+              className="text-xl mb-2"
+              style={{
+                fontFamily: theme.typography.headingFont,
+                fontWeight: theme.typography.headingWeight,
+              }}
+            >
+              {brand}
+            </h3>
+            {newsletter && (
+              <form data-demo-form="true" data-ut-intent="newsletter.subscribe" className="flex gap-2 mt-4" style={{ maxWidth: '20rem' }}>
+                <input
+                  type="email"
+                  aria-label="Email for newsletter"
+                  name="email"
+                  required
+                  placeholder="your@email.com"
+                  className="min-w-0 flex-1 text-sm px-3 py-2"
+                  style={{
+                    borderRadius: theme.radius,
+                    border: `1px solid ${hsla(theme.colors.background, 0.15)}`,
+                    background: hsla(theme.colors.background, 0.08),
+                    color: hsl(theme.colors.background),
+                    outline: 'none',
+                  }}
+                />
+                <button data-ut-intent="lead.capture"
+                  type="submit"
+                  className="text-sm px-4 py-2 cursor-pointer hover:opacity-90"
+                  style={{
+                    background: hsl(theme.colors.primary),
+                    color: hsl(theme.colors.primaryForeground),
+                    borderRadius: theme.radius,
+                    border: 'none',
+                  }}
+                >
+                  Subscribe
+                </button>
+              </form>
+            )}
+            {socials.length > 0 && (
+              <div className="flex flex-wrap gap-3 mt-5 items-center">
+                {socials.map((s, i) => {
+                  const hasUrl = s.url && s.url !== '#';
+                  return (
+                    <a data-ut-intent="nav.goto"
+                      key={i}
+                      href={hasUrl ? s.url : undefined}
+                      target={hasUrl ? '_blank' : undefined}
+                      rel={hasUrl ? 'noopener noreferrer' : undefined}
+                      aria-label={socialAriaLabel(s.platform)}
+                      className="inline-flex items-center justify-center w-8 h-8 rounded-full hover:opacity-80"
+                      style={{ color: hsla(theme.colors.background, 0.75), textDecoration: 'none' }}
+                    >
+                      <SocialIcon platform={s.platform} size={16} />
+                    </a>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {columns.map((col, i) => (
+            <div key={i}>
+              <h4 data-ut-slot={`footer.title`} className="text-xs uppercase tracking-widest mb-3 font-semibold" style={{ color: hsla(theme.colors.background, 0.7) }}>
+                {col.title}
+              </h4>
+              <ul className="space-y-2">
+                {col.links.map((l, j) => (
+                  <li key={j}>
+                    <a data-ut-intent="nav.goto"
+                      href={l.href}
+                      className="text-sm hover:opacity-80 transition-opacity"
+                      style={{ color: hsla(theme.colors.background, 0.5), textDecoration: 'none' }}
+                    >
+                      {l.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+
+        <div
+          className="flex justify-between items-center pt-4"
+          style={{ borderTop: `1px solid ${hsla(theme.colors.background, 0.1)}` }}
+        >
+          <p className="text-xs" style={{ color: hsla(theme.colors.background, 0.4) }}>
+            {copyright || `© ${new Date().getFullYear()} ${brand}. All rights reserved.`}
+          </p>
+        </div>
+      </div>
+    </footer>
+  );
+};

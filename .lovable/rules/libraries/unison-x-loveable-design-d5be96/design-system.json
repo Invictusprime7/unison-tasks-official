@@ -1,0 +1,955 @@
+{
+  "meta": {
+    "name": "Unison X Loveable Design",
+    "package": "@ws-8x79jeevjsuqngsdkwyj/f0b61fe8-ce15-4aa5-9b5a-ffc946183215",
+    "version": "1.0.0",
+    "framework": "react",
+    "css_framework": "css-variables",
+    "starter_template": "custom_design_system",
+    "theme_files": [
+      "src/design-system/unison/styles/tokens.css"
+    ],
+    "source_type": "local",
+    "source_manifest": {
+      "#enrichment": "0f33115bdeb652350801136afb275571f9b611875f71fec54afc3aec338ea778",
+      ".agents/skills/unison-art-direct/SKILL.md": "56bef2705ad3eb0d41e21e9595516e2e",
+      ".agents/skills/unison-bind-supabase/SKILL.md": "d2328e5b47b0ab3cd92bdb4a5c57bc92",
+      ".agents/skills/unison-compose-page/SKILL.md": "a249197b100d5bc5f8aad6865a22f3b5",
+      ".agents/skills/unison-promote-component/SKILL.md": "54f3a1f5736ac70dcd91df72d0908d32",
+      ".agents/skills/unison-visual-qa/SKILL.md": "3e9452f386ab19d65b96a83fb71ef6a8",
+      ".dsignore": "9f78c95c247a0716e75bd0c64bc15cfd",
+      ".gitignore": "6059213806e442947666752f3db6bfdc",
+      ".lovable/meta.yaml": "741c3eafda0760cb63dd46f35131ad2e",
+      ".lovable/plan/certification-convergence-on-real-unison-source-2026-09-24.md": "1a714fa1f6ee9f9db2b89fea99d1fa76",
+      ".lovable/plan/unison-canonical-portable-design-runtime-2026-09-24.md": "855e62b508414f0ed9c65dd23936315c",
+      ".lovable/sources.yaml": "0a350d5a69157a8927c8547792c84a2b",
+      ".lovable/system.md": "dffccec8b2c82f355f72c242a65bbb2b",
+      "README.md": "d19675c449605f23c7cfa133c69b398b",
+      "UNISON_PORTABILITY_AUDIT.md": "d74a82f4e6e21bb5ed65ffa9b8d815a2",
+      "UPSTREAM_SYNC.md": "aadefb34297a3b830805c3a1ce241bae",
+      "bunfig.toml": "25f4c8696b22b0943db7191e0cdf7942",
+      "docs/21st-dev-sources.md": "7b02a3c74dc6a2e38ef284e3d4039047",
+      "eslint.config.js": "07a67437fb1a45ab36d6de0145ff09de",
+      "lovable.toml": "9636c1bf32f9901bfba4eabb92981217",
+      "mockupPreviewPlugin.ts": "e98ee2ad1ab1cc12ed9c99eb4d6539cc",
+      "package.json": "be1e96c64d89cbd2172216b27912a720",
+      "public/favicon.ico": "9f504444f85a5af2eef9264b02ae40be",
+      "roadmap.md": "6e17863f3220e8c8d076772c75d4d982",
+      "scripts/unison-audit.ts": "c09aa4cf07b5ef6e975a46b984ae1cae",
+      "scripts/unison-certify.ts": "737c2552e102f2d63e1bc08abeac2a7a",
+      "scripts/unison-lib.ts": "cdfcac9a952b6aeb098d8a6255aa7d0d",
+      "scripts/unison-promote.ts": "8e9a57ec45cf7da6ac58e1a76b438fe8",
+      "scripts/unison-repair.ts": "c32f5d67ff1d7431bac5598986c25839",
+      "scripts/unison-retire.ts": "878f0cc4e662ee573c9e38bd55869f64",
+      "src/design-system/unison/certification/evidence.json": "f25368ac2c734daf4f07b13e7af65712",
+      "src/design-system/unison/certification/fixtures.ts": "af0838d1f5fb98fb727fc5ab54746b82",
+      "src/design-system/unison/components/SocialIcon.tsx": "49fb3fec1fa97df12423ce18b83a6535",
+      "src/design-system/unison/components/about/AboutEditorialSplit.tsx": "282b38217df5772dfae0e30e7628d250",
+      "src/design-system/unison/components/about/AboutFrame.tsx": "fd1f4c9fa66ade160c0c36b9c019ee90",
+      "src/design-system/unison/components/about/AboutImageStory.tsx": "2b20dd946917dce9b1fc7f39d9c2a516",
+      "src/design-system/unison/components/about/AboutStatement.tsx": "4719fba8506c47844ba86d12a47efa15",
+      "src/design-system/unison/components/about/AboutStoryPanel.tsx": "f51cc6cdc2d29d5f1e827be3c09dbc4a",
+      "src/design-system/unison/components/auth/AuthSignIn.tsx": "77cc0cf3f4215387a3e60a41d30c8fe2",
+      "src/design-system/unison/components/auth/AuthSignUp.tsx": "b78f5eb65711c4f2faa7a784b973d29e",
+      "src/design-system/unison/components/background/UnisonBackground.tsx": "86328bd9397ee536a7fb190bdc0782b5",
+      "src/design-system/unison/components/beforeAfter/BeforeAfterCaseStudy.tsx": "c978214a97ed76a2f1dd6698e0a1609f",
+      "src/design-system/unison/components/beforeAfter/BeforeAfterFrame.tsx": "c4e7071070de36b30093cb8efb39625b",
+      "src/design-system/unison/components/beforeAfter/BeforeAfterGrid.tsx": "210ada0f4c6315313e8f3a6e39a75419",
+      "src/design-system/unison/components/beforeAfter/BeforeAfterRevealPanel.tsx": "4a4c0453d7bbf9849efb20cad72c6113",
+      "src/design-system/unison/components/beforeAfter/BeforeAfterSlider.tsx": "a4367a15bcbcfef8fd49c70f736cd911",
+      "src/design-system/unison/components/blogPreview/BlogPreviewEditorial.tsx": "4cd98911a4e82796d112121fa7e3e82d",
+      "src/design-system/unison/components/blogPreview/BlogPreviewFeaturedGrid.tsx": "c028a126dcb96891490f3b6e80056b04",
+      "src/design-system/unison/components/blogPreview/BlogPreviewFourColumns.tsx": "6e49bd8e0018876cbecc08f87826b7a6",
+      "src/design-system/unison/components/blogPreview/BlogPreviewFrame.tsx": "65470204f0e976b88928ba47744c7bd5",
+      "src/design-system/unison/components/blogPreview/BlogPreviewHorizontalRail.tsx": "a9aa6a8fcbc47b1b3a5089039bc5f467",
+      "src/design-system/unison/components/components/SocialIcon.tsx": "49fb3fec1fa97df12423ce18b83a6535",
+      "src/design-system/unison/components/contact/ContactCentered.tsx": "99052bc4a16ba6e1d29654e23c97472b",
+      "src/design-system/unison/components/contact/ContactCheckoutPanel.tsx": "78aae375e7ad87c2c35561b1dceda6ca",
+      "src/design-system/unison/components/contact/ContactCompactCard.tsx": "00f5deab400e7fcd511453ea578406c3",
+      "src/design-system/unison/components/contact/ContactEditorialForm.tsx": "44792d5d7a870991eda8bc0c1a066769",
+      "src/design-system/unison/components/contact/ContactMapStudio.tsx": "49d2012e9c28466b86b4221fdee2604d",
+      "src/design-system/unison/components/contact/ContactMinimalInline.tsx": "d4fdb8d9b56c2d5731d3a1864786a48a",
+      "src/design-system/unison/components/contact/ContactSplitCard.tsx": "874ba7e5167aa9eabc03127ae53984b5",
+      "src/design-system/unison/components/contact/EditorialContactForm.tsx": "97488535a6ca6f8418053b25221bc27d",
+      "src/design-system/unison/components/contentExtractor.ts": "88cdff5c462614a06627716f13c38c83",
+      "src/design-system/unison/components/cta/CTACentered.tsx": "ff0f815551cf396350a477c1b80cc8ed",
+      "src/design-system/unison/components/cta/CTAEditorial.tsx": "49dea3c8dc222595a905b5fcf8aab35c",
+      "src/design-system/unison/components/cta/CTAGradientBanner.tsx": "3a3440326c82f31872f56c9a0658109b",
+      "src/design-system/unison/components/cta/CTAInsetPanel.tsx": "ac4ebffb8d52fdfc828b7e30d2c0258c",
+      "src/design-system/unison/components/cta/CTASignalBanner.tsx": "3c1c3541d2ee7eab6736af04618f8f24",
+      "src/design-system/unison/components/cta/CTASplitCard.tsx": "1330065934f57a87be1096a8816f4656",
+      "src/design-system/unison/components/dataTable/DashboardOverview.tsx": "b347f7a1b7d63f52cc75cfba262458b4",
+      "src/design-system/unison/components/dataTable/DataTable.tsx": "1934de39eade4810cbb6c68d2b731a9c",
+      "src/design-system/unison/components/faq/FAQAccordion.tsx": "f40ae74d51898252f0fbcc3e139b9d25",
+      "src/design-system/unison/components/faq/FAQCards.tsx": "fd238b4cf9770f0bd2889c4f9e3a4ee0",
+      "src/design-system/unison/components/faq/FAQEditorial.tsx": "792539367d8a63322620cd300f8ea068",
+      "src/design-system/unison/components/faq/FAQFrame.tsx": "6bf5b579977b5b82535ad84855d1e246",
+      "src/design-system/unison/components/faq/FAQSearchable.tsx": "0f541e12a319eec1061244e11be4e37b",
+      "src/design-system/unison/components/faq/FAQTwoColumn.tsx": "4ba094ac3f3c5b90e3a7737f56af8bf8",
+      "src/design-system/unison/components/features/FeaturesBentoGrid.tsx": "f68a17352ae9108fe012915e0def799c",
+      "src/design-system/unison/components/features/FeaturesBentoMosaic.tsx": "f1c8e95a42ecb5e61569b66cf54fff1f",
+      "src/design-system/unison/components/features/FeaturesGrid.tsx": "b6525210f8aecb90eac8ece583ffc389",
+      "src/design-system/unison/components/features/FeaturesIconLeft.tsx": "9a9fd76d1a26dd5e5be4fca972475eed",
+      "src/design-system/unison/components/features/FeaturesIntegrations.tsx": "379483016b99c87f1a096ebeddea3ab3",
+      "src/design-system/unison/components/features/FeaturesMinimalCentered.tsx": "8221b2c962470ea442fd54cd7a370db7",
+      "src/design-system/unison/components/features/FeaturesSpotlightCards.tsx": "51529e502e80ceeb7ba0ea07caf10ff9",
+      "src/design-system/unison/components/footer/FooterBrandSocial.tsx": "51a9b554d53364792009b0efeef709fc",
+      "src/design-system/unison/components/footer/FooterCenteredMinimal.tsx": "ce8e9247cd0512d25cf8422c1fab1f77",
+      "src/design-system/unison/components/footer/FooterColumns.tsx": "e16a35449ca8bda07c0c04b961940229",
+      "src/design-system/unison/components/footer/FooterDarkBand.tsx": "0652687d930db5a20e12590854073df9",
+      "src/design-system/unison/components/footer/FooterMultiColumn.tsx": "56676f0e0cdc92408ac4683e138f442b",
+      "src/design-system/unison/components/gallery/GalleryCaseStudy.tsx": "d41d8d11e3361132ab7722bcd8ee872f",
+      "src/design-system/unison/components/gallery/GalleryCinematicGrid.tsx": "d1448479409582ca944d6778161afc8d",
+      "src/design-system/unison/components/gallery/GalleryCollectionTiles.tsx": "d621c6e5f23c8e908896aad483f84435",
+      "src/design-system/unison/components/gallery/GalleryEditorialMosaic.tsx": "a0d25567da8c69e3b69bdb17948b4052",
+      "src/design-system/unison/components/gallery/GalleryFeatureSplit.tsx": "f2acf198a62e2bb08930672740411bc7",
+      "src/design-system/unison/components/gallery/GalleryFrame.tsx": "7d7ce99cf5400aa67534586d88b2f0eb",
+      "src/design-system/unison/components/gallery/GalleryHorizontalReel.tsx": "10b0f08385d23c6e6df6645c9725747e",
+      "src/design-system/unison/components/gallery/GalleryImage.tsx": "e12acbca20d257a835e7aa61e90e87d0",
+      "src/design-system/unison/components/gallery/GalleryLightbox.tsx": "b887b4a988ec3e851cc5a1ce3d21b903",
+      "src/design-system/unison/components/gallery/GalleryLightboxGrid.tsx": "c8b83ec9c656f2545787a5191db1e807",
+      "src/design-system/unison/components/gallery/GalleryMasonry.tsx": "2e5e6c0633b18bab9e9f00de4dfabe47",
+      "src/design-system/unison/components/gallery/galleryUtils.ts": "ded47b80afc67e4c0b74de74a022fb73",
+      "src/design-system/unison/components/hero/HeroCentered.tsx": "9abc4762bd9f53c68a49a9d96058eede",
+      "src/design-system/unison/components/hero/HeroCommerceGradient.tsx": "15a64d88d9c99ddc2026f20ca3d8f4a1",
+      "src/design-system/unison/components/hero/HeroFullBleed.tsx": "70c898d16fc07586ccec74f794e864f4",
+      "src/design-system/unison/components/hero/HeroImageFan.tsx": "7fcf5e9d6b21ad6aa437bceb9df8e252",
+      "src/design-system/unison/components/hero/HeroImageStream.tsx": "ebb01aa5f9f9d953563e3c34b4f2badc",
+      "src/design-system/unison/components/hero/HeroLaunchShowcase.tsx": "8995d1acfd6756b3e51a27cd0c704fbc",
+      "src/design-system/unison/components/hero/HeroPageIntro.tsx": "ecd3b04fb4cbee068a1273e90bb01521",
+      "src/design-system/unison/components/hero/HeroPrismaCinematic.tsx": "2c3e32801c19b06168afe989a31ad186",
+      "src/design-system/unison/components/hero/HeroShowcasePanel.tsx": "ea8a251589726944189011766c66dee2",
+      "src/design-system/unison/components/hero/HeroSplitImage.tsx": "5aec2fa1bc5f43646eea94d59b751ec0",
+      "src/design-system/unison/components/hero/HeroUnderline.tsx": "31e9492b0f1a9b5bff1e1f5a844053b8",
+      "src/design-system/unison/components/hero/HeroVariableType.tsx": "3c76bd6e220285154790ac2d83d550bb",
+      "src/design-system/unison/components/hero/heroPageIntroJSX.ts": "54a97821a2e26eb4c568ef907c7210c9",
+      "src/design-system/unison/components/index.ts": "cb38a1599dcab601dfc22eab3ccbf058",
+      "src/design-system/unison/components/jsxTemplates.ts": "122625600837385ee2a5ff1b03442c43",
+      "src/design-system/unison/components/logoCloud/LogoCloudBrandLockup.tsx": "633e94f9f29b1c7d2c4c46196dbd3679",
+      "src/design-system/unison/components/logoCloud/LogoCloudCinematic.tsx": "6cc3045c5a20b6be7ef07c9e2b19eb5c",
+      "src/design-system/unison/components/logoCloud/LogoCloudFrame.tsx": "0d8eeb02d5002ddfc09c18f36c9d79dc",
+      "src/design-system/unison/components/logoCloud/LogoCloudGrid.tsx": "8df53c2bdb92b400d0c9d032712a7058",
+      "src/design-system/unison/components/logoCloud/LogoCloudMarquee.tsx": "38a563b47c2424a01609680b06d3e4f7",
+      "src/design-system/unison/components/logoCloud/LogoCloudRevealTiles.tsx": "13a6dc096aa4faebb82c76ca72115218",
+      "src/design-system/unison/components/logoCloud/LogoCloudStaticGrid.tsx": "8a939fde193dd6f006c390e061d6cfeb",
+      "src/design-system/unison/components/logoCloud/LogoCloudWordmarkRow.tsx": "b272b4a2a8c85de46b3d5e1b845942cb",
+      "src/design-system/unison/components/navbar/MobileNavbarNavigation.tsx": "8d626dfbfaaecee89ecc434c087dd7a7",
+      "src/design-system/unison/components/navbar/NavbarCatalogBar.tsx": "a5ffa01428facb9d1f339ffeaa73e1db",
+      "src/design-system/unison/components/navbar/NavbarCenteredLogo.tsx": "3dc1180653d8ea9a465e76a430dfab9d",
+      "src/design-system/unison/components/navbar/NavbarFloatingPill.tsx": "4422b29c64fd7ff9ce3dd482186090f2",
+      "src/design-system/unison/components/navbar/NavbarMinimalDark.tsx": "935da5ae44208835f77395adb780024c",
+      "src/design-system/unison/components/navbar/NavbarStandard.tsx": "eedc3076216eac62ee7dc20c0a00c858",
+      "src/design-system/unison/components/portableRecipeOnly.ts": "c220bee50d4d53ca9e3b15817af57e72",
+      "src/design-system/unison/components/pricing/PricingAccordion.tsx": "7deb328e31682c80ffc1833c3e5982e6",
+      "src/design-system/unison/components/pricing/PricingBillingToggle.tsx": "afc9619430314f13ffadbd63f550e468",
+      "src/design-system/unison/components/pricing/PricingComparison.tsx": "bb3fb8c1f61715297ddf0a7c0bba114f",
+      "src/design-system/unison/components/pricing/PricingComparisonTable.tsx": "d8bbb18bd6ecf80debc3f943681ee102",
+      "src/design-system/unison/components/pricing/PricingCreative.tsx": "4d1319bb691632ab1f6e0cc567290d8c",
+      "src/design-system/unison/components/pricing/PricingFeatureTable.tsx": "e64b4ed8635030e17b7bd39515ccb77c",
+      "src/design-system/unison/components/pricing/PricingFrame.tsx": "149c582ec3fd8cbd19611b7493068b86",
+      "src/design-system/unison/components/pricing/PricingSpotlight.tsx": "67b0e8bcdb0c673f87948092391ddd45",
+      "src/design-system/unison/components/pricing/PricingTiers.tsx": "674ea877af422ba16744841f6e5817c6",
+      "src/design-system/unison/components/public.ts": "ff2338c8b878c49a18fc9251b6f7dc0b",
+      "src/design-system/unison/components/registry.ts": "fa7cdf077d54245e98978ac405cc25fc",
+      "src/design-system/unison/components/services/ServicesAlternating.tsx": "c1e9714a458272b12e460438bbc77490",
+      "src/design-system/unison/components/services/ServicesBentoSpotlight.tsx": "1f47b4406e44691794644fc7aa0f0562",
+      "src/design-system/unison/components/services/ServicesCardGrid.tsx": "7761bc38bdcd50fde81c3eb6082f97b4",
+      "src/design-system/unison/components/services/ServicesCompactList.tsx": "540237f7944641f399a7847443095d0d",
+      "src/design-system/unison/components/services/ServicesEditorialRows.tsx": "8e8abd34a7d910d161994d1e75481cac",
+      "src/design-system/unison/components/services/ServicesExpandable.tsx": "01d0aa5d5373e384408c5ea620fb3cac",
+      "src/design-system/unison/components/services/ServicesProductCards.tsx": "88e6e12ab9c440e96072e82f82cb4926",
+      "src/design-system/unison/components/shared/EditorialSection.tsx": "659142c39fa91f96d6ccd5edd438676e",
+      "src/design-system/unison/components/shared/editorialStyles.ts": "3b5c18d65199d6dbdc46e346660cd805",
+      "src/design-system/unison/components/stats/StatsBandedGrid.tsx": "2c2b94407d14349293efff2ad91be8dd",
+      "src/design-system/unison/components/stats/StatsBold.tsx": "464771f711b9eca11af20a1507768d91",
+      "src/design-system/unison/components/stats/StatsFrame.tsx": "e312cd8a3b5e85da586d66152a0f7809",
+      "src/design-system/unison/components/stats/StatsHighlight.tsx": "b13f57acee3e5a45c1fc00f01dd0c582",
+      "src/design-system/unison/components/stats/StatsMetricCards.tsx": "dca1b7cd207a4e19449587f537f5b2ea",
+      "src/design-system/unison/components/stats/StatsProofGrid.tsx": "85e294500dba866e41f8858dfd7bfdb8",
+      "src/design-system/unison/components/stats/StatsRow.tsx": "7066a5ca58bb5c88e80a43318006692d",
+      "src/design-system/unison/components/team/TeamEditorial.tsx": "2544291515db63a5a0f6ff36d3d937dd",
+      "src/design-system/unison/components/team/TeamFrame.tsx": "ae6049db44eeaf1943af7231d57d6bba",
+      "src/design-system/unison/components/team/TeamLeadSpotlight.tsx": "211f37f0e9e86acb8947e76bcb14623c",
+      "src/design-system/unison/components/team/TeamPortraitGrid.tsx": "94d434a8848ef20d2728123866ed9204",
+      "src/design-system/unison/components/team/TeamProfileCards.tsx": "09029cfa46b3355bdadbadd05a01c7f6",
+      "src/design-system/unison/components/team/TeamRosterRail.tsx": "c5fd8bb381730b90b7ee859ccdb80c63",
+      "src/design-system/unison/components/testimonials/TestimonialsColumns.tsx": "719e2f54b25cc5a010bbf752de985b51",
+      "src/design-system/unison/components/testimonials/TestimonialsEditorial.tsx": "56046ca162a69092ae8a11ab78226abe",
+      "src/design-system/unison/components/testimonials/TestimonialsFrame.tsx": "415de8eeab918c15f71e8c31474426a3",
+      "src/design-system/unison/components/testimonials/TestimonialsGrid.tsx": "5324c2091a11ef314fbab63a806c7545",
+      "src/design-system/unison/components/testimonials/TestimonialsMarquee.tsx": "505df9b160fa3ac553e0e73a57b60922",
+      "src/design-system/unison/components/testimonials/TestimonialsRail.tsx": "829b5dd81a4ba8fc3a0d54cceb8ad9f0",
+      "src/design-system/unison/components/testimonials/TestimonialsSpotlight.tsx": "9677f88e0c051c1ca57653cdcd3eae6b",
+      "src/design-system/unison/components/testimonials/TestimonialsVerticalMarquee.tsx": "70b6e75bc2bd051bc84125483264ec7a",
+      "src/design-system/unison/components/testimonials/TestimonialsVoice.tsx": "6aab4812f4439999b9b6193396a07360",
+      "src/design-system/unison/components/types.ts": "0df7d701ddd35877d7e9ee9f574977bf",
+      "src/design-system/unison/contracts/art-direction.ts": "f7506d2a0df622153a5387df6e5482da",
+      "src/design-system/unison/contracts/brand.ts": "d7e25c0753c920e3db14a347403e17da",
+      "src/design-system/unison/contracts/component-states.ts": "599e55913e395437c6a2ce82dcf50d01",
+      "src/design-system/unison/contracts/industry-key.ts": "17b4df587971651504ad1c4bd46bb6be",
+      "src/design-system/unison/contracts/industry-vocabulary.ts": "1d1f2316b78e8ac453bce6bf5455068f",
+      "src/design-system/unison/contracts/page-archetypes.ts": "da31085eeeef57063b605645dd863c1c",
+      "src/design-system/unison/contracts/project-brief.ts": "bdeca4840e95b372f8999310b42fd1a9",
+      "src/design-system/unison/contracts/runtime.ts": "4791d0d7f6bf8a4fe9b372b64b8b7377",
+      "src/design-system/unison/contracts/sections.ts": "b9b91d9ee54edcf787f2fa062203f941",
+      "src/design-system/unison/contracts/selection.ts": "d519f1f29e439517c6aa4f0e6cb6b006",
+      "src/design-system/unison/contracts/site-design-contract.ts": "e77a2442e15c3b126fa3c03205cad824",
+      "src/design-system/unison/contracts/theme-family.ts": "6336e8f2adedbd062785697103d8206b",
+      "src/design-system/unison/contracts/visual-signature.ts": "61d2daa25f9410a276ddbe5c5967c8bb",
+      "src/design-system/unison/contracts/vocabulary.ts": "eb92eaa587fbcf640d8d1276cc8e2683",
+      "src/design-system/unison/index.ts": "6e015fa00aa22d33fb5aa7ae776f8721",
+      "src/design-system/unison/runtime/design-seed.ts": "86e6536454ebb458480b8d8b6b1a883b",
+      "src/design-system/unison/runtime/implementation-metadata.ts": "b2419408272375bff14416eac92b0980",
+      "src/design-system/unison/runtime/promotion-audit.ts": "df3342bf8fd808e2cbcda664d0b94faa",
+      "src/design-system/unison/runtime/resolve-art-direction.ts": "4850e9d6c386ae4f2326b433aaf1ed2c",
+      "src/design-system/unison/runtime/resolve-design-context.ts": "2416f960b9fb3e26944d35c00a59b778",
+      "src/design-system/unison/runtime/resolve-legal-implementations.ts": "94d21f429f7e558cbed18d3239d52aa0",
+      "src/design-system/unison/runtime/resolve-page-vocabulary.ts": "ee56b8fa32b11e7cfdf22c4950e95930",
+      "src/design-system/unison/styles/tokens.css": "dd4b328dbe36535e114f76dde9af9e11",
+      "src/design-system/unison/styles/tokens.ts": "f1950d47a95db3959d51021d2c00cf34",
+      "src/design-system/unison/themeUtils.ts": "d7dbe00be69de59977cd7d4f227effbe",
+      "src/design-system/unison/types.ts": "6e3d434d902b75faabae65f1f343b86e",
+      "src/index.ts": "b296e7001c141eb6fc73e7cabfdd4f79",
+      "src/mockup-preview.d.ts": "ae9d81e2b8514e13fd59b5b6bece9a64",
+      "src/routeTree.gen.ts": "4fd75eb72aeb2d60f12add8cac402a7e",
+      "src/router.tsx": "8f905e713b0eba7fa8148b7995a708c9",
+      "src/routes/[__component].preview.$.tsx": "e4bf310e591541d31abf0cfeeb1121a4",
+      "src/routes/[__mockup].preview.$.tsx": "5d9f42470848aa60148f20f9580e240e",
+      "src/routes/__root.tsx": "bce0abd45b0e6f531fad83dc1fb67c48",
+      "src/routes/index.tsx": "1aade71bc9e38530d7c3fb53f70aa737",
+      "src/showcase/LegacyAdvisor.tsx": "f459f3d516326b1efcce9f8be8d1f8a0",
+      "src/showcase/legacy-advisor.functions.ts": "36b664367c49f812b13fb1930e17d77a",
+      "src/showcase/legacy-advisor.server.ts": "05a1543b35537f342f3a4f5c10e0aa42",
+      "src/styles.css": "bc135f1ec542e016b9ba2c61da5c089e",
+      "tests/unison-theme-family.test.ts": "3f2b435a53ee57ab9db0899164cd4c89",
+      "tsconfig.json": "994abf64c2b9f78b568879f80ed0170e",
+      "vite.config.ts": "63049136ce802a61ad47ed2061a99934",
+      "wrangler.jsonc": "680b897d48e44bcc65fe437c29b38f3b"
+    },
+    "pipeline_version": 8
+  },
+  "tokens": {
+    "color": [
+      {
+        "name": "--background",
+        "raw": "36 25% 97%",
+        "source": "src/design-system/unison/styles/tokens.css"
+      },
+      {
+        "name": "--foreground",
+        "raw": "220 18% 12%",
+        "source": "src/design-system/unison/styles/tokens.css"
+      },
+      {
+        "name": "--primary",
+        "raw": "7 72% 51%",
+        "source": "src/design-system/unison/styles/tokens.css"
+      },
+      {
+        "name": "--primary-foreground",
+        "raw": "0 0% 100%",
+        "source": "src/design-system/unison/styles/tokens.css"
+      },
+      {
+        "name": "--secondary",
+        "raw": "202 55% 34%",
+        "source": "src/design-system/unison/styles/tokens.css"
+      },
+      {
+        "name": "--secondary-foreground",
+        "raw": "0 0% 100%",
+        "source": "src/design-system/unison/styles/tokens.css"
+      },
+      {
+        "name": "--accent",
+        "raw": "47 91% 57%",
+        "source": "src/design-system/unison/styles/tokens.css"
+      },
+      {
+        "name": "--accent-foreground",
+        "raw": "220 18% 12%",
+        "source": "src/design-system/unison/styles/tokens.css"
+      },
+      {
+        "name": "--muted",
+        "raw": "36 14% 91%",
+        "source": "src/design-system/unison/styles/tokens.css"
+      },
+      {
+        "name": "--muted-foreground",
+        "raw": "218 9% 43%",
+        "source": "src/design-system/unison/styles/tokens.css"
+      },
+      {
+        "name": "--card",
+        "raw": "0 0% 100%",
+        "source": "src/design-system/unison/styles/tokens.css"
+      },
+      {
+        "name": "--card-foreground",
+        "raw": "220 18% 12%",
+        "source": "src/design-system/unison/styles/tokens.css"
+      },
+      {
+        "name": "--border",
+        "raw": "218 14% 82%",
+        "source": "src/design-system/unison/styles/tokens.css"
+      },
+      {
+        "name": "--destructive",
+        "raw": "0 70% 48%",
+        "source": "src/design-system/unison/styles/tokens.css"
+      },
+      {
+        "name": "--destructive-foreground",
+        "raw": "0 0% 100%",
+        "source": "src/design-system/unison/styles/tokens.css"
+      },
+      {
+        "name": "--ut-border-weight",
+        "raw": "1px",
+        "source": "src/design-system/unison/styles/tokens.css"
+      }
+    ],
+    "spacing": [
+      {
+        "name": "--ut-section-space",
+        "raw": "clamp(4rem, 7vw, 7rem)",
+        "source": "src/design-system/unison/styles/tokens.css"
+      },
+      {
+        "name": "--ut-density-gap",
+        "raw": "1.5rem",
+        "source": "src/design-system/unison/styles/tokens.css"
+      },
+      {
+        "name": "--ut-density-padding",
+        "raw": "1.5rem",
+        "source": "src/design-system/unison/styles/tokens.css"
+      }
+    ],
+    "typography": [
+      {
+        "name": "--ut-font-display",
+        "raw": "\"Lora\", Georgia, serif",
+        "source": "src/design-system/unison/styles/tokens.css"
+      },
+      {
+        "name": "--ut-font-body",
+        "raw": "\"Inter\", system-ui, sans-serif",
+        "source": "src/design-system/unison/styles/tokens.css"
+      },
+      {
+        "name": "--ut-font-mono",
+        "raw": "\"Space Mono\", monospace",
+        "source": "src/design-system/unison/styles/tokens.css"
+      }
+    ],
+    "radius": [
+      {
+        "name": "--ut-radius-base",
+        "raw": "0.5rem",
+        "source": "src/design-system/unison/styles/tokens.css"
+      }
+    ],
+    "other": [
+      {
+        "name": "--ut-motion-duration",
+        "raw": "320ms",
+        "source": "src/design-system/unison/styles/tokens.css"
+      },
+      {
+        "name": "--ut-motion-ease",
+        "raw": "cubic-bezier(.2,.8,.2,1)",
+        "source": "src/design-system/unison/styles/tokens.css"
+      },
+      {
+        "name": "--ut-motion-distance",
+        "raw": "1rem",
+        "source": "src/design-system/unison/styles/tokens.css"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "UnisonBackground",
+      "file": "src/design-system/unison/components/background/UnisonBackground",
+      "import_path": "",
+      "props": [
+        {
+          "name": "variant",
+          "type": "enum",
+          "values": [
+            "glow",
+            "dots",
+            "gradient"
+          ],
+          "default": "glow"
+        },
+        {
+          "name": "children",
+          "type": "any"
+        },
+        {
+          "name": "className",
+          "type": "string",
+          "default": "pointer-events-none absolute inset-0 -z-10"
+        },
+        {
+          "name": "style",
+          "type": "any"
+        }
+      ]
+    },
+    {
+      "name": "AuthSignIn",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "DataTable",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "ContactCompactCard",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "FooterMultiColumn",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "CTAEditorial",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "FeaturesBentoMosaic",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "FeaturesIntegrations",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "TeamEditorial",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "StatsBold",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "PricingCreative",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "PricingComparisonTable",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "LogoCloudStaticGrid",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "LogoCloudCinematic",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "TestimonialsVoice",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "TestimonialsVerticalMarquee",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "TestimonialsEditorial",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "HeroUnderline",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "HeroImageFan",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "BeforeAfterCaseStudy",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "BeforeAfterGrid",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "BeforeAfterSlider",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "BlogPreviewHorizontalRail",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "BlogPreviewFeaturedGrid",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "BlogPreviewEditorial",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "LogoCloudWordmarkRow",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "LogoCloudBrandLockup",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "LogoCloudMarquee",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "LogoCloudGrid",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "TeamLeadSpotlight",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "TeamRosterRail",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "TeamPortraitGrid",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "StatsHighlight",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "StatsBandedGrid",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "StatsRow",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "FAQCards",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "FAQTwoColumn",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "FAQAccordion",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "AboutStoryPanel",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "AboutStatement",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "AboutEditorialSplit",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "FooterDarkBand",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "FooterCenteredMinimal",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "FooterColumns",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "ContactMinimalInline",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "ContactSplitCard",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "ContactCentered",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "ServicesCompactList",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "ServicesAlternating",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "ServicesCardGrid",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "FeaturesBentoGrid",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "FeaturesMinimalCentered",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "FeaturesIconLeft",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "FeaturesGrid",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "GalleryCollectionTiles",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "GalleryHorizontalReel",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "GalleryFeatureSplit",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "GalleryLightboxGrid",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "GalleryCinematicGrid",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "GalleryMasonry",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "GalleryEditorialMosaic",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "PricingAccordion",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "PricingComparison",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "PricingTiers",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "TestimonialsSpotlight",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "TestimonialsRail",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "CTASplitCard",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "CTAGradientBanner",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "CTACentered",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "HeroShowcasePanel",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "HeroCommerceGradient",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "TestimonialsGrid",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "TestimonialsColumns",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "TestimonialsMarquee",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "PricingSpotlight",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "PricingFeatureTable",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "PricingBillingToggle",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "GalleryCaseStudy",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "HeroImageStream",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "HeroLaunchShowcase",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "HeroPrismaCinematic",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "HeroCentered",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "HeroSplitImage",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "HeroFullBleed",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "HeroPageTitle",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "HeroEditorialBanner",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "CTAInsetPanel",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "CTASignalBanner",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "NavbarCatalogBar",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "NavbarFloatingPill",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "NavbarStandard",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "NavbarCenteredLogo",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "NavbarMinimalDark",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "FeaturesSpotlightCards",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "ServicesExpandable",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "ServicesEditorialRows",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "ServicesBentoSpotlight",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "ServicesProductCards",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "ContactCheckoutPanel",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "ContactMapStudio",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "ContactEditorialForm",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "FooterBrandSocial",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "AboutImageStory",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "FAQSearchable",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "FAQEditorial",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "StatsProofGrid",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "StatsMetricCards",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "TeamProfileCards",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "LogoCloudRevealTiles",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "BlogPreviewFourColumns",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    },
+    {
+      "name": "BeforeAfterRevealPanel",
+      "file": "src/design-system/unison/components/public.ts",
+      "import_path": ""
+    }
+  ]
+}
