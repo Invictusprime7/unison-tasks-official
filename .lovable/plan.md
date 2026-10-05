@@ -30,8 +30,9 @@ A new **Catalog** button in the Builder top bar opens a side panel:
 - **Click the photo** to upload a new one (stored in your files) or paste a link.
 - **"+ Add item"** creates a new row.
 - **When the list is empty:** "No services yet. Add your first, or import the ones already on your site". Import reads the names and prices from the current page.
-- Every save goes through the existing canonical catalog writer and is logged in the session Changes list.
-- The command-menu price editor is rewired to the same writer. The parallel path I added last turn goes away.
+- Every save goes through the AI's shared actions, the same ones the AI uses when you ask in chat. So "make the Signature Facial $95" and editing in the panel are one path, and both are logged in the session Changes list.
+- The AI always knows the business's items, prices, photos and which page shows them. It can list, add, edit, hide and link items on its own as part of any request.
+- The older separate catalog editing code is retired.
 
 ## 3. Live preview reads the real data
 - When items are imported or created, link the page's product/service section to that list, using the existing data-linking system.
@@ -46,10 +47,18 @@ On DREAM. Design.:
 4. Reload the page and confirm both stay.
 
 ## Technical details
-- **Single source for where items live:** `src/platform/core/catalogSurfaceRegistry.ts`. **Single writer:** `catalogOperations.updateCatalogItem` / `createCatalogRow`. Linking uses `sectionDataBindingService`.
-- **Remove the parallel path:**
-  - delete `agentOperations.update_catalog_item`, keeping a thin wrapper that calls `catalogOperations`
-  - update the AGENTS.md rule
+- **Catalog authority is `src/services/agent-runtime/operations.ts`.**
+  - `agentOperations` gains registry-aware catalog ops: `inspect_catalog`, `create_catalog_item`, `update_catalog_item`, `hide_catalog_item`, `link_section_to_catalog`.
+  - Each resolves the table and field mapping (price vs price_cents, image field) through `catalogSurfaceRegistry`, writes under normal access rules, emits `data_change` agent events, and proposes any preview file change through `runBuilderAiMutation` → `commitMutation`.
+- **AI awareness:** the AI prompt context gets a compact catalog summary alongside the site map (counts, names, prices, which sections are linked). Catalog ops are exposed to the AI as agent operations, so the AI can call them when you ask in chat.
+- **Retire legacy:**
+  - remove the row ops in `src/services/catalogOperations.ts`: `createCatalogRow`, `updateCatalogRow`, `deleteCatalogRow`, `updateCatalogItem` and their `CATALOG_OPERATION_TOOLS` / `applyCatalogOperation` entries
+  - remove the duplicate CRUD in `catalogRowService.ts`
+  - move every caller (`PropertyInspectorPanel`, `ElementFloatingToolbar`, product blocks, tests) to `agentOperations`
+  - binding ops (`updateSectionBinding`, sort/limit/collection) move into `agentOperations` too, so nothing still points at the old surface
+  - `catalogSurfaceRegistry` stays as the data map
+  - add a lint in `scripts/lint-single-source-of-truth.mjs` that blocks direct catalog-table writes outside `agent-runtime`
+- **Update the AGENTS.md catalog rule** to name `agentOperations` as the sole catalog writer.
 - **Photo uploads:** the existing private `user-files` bucket with signed URLs, or a new public `catalog-images` bucket so live sites can show photos. Images on a published site must be public, so this needs a bucket with a public-read policy.
 - **Conversational setup:**
   - Chat messages gain an optional `ask` payload: question id, kind (`choice` | `confirm` | `text` | `days`), options, answer, status. It's stored inside the existing `builder_chat_history.messages` JSON, so no database change is needed.
