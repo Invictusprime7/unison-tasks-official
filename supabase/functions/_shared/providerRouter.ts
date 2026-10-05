@@ -29,6 +29,8 @@ export interface ProviderPlan {
   fallbackReserveMs?: number;
   /** Run the lead model and the managed gateway simultaneously; first valid answer wins. */
   raceGateway?: boolean;
+  /** Hybrid page writing: the managed gateway writes first; direct keys take over only if it fails. */
+  gatewayLeads?: boolean;
 }
 
 export interface GatewayOverrides {
@@ -427,6 +429,11 @@ export function buildProviderPlan(
     plan.primaryProvider = Boolean(readEnv('GEMINI_API_KEY') || readEnv('GOOGLE_API_KEY') || readEnv('UNISONGEMINI_API_KEY'))
       ? 'gemini' : selectPrimaryProvider(routingKey, readEnv);
     plan.gatewayModels = prioritizeProviderModels(plan.gatewayModels, plan.primaryProvider);
+    // Hybrid: launch page writing/repair goes to the managed gateway first (the
+    // model that produced the Oct 1 baseline); funded Gemini is the backup.
+    if ((task.type === 'site_page_author' || task.type === 'site_page_repair') && readEnv('LOVABLE_API_KEY')) {
+      plan.gatewayLeads = true;
+    }
   } else if (!hasExplicitModel) {
     plan.primaryProvider = wizardGeminiConfigured
       ? 'gemini'
