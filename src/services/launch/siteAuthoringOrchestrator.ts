@@ -231,11 +231,19 @@ export async function authorSitePages(input: SiteAuthoringInput): Promise<SiteAu
     const buildRequest = async (redundancy: RedundancyIssue | null): Promise<AIComposerRequest> => (await assembleCanonicalAuthoringRequest({
       task: 'site_page_author',
       page: { role: page.role, title: page.title, route: page.route, filePath: page.filePath },
-      brief: [
-        input.visionBrief ? `OWNER VISION (from the planning chat; honour its content, never its styling over the sealed design): ${input.visionBrief.slice(0, 1200)}` : '',
-        renderCompositionBrief(planned, visualMemory.entries(), redundancy),
-        renderPageBrief(input.designContext, page, input.businessName, establishedLanguage),
-      ].filter(Boolean).join('\n').slice(0, 8000),
+      // Layout plan and design contract lead; the planning-chat vision follows so it
+      // shapes wording/content without displacing composition vocabulary.
+      brief: (() => {
+        const layout = [
+          renderCompositionBrief(planned, visualMemory.entries(), redundancy),
+          renderPageBrief(input.designContext, page, input.businessName, establishedLanguage),
+        ].filter(Boolean).join('\n');
+        const vision = input.visionBrief
+          ? `OWNER VISION (from the planning chat; use it for wording and content only — never let it override the layout plan, section vocabulary or sealed design above): ${input.visionBrief.slice(0, 1200)}`
+          : '';
+        const room = 8000 - (vision ? vision.length + 1 : 0);
+        return [layout.slice(0, Math.max(6500, room)), vision].filter(Boolean).join('\n').slice(0, 8000);
+      })(),
       knowledgeQuery: `${input.businessName} ${page.role} ${page.title} ${page.route}`,
       baseFiles,
       baseRevisionId: revisionId,

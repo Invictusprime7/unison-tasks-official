@@ -87,6 +87,19 @@ Deno.test('App Builder always leads with funded Gemini while retaining hybrid fa
   }
 });
 
+Deno.test('Hybrid launch page writing: managed gateway leads, funded Gemini backs it up', () => {
+  const withGateway = (name: string) => name === 'LOVABLE_API_KEY' ? 'lovable-test-key' : bothProviders(name);
+  for (const type of ['site_page_author', 'site_page_repair'] as const) {
+    const plan = buildProviderPlan({ ...task, type }, true, undefined, 'complex', 'composer', withGateway);
+    assertEquals(plan.gatewayLeads, true);
+    assertEquals(plan.gatewayModels[0].id, 'google/gemini-2.5-flash');
+  }
+  const edit = buildProviderPlan({ ...task, type: 'builder_source_edit' }, true, undefined, 'complex', 'composer', withGateway);
+  assertEquals(edit.gatewayLeads, undefined);
+  const noGateway = buildProviderPlan({ ...task, type: 'site_page_author' }, true, undefined, 'complex', 'composer', bothProviders);
+  assertEquals(noGateway.gatewayLeads, undefined);
+});
+
 Deno.test("honors fixed Gemini and OpenAI distributions", () => {
   assertEquals(selectParallelProvider("any-key", { gemini: 100, openai: 0 }), "gemini");
   assertEquals(selectParallelProvider("any-key", { gemini: 0, openai: 100 }), "openai");

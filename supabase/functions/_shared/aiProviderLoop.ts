@@ -543,11 +543,13 @@ export async function runProviderLoop(opts: {
     }
   };
 
-  if (hasLastResortGateway && !hasDirectGemini) {
+  if (hasLastResortGateway && (!hasDirectGemini || providerPlan.gatewayLeads)) {
     gatewayTriedFirst = true;
-    const fallbackReserveMs = (hasDirectOpenAI || hasDirectGemini) && budgetRemaining() >= 60_000
-      ? 30_000 : 5_000;
-    await runManagedGatewayAttempt('Lovable AI fallback (Gemini unavailable)',
+    // Hybrid page writing keeps a real window for the Gemini backup.
+    const fallbackReserveMs = (hasDirectOpenAI || hasDirectGemini) && budgetRemaining() >= 90_000
+      ? (providerPlan.gatewayLeads ? 45_000 : 30_000) : 5_000;
+    await runManagedGatewayAttempt(
+      providerPlan.gatewayLeads ? 'Lovable AI (hybrid lead)' : 'Lovable AI fallback (Gemini unavailable)',
       Math.min(providerPlan.perModelTimeoutMs, budgetRemaining() - fallbackReserveMs));
   }
 
