@@ -3221,6 +3221,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
             className="flex-shrink-0 border-t border-border"
           />
 
+          <AgentCommandPalette files={vfsFiles ?? {}} onApply={onApplyToVFS} onAsk={setInput} />
           {/* Input */}
           <AIConversationInput
             input={input}
