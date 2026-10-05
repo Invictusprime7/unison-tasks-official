@@ -1,0 +1,74 @@
+/**
+ * Agent Runtime — one registry of typed operations shared by the AI Builder
+ * and the command menu. Inspect operations read live canonical state; mutate
+ * operations only *propose* file changes, which callers hand to the existing
+ * transaction (`runBuilderAiMutation` → `commitMutation`). No new writer.
+ */
+import { supabase } from '@/integrations/supabase/client';
+import { collectIntentTargets } from './intentInvariant';
+
+export interface AgentContext {
+  files: Record<string, string>;
+  businessId?: string | null;
+  projectId?: string | null;
+  previewErrors?: string[];
+}
+
+export type ProposedChange = { files: Record<string, string>; summary: string };
+
+const CATALOG_TABLES = ['products', 'menu_items', 'services', 'pricing_plans', 'testimonials'] as const;
+export type CatalogTable = (typeof CATALOG_TABLES)[number];
+
+export const agentOperations = {
+  inspect_file(ctx: AgentContext, path: string): string | null {
+    return ctx.files[path] ?? null;
+  },
+  inspect_routes(ctx: AgentContext): string[] {
+    return Object.keys(ctx.files).filter((p) => /^\/src\/pages\/.+\.(t|j)sx$/.test(p)).sort();
+  },
+  inspect_errors(ctx: AgentContext): string[] {
+    return ctx.previewErrors ?? [];
+  },
+  inspect_intents(ctx: AgentContext): Record<string, string[]> {
+    const out: Record<string, string[]> = {};
+    collectIntentTargets(ctx.files).forEach((v, k) => { out[k] = [...v]; });
+    return out;
+  },
+  /** Project-scoped catalog read through the normal access rules. */
+  async inspect_data(ctx: AgentContext, table: CatalogTable, limit = 20): Promise<unknown[]> {
+    if (!ctx.businessId || !CATALOG_TABLES.includes(table)) return [];
+    const { data, error } = await supabase
+      .from(table)
+      .select('*')
+      .eq('business_id', ctx.businessId)
+      .limit(limit);
+    if (error) throw new Error(error.message);
+    return data ?? [];
+  },
+  /** Propose CSS custom-property changes in the site stylesheet. */
+  set_theme_tokens(ctx: AgentContext, tokens: Record<string, string>): ProposedChange | null {
+    const path = '/src/index.css';
+    let css = ctx.files[path];
+    if (typeof css !== 'string') return null;
+    for (const [name, value] of Object.entries(tokens)) {
+      const key = name.startsWith('--') ? name : `--${name}`;
+      const re = new RegExp(`(${key.replace(/[-]/g, '\\-')}\\s*:\\s*)[^;]+;`, 'g');
+      css = re.test(css) ? css.replace(re, `$1${value};`) : css.replace(/:root\s*\{/, `:root {\n  ${key}: ${value};`);
+    }
+    return { files: { [path]: css }, summary: `Theme: ${Object.keys(tokens).join(', ')}` };
+  },
+  set_font(ctx: AgentContext, family: string, role: 'body' | 'display' = 'body'): ProposedChange | null {
+    const change = agentOperations.set_theme_tokens(ctx, {
+      [role === 'display' ? '--font-display' : '--font-sans']: `'${family}', system-ui, sans-serif`,
+    });
+    return change ? { ...change, summary: `Font (${role}): ${family}` } : null;
+  },
+  swap_image(ctx: AgentContext, path: string, fromUrl: string, toUrl: string): ProposedChange | null {
+    const src = ctx.files[path];
+    if (typeof src !== 'string' || !src.includes(fromUrl)) return null;
+    return { files: { [path]: src.split(fromUrl).join(toUrl) }, summary: `Image swapped in ${path}` };
+  },
+} as const;
+
+export type AgentOperationName = keyof typeof agentOperations;
+export const AGENT_OPERATION_NAMES = Object.keys(agentOperations) as AgentOperationName[];
