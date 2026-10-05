@@ -19,6 +19,8 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
+import { agentOperations } from '@/services/agent-runtime/operations';
+import type { CatalogPatch } from '@/services/agent-runtime/catalogOps';
 import {
   CATALOG_SURFACES,
   getCatalogSurface,
@@ -235,99 +237,23 @@ async function locateBindingId(
 // Row operations (M5)
 // ─────────────────────────────────────────────────────────────────────────────
 
-export async function createCatalogRow(args: {
-  surfaceId: string;
-  businessId: string;
-  patch: CatalogRowFieldPatch;
-}): Promise<CatalogOperationResult> {
-  const surface = resolveSurfaceOrFail(args.surfaceId);
-  const denied = await assertBusinessAccess(args.businessId, 'catalog.write');
-  if (denied) return { ok: false, op: 'createCatalogRow', message: denied };
-  let created: Record<string, unknown>;
-  try {
-    created = await createCmsRecord({
-      resource: surface.surfaceId,
-      businessId: args.businessId,
-      values: { ...surface.newRowDefaults, ...normalizeCmsValues(surface, args.patch) },
-    });
-  } catch {
-    return { ok: false, op: 'createCatalogRow', message: 'create failed' };
+// Row create/update/delete are owned by agentOperations (src/services/agent-runtime).
+// The AI's row tools below dispatch there so there is one catalog writer.
+async function rowOp(op: CatalogOperationName, args: Record<string, unknown>): Promise<CatalogOperationResult> {
+  const surfaceId = String(args.surfaceId ?? '');
+  const businessId = String(args.businessId ?? '');
+  const rowId = String(args.rowId ?? args.itemId ?? '');
+  const ctx = { files: {}, businessId };
+  if (op === 'createCatalogRow') {
+    const item = await agentOperations.create_catalog_item(ctx, surfaceId, (args.patch ?? {}) as CatalogPatch);
+    return { ok: true, op, message: `Created ${item.name}`, data: { id: item.id, surfaceId } };
   }
-  return {
-    ok: true,
-    op: 'createCatalogRow',
-    message: `Created ${surface.rowLabel} in ${surface.sourceTable}`,
-    data: { id: created.id, surfaceId: surface.surfaceId },
-  };
-}
-
-export async function updateCatalogRow(args: {
-  surfaceId: string;
-  businessId: string;
-  rowId: string;
-  patch: CatalogRowFieldPatch;
-}): Promise<CatalogOperationResult> {
-  const surface = resolveSurfaceOrFail(args.surfaceId);
-  const denied = await assertBusinessAccess(args.businessId, 'catalog.write');
-  if (denied) return { ok: false, op: 'updateCatalogRow', message: denied };
-  let ok = true;
-  try {
-    await updateCmsRecord({
-      resource: surface.surfaceId,
-      businessId: args.businessId,
-      recordId: args.rowId,
-      values: normalizeCmsValues(surface, args.patch),
-    });
-  } catch {
-    ok = false;
+  if (op === 'deleteCatalogRow') {
+    await agentOperations.delete_catalog_item(ctx, surfaceId, rowId);
+    return { ok: true, op, message: `Deleted ${rowId}`, data: { surfaceId, rowId } };
   }
-
-  return {
-    ok,
-    op: 'updateCatalogRow',
-    message: ok
-      ? `Updated ${surface.rowLabel} ${args.rowId}`
-      : `Update failed on ${surface.surfaceId}#${args.rowId}`,
-    data: { surfaceId: surface.surfaceId, rowId: args.rowId },
-  };
-}
-
-export async function deleteCatalogRow(args: {
-  surfaceId: string;
-  businessId: string;
-  rowId: string;
-}): Promise<CatalogOperationResult> {
-  const surface = resolveSurfaceOrFail(args.surfaceId);
-  const denied = await assertBusinessAccess(args.businessId, 'catalog.delete');
-  if (denied) return { ok: false, op: 'deleteCatalogRow', message: denied };
-  let ok = true;
-  try {
-    await removeCmsRecord({ resource: surface.surfaceId, businessId: args.businessId, recordId: args.rowId });
-  } catch {
-    ok = false;
-  }
-  return {
-    ok,
-    op: 'deleteCatalogRow',
-    message: ok ? `Deleted ${surface.rowLabel} ${args.rowId}` : 'delete failed',
-    data: { surfaceId: surface.surfaceId, rowId: args.rowId },
-  };
-}
-
-/** Semantic alias for content edits triggered from a bound catalog card. */
-export async function updateCatalogItem(args: {
-  surfaceId: string;
-  businessId: string;
-  itemId: string;
-  patch: CatalogRowFieldPatch;
-}): Promise<CatalogOperationResult> {
-  const result = await updateCatalogRow({
-    surfaceId: args.surfaceId,
-    businessId: args.businessId,
-    rowId: args.itemId,
-    patch: args.patch,
-  });
-  return { ...result, op: 'updateCatalogItem' as CatalogOperationName };
+  const { summary } = await agentOperations.update_catalog_item(ctx, surfaceId, rowId, (args.patch ?? {}) as CatalogPatch);
+  return { ok: true, op, message: summary, data: { surfaceId, rowId } };
 }
 
 export async function bindCatalogItemToComponent(args: {
@@ -535,13 +461,10 @@ export async function applyCatalogOperation(
   try {
     switch (op) {
       case 'createCatalogRow':
-        return await createCatalogRow(args as never);
       case 'updateCatalogRow':
-        return await updateCatalogRow(args as never);
       case 'updateCatalogItem':
-        return await updateCatalogItem(args as never);
       case 'deleteCatalogRow':
-        return await deleteCatalogRow(args as never);
+        return await rowOp(op, args);
       case 'bindCatalogItemToComponent':
         return await bindCatalogItemToComponent(args as never);
       case 'updateComponentPresentation':
