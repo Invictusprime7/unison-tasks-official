@@ -301,14 +301,17 @@ export async function authorSitePages(input: SiteAuthoringInput): Promise<SiteAu
     const run = commitChain.then(async () => {
       try {
         // Rebase only the keys this candidate changed onto the latest commit,
-        // so pages authored in parallel never overwrite each other.
+        // preserving newer shared-file edits made by pages authored in parallel.
         const candidate = stampAuthoredPage(prepared.nextFiles, page, input.designContext?.fingerprint);
         const nextFiles: Record<string, string> = { ...files };
         for (const [path, content] of Object.entries(candidate)) {
-          if (baseFiles[path] !== content) nextFiles[path] = content;
+          if (baseFiles[path] === content) continue;
+          if (path === page.filePath || baseFiles[path] === files[path] || files[path] === content) {
+            nextFiles[path] = content;
+          }
         }
         for (const path of Object.keys(baseFiles)) {
-          if (!(path in candidate)) delete nextFiles[path];
+          if (!(path in candidate) && baseFiles[path] === files[path]) delete nextFiles[path];
         }
         // Rebuild after the authorship stamp so the committed operation record
         // describes the exact bytes handed to the canonical writer.
