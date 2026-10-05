@@ -23,6 +23,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
+import { deriveChatLaunchPlan, buildSyncedVisionBrief, type ChatLaunchPlan } from "@/services/launch/chatLaunchPlan";
 import {
   Dialog,
   DialogContent,

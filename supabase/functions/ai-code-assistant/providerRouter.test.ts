@@ -81,7 +81,7 @@ Deno.test('App Builder always leads with funded Gemini while retaining hybrid fa
     const plan = buildProviderPlan({ ...task, type }, true, undefined, 'complex', 'composer',
       name => name === 'AI_PROVIDER_DISTRIBUTION' ? 'gemini=0,openai=100' : bothProviders(name));
     assertEquals(plan.primaryProvider, 'gemini');
-    assertEquals(plan.gatewayModels[0].id, 'google/gemini-2.5-flash');
+    assertEquals(plan.gatewayModels[0].id, 'google/gemini-2.5-pro');
     assertEquals(plan.gatewayModels.some(model => model.id.startsWith('openai/')), true);
     assertEquals(plan.raceGateway, undefined);
   }
@@ -92,7 +92,7 @@ Deno.test('Hybrid launch page writing: managed gateway leads, funded Gemini back
   for (const type of ['site_page_author', 'site_page_repair'] as const) {
     const plan = buildProviderPlan({ ...task, type }, true, undefined, 'complex', 'composer', withGateway);
     assertEquals(plan.gatewayLeads, true);
-    assertEquals(plan.gatewayModels[0].id, 'google/gemini-2.5-flash');
+    assertEquals(plan.gatewayModels[0].id, 'google/gemini-2.5-pro');
   }
   const edit = buildProviderPlan({ ...task, type: 'builder_source_edit' }, true, undefined, 'complex', 'composer', withGateway);
   assertEquals(edit.gatewayLeads, undefined);
