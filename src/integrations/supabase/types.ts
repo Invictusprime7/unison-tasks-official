@@ -5138,6 +5138,10 @@ export type Database = {
       }
     }
     Functions: {
+      business_has_permission: {
+        Args: { p_business_id: string; p_permission: string }
+        Returns: boolean
+      }
       commit_canonical_site_revision_v2: {
         Args: {
           p_active_page_path: string
