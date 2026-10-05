@@ -211,8 +211,9 @@ export default {
   			'accordion-up': 'accordion-up 0.2s ease-out'
   		},
   		fontFamily: {
+  			display: ['var(--ut-font-display)'],
   			sans: [
-  				'Inter',
+  				'var(--ut-font-sans)',
   				'ui-sans-serif',
   				'system-ui',
   				'-apple-system',
@@ -225,7 +226,7 @@ export default {
   				'sans-serif'
   			],
   			serif: [
-  				'Lora',
+  				'var(--ut-font-display)',
   				'ui-serif',
   				'Georgia',
   				'Cambria',
@@ -234,7 +235,7 @@ export default {
   				'serif'
   			],
   			mono: [
-  				'Space Mono',
+  				'var(--ut-font-mono)',
   				'ui-monospace',
   				'SFMono-Regular',
   				'Menlo',

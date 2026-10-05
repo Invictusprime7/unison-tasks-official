@@ -1,5 +1,7 @@
 # Architecture decisions
 
+- The app imports the attached Unison token stylesheet after its base CSS, bridges app-only roles in `src/styles/unison-theme.css`, and loads library font links in `main.tsx`; why: managed library values must win without editing vendor source or regenerating saved sites.
+
 - `LauncherWizard` is selection-only: it captures intent and invokes launch orchestration, but never authors or mutates VFS source.
 - `UnisonAppBuilder` is the sole fresh-launch application author. Fresh launch derives an `AppBuildContract`, generates and repairs one isolated application candidate, and promotes it only after site-wide closure.
 - The canonical platform owns topology, routes, capabilities, intents, bindings, Theme/Stage 4b tokens, Art Direction, UI foundation, protected infrastructure and validation. It must not generate a competing fresh-launch page implementation after App Builder authorship.

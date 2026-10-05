@@ -1,0 +1,20 @@
+/* Bridge app-only semantic roles to the attached library, without redefining it. */
+:root {
+  --ut-font-body: var(--ut-font-sans);
+  --font-sans: var(--ut-font-sans);
+  --font-serif: var(--ut-font-display);
+  --font-mono: var(--ut-font-mono);
+  --radius: var(--ut-radius-base);
+  --input: var(--border);
+  --ring: var(--primary);
+  --popover: var(--card);
+  --popover-foreground: var(--card-foreground);
+  --sidebar-background: var(--background);
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: var(--muted);
+  --sidebar-accent-foreground: var(--foreground);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--primary);
+}
