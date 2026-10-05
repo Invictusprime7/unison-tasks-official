@@ -8,6 +8,7 @@ import { findDesignSourceUsageIssues, validateAppBuildCandidate } from './appBui
 import { evaluateDesignQuality } from './design/designQualityClosure';
 import { applyDesignSources } from './design/designSourceMaterializer';
 import { buildAppBuilderGenerationContext, reportDesignSourceUsage } from './appBuilderGenerationContext';
+import { findPageStructureIssues, pageStructureRequirement } from './design/pageStructureGate';
 
 export interface AppBuilderOrchestratorDependencies {
   authorSite: (input: SiteAuthoringInput) => Promise<SiteAuthoringResult>;
@@ -37,7 +38,17 @@ export async function orchestrateAppBuild(
   const generation = buildAppBuilderGenerationContext(input.contract);
   const baseFiles = applyDesignSources(input.initialFiles, generation.materialization);
   const manifestSource = baseFiles['/.unison/design-source-manifest.json'];
-  const pageCheck = (_path: string, source: string) => findDesignSourceUsageIssues(manifestSource, source).map((issue) => issue.message);
+  const contractPages = input.contract.design.resolvedSiteDesignContext.contract.pages;
+  const roleByPath = new Map(pages.map((page) => [page.filePath, page.role]));
+  const pageCheck = (path: string, source: string, files?: Readonly<Record<string, string>>) => {
+    const messages = findDesignSourceUsageIssues(manifestSource, source).map((issue) => issue.message);
+    const role = roleByPath.get(path);
+    if (role) {
+      const requirement = pageStructureRequirement(role, contractPages[role]?.densityBudget?.min);
+      messages.push(...findPageStructureIssues(path, source, files ?? { [path]: source }, requirement));
+    }
+    return messages;
+  };
   const authored = await dependencies.authorSite({
     pages,
     homePageId: input.contract.topology.sitePlan.homePageId,

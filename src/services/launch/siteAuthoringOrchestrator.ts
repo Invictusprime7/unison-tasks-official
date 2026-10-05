@@ -146,6 +146,16 @@ export function renderPageBrief(
   const lines = [`BUSINESS: ${businessName}`, `PAGE ROLE: ${page.role}`];
   if (!ctx) return [...lines, renderHomepageInheritanceContract(establishedLanguage)].filter(Boolean).join('\n');
   const projection = projectSiteDesignContract(ctx.contract);
+  // Only this page's archetype block: other pages' blocks crowd out the page's own composition target.
+  const summaryLines: string[] = [];
+  let keep = true;
+  for (const line of projection.summary.split('\n')) {
+    const pageHeader = /^ {2}page "([^"]+)"/.exec(line);
+    if (pageHeader) keep = pageHeader[1] === page.role || (!ctx.contract.pages[page.role] && pageHeader[1] === 'custom');
+    else if (!/^ {4}/.test(line)) keep = true;
+    if (keep) summaryLines.push(line);
+  }
+  const pageMin = ctx.contract.pages[page.role]?.densityBudget?.min;
   const preferred = Object.entries(ctx.creativeRecommendation.preferredImplementations)
     .map(([family, ids]) => `${family}: ${(ids ?? []).slice(0, 4).join(', ')}`);
   const forbidden = Object.entries(ctx.hardLegality.forbiddenImplementations)
@@ -154,7 +164,8 @@ export function renderPageBrief(
     `INDUSTRY: ${ctx.contract.industry}`,
     `ART DIRECTION PACK: ${ctx.contract.artDirectionPackId}`,
     `EXPERIENCE: ${ctx.contract.experience}`,
-    `DESIGN CONTRACT:\n${projection.summary}`,
+    `DESIGN CONTRACT:\n${summaryLines.join('\n')}`,
+    `PAGE STRUCTURE (enforced): render the shared site nav first and the shared footer last (one shared component each, e.g. /src/project-components/site/SiteNav.tsx and SiteFooter.tsx, linking every route; create them once if missing, reuse them otherwise). Body: at least ${Math.max(page.role === 'home' ? 3 : 2, Math.min(pageMin ?? 0, 4))} distinct sections following the COMPOSITION TARGET, varying layout (split, full-bleed media, grid, editorial rows) — never a lone centered hero. Use real photography wherever the page is media-led.`,
     preferred.length ? `PREFERRED CANONICAL VOCABULARY:\n${preferred.join('\n')}` : '',
     forbidden.length ? `FORBIDDEN IMPLEMENTATIONS (never use):\n${forbidden.join('\n')}` : '',
     `CREATIVE AUTHORITY: ${ctx.creativeRecommendation.guidance}`,
@@ -222,9 +233,9 @@ export async function authorSitePages(input: SiteAuthoringInput): Promise<SiteAu
       page: { role: page.role, title: page.title, route: page.route, filePath: page.filePath },
       brief: [
         input.visionBrief ? `OWNER VISION (from the planning chat; honour its content, never its styling over the sealed design): ${input.visionBrief.slice(0, 1200)}` : '',
-        renderPageBrief(input.designContext, page, input.businessName, establishedLanguage),
         renderCompositionBrief(planned, visualMemory.entries(), redundancy),
-      ].filter(Boolean).join('\n').slice(0, 6500),
+        renderPageBrief(input.designContext, page, input.businessName, establishedLanguage),
+      ].filter(Boolean).join('\n').slice(0, 8000),
       knowledgeQuery: `${input.businessName} ${page.role} ${page.title} ${page.route}`,
       baseFiles,
       baseRevisionId: revisionId,
