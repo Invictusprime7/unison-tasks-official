@@ -479,24 +479,27 @@ export async function runLaunchPipeline(
 
   // ── Stage: app-build (one isolated, whole-site candidate) ─────────────────
   status("Designing your application…");
-  const appBuild = await run.stage("app-build", async (signal) => unisonAppBuilder.generate({
-    operationId: `launch:${plan.ids.draftId}:app-build`,
-    contract: appBuildContract,
-    initialFiles: canonicalPlan.infrastructureFiles,
-    entryPoint: '/src/App.tsx',
-    baseRevisionId: null,
-    signal,
-    budgetMs: 280_000,
-    onProgress: (event) => {
-      if (event.phase === 'authoring') status(`Designing ${event.page.title}…`);
-    },
-  }), { timeoutMs: 300_000 });
-  if (appBuild.candidate.status !== 'ready-for-commit' || appBuild.stopReason !== 'complete') {
-    const diagnostics = appBuild.candidate.diagnostics.slice(0, 8).join(' ');
-    throw new LaunchFatalError(
-      `App Builder could not produce an acceptable application${diagnostics ? `: ${diagnostics}` : '.'}`,
-    );
-  }
+  const appBuild = await run.stage("app-build", async (signal) => {
+    const result = await unisonAppBuilder.generate({
+      operationId: `launch:${plan.ids.draftId}:app-build`,
+      contract: appBuildContract,
+      initialFiles: canonicalPlan.infrastructureFiles,
+      entryPoint: '/src/App.tsx',
+      baseRevisionId: null,
+      signal,
+      budgetMs: 280_000,
+      onProgress: (event) => {
+        if (event.phase === 'authoring') status(`Designing ${event.page.title}…`);
+      },
+    });
+    if (result.candidate.status !== 'ready-for-commit' || result.stopReason !== 'complete') {
+      const diagnostics = result.candidate.diagnostics.slice(0, 8).join(' ');
+      throw new LaunchFatalError(
+        `App Builder could not produce an acceptable application${diagnostics ? `: ${diagnostics}` : '.'}`,
+      );
+    }
+    return result;
+  }, { timeoutMs: 300_000 });
   const candidateFiles = { ...appBuild.candidateFiles };
   const siteBundleSnapshot = projectCanonicalLaunchCandidateSnapshot(
     canonicalPlan,

@@ -188,6 +188,7 @@ export function selectPageContextFiles(files: Record<string, string>, page: Auth
 export async function authorSitePages(input: SiteAuthoringInput): Promise<SiteAuthoringResult> {
   const now = input.now ?? (() => Date.now());
   const deadline = now() + (input.budgetMs ?? 240_000);
+  const concurrency = Math.max(1, Math.floor(input.concurrency ?? 3));
   const ordered = orderAuthoringPages(input.pages, input.homePageId).slice(0, input.maxPages ?? Infinity);
   const routes = ordered.map((p) => ({ title: p.title, route: p.route }));
   let files = input.files;
@@ -258,13 +259,19 @@ export async function authorSitePages(input: SiteAuthoringInput): Promise<SiteAu
         input.runtimeContextForPage?.(page.pageId) ?? input.runtimeContext ?? '',
       ].filter(Boolean).join('\n').slice(0, 12000) || undefined,
     })).request;
+    // Reserve one turn for each remaining worker wave. Home must not consume
+    // the time needed to author the other selected pages.
+    const remainingPages = Math.max(0, ordered.length - index - 1);
+    const waves = index === 0 ? 1 + Math.ceil(remainingPages / concurrency)
+      : Math.max(1, Math.ceil((ordered.length - index) / concurrency));
+    const pageDeadline = Math.min(deadline, now() + Math.min(130_000, Math.max(10_000, (deadline - now()) / waves)));
     const runLoop = (request: AIComposerRequest) => runComposerRepairLoop({
       request,
       baseFiles,
       baseRevisionId: revisionId ?? undefined,
       preflight: input.preflight,
       signal: input.signal,
-      timeoutMs: Math.max(15_000, Math.min(130_000, deadline - now())),
+      timeoutMs: Math.max(1, pageDeadline - now()),
       invoke: input.invoke,
       affinity: {
         language: establishedLanguage,
@@ -383,7 +390,6 @@ export async function authorSitePages(input: SiteAuthoringInput): Promise<SiteAu
   // Home first (it establishes the site's visual language), then the rest
   // in parallel with bounded concurrency.
   if (ordered.length > 0) await authorOne(ordered[0], 0);
-  const concurrency = Math.max(1, input.concurrency ?? 3);
   let cursor = 1;
   const worker = async () => {
     while (cursor < ordered.length) {

@@ -87,6 +87,7 @@ export function decodeComposerResponse(data: unknown): AIComposerResponse | null
 export async function runComposerRepairLoop(input: ComposerLoopInput): Promise<ComposerLoopResult> {
   const invoke = input.invoke ?? runBuilderTurn;
   const maxAttempts = Math.max(1, input.maxAttempts ?? 3);
+  const deadline = Date.now() + (input.timeoutMs ?? 130_000);
   let request = input.request;
   let lastErrors: string[] = [];
   let lastResponse: AIComposerResponse | undefined;
@@ -98,10 +99,13 @@ export async function runComposerRepairLoop(input: ComposerLoopInput): Promise<C
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     if (input.signal?.aborted) return { ok: false, reason: 'aborted', attempts: attempt - 1, errors: ['Cancelled.'] };
+    const remainingMs = deadline - Date.now();
+    if (remainingMs <= 5_000) return { ok: false, reason: 'aborted', attempts: attempt - 1, errors: ['AI page authoring exhausted its shared time budget.'], response: lastResponse, prepared: lastPrepared };
     const { data, error } = await invoke({
       mode: AI_COMPOSER_MODES[request.task],
       messages: [{ role: 'user', content: JSON.stringify(request) }],
-    }, { timeoutMs: input.timeoutMs ?? 130_000, signal: input.signal });
+      gatewayOptions: { timeoutMs: Math.min(135_000, remainingMs - 5_000) },
+    }, { timeoutMs: remainingMs, signal: input.signal });
 
     if (error || !data) {
       const errName = (error as { name?: string } | null)?.name;
