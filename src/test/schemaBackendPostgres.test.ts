@@ -16,7 +16,7 @@ async function database() {
     CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$ SELECT nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
     CREATE TABLE public.projects(id uuid PRIMARY KEY, business_id uuid);
     CREATE TABLE public.builder_drafts(id uuid PRIMARY KEY, project_id uuid, user_id uuid);
-    CREATE TABLE public.site_revisions(id uuid PRIMARY KEY, draft_id uuid, status text, revision_number integer);
+    CREATE TABLE public.site_revisions(id uuid PRIMARY KEY, draft_id uuid, status text, created_at timestamptz DEFAULT now());
     INSERT INTO public.projects VALUES ('${id}', '${id}');
     INSERT INTO public.builder_drafts VALUES ('${id}', '${id}', '${id}');
   `);
@@ -28,6 +28,18 @@ async function database() {
 }
 
 describe('backend SQL execution on PostgreSQL', () => {
+  it('uses the live revision schema and rejects stale committed revision bases', async () => {
+    const { pg, db } = await database();
+    const latest = '22222222-2222-4222-8222-222222222222';
+    try {
+      await pg.exec(`INSERT INTO public.site_revisions(id, draft_id, status, created_at) VALUES
+        ('${id}', '${id}', 'committed', '2026-10-05T00:00:00Z'),
+        ('${latest}', '${id}', 'committed', '2026-10-06T00:00:00Z'),
+        ('33333333-3333-4333-8333-333333333333', '${id}', 'rejected', '2026-10-07T00:00:00Z');`);
+      await expect(executeSchemaBatch(db, { ...input, baseRevisionId: id, operations: [table] })).rejects.toThrow('STALE_BASE_REVISION');
+      expect((await executeSchemaBatch(db, { ...input, baseRevisionId: latest, operations: [table] })).success).toBe(true);
+    } finally { await pg.close(); }
+  }, 30000);
   it('executes additive DDL, applies owner RLS, and retries idempotently', async () => {
     const { pg, db } = await database();
     try {

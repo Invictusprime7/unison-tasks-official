@@ -39,7 +39,7 @@ export async function executeSchemaBatch(db: BackendDatabase, input: {
     );
     if (!draft.rows.length) throw new Error('DRAFT_SCOPE_MISMATCH');
     const revision = await db.queryObject<{ id: string }>(
-      "SELECT id FROM public.site_revisions WHERE draft_id = $1 AND status = 'committed' ORDER BY revision_number DESC LIMIT 1",
+      "SELECT id FROM public.site_revisions WHERE draft_id = $1 AND status = 'committed' ORDER BY created_at DESC, id DESC LIMIT 1",
       [input.draftId],
     );
     if ((revision.rows[0]?.id ?? null) !== (input.baseRevisionId ?? null)) throw new Error('STALE_BASE_REVISION');
