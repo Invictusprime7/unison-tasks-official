@@ -21,13 +21,23 @@ import { getDependenciesForSandpack } from '@/utils/dependencyExtractor';
 import { isSandpackAllowedImport } from '@/utils/sandpackDependencies';
 import type { TopologyChange } from '@/services/pageTopologyOrchestrator';
 import type { CanonicalAuthorshipEvidence } from './canonicalAuthoringRequest';
+import type { PatchPlan } from '@/types/patchPlan';
+
+/** Canonical non-file proposals travel with the candidate, never execute here. */
+export interface CandidateOperationInput {
+  playgroundOps?: readonly PatchPlan['playgroundOps'][number][];
+  bindingOps?: readonly PatchPlan['bindingOps'][number][];
+  backendOps?: readonly PatchPlan['backendOps'][number][];
+  presentationOps?: readonly PatchPlan['presentationOps'][number][];
+  businessSystem?: PatchPlan['businessSystem'];
+}
 
 export type CandidateFileOp =
   | { type: 'create'; path: string; content: string }
   | { type: 'replace'; path: string; content: string }
   | { type: 'delete'; path: string };
 
-export interface AICandidateChangeSet {
+export interface AICandidateChangeSet extends CandidateOperationInput {
   id: string;
   baseRevisionId?: string;
   provenance: {
@@ -43,7 +53,7 @@ export interface AICandidateChangeSet {
   attempt: number;
 }
 
-export interface BuildCandidateInput {
+export interface BuildCandidateInput extends CandidateOperationInput {
   /** Raw AI file map (path → full contents). */
   aiFiles: Record<string, string>;
   /** Paths the AI asked to delete. */
@@ -137,7 +147,15 @@ export function buildAICandidateChangeSet(input: BuildCandidateInput): Candidate
 
   const attempt = input.attempt ?? 1;
   const routeOps = (input.routeOps ?? []).map((op) => ({ ...op }));
-  const id = `cand_${fnv1a(`${input.baseRevisionId ?? ''}|${attempt}|${JSON.stringify({ fileOps, routeOps, evidence: input.evidence })}`)}`;
+  // Detach nested payloads from mutable caller state before validation/review.
+  const operations = structuredClone({
+    playgroundOps: [...(input.playgroundOps ?? [])],
+    bindingOps: [...(input.bindingOps ?? [])],
+    backendOps: [...(input.backendOps ?? [])],
+    presentationOps: [...(input.presentationOps ?? [])],
+    businessSystem: input.businessSystem,
+  });
+  const id = `cand_${fnv1a(`${input.baseRevisionId ?? ''}|${attempt}|${JSON.stringify({ fileOps, routeOps, ...operations, evidence: input.evidence })}`)}`;
   return {
     changeSet: {
       id,
@@ -151,6 +169,7 @@ export function buildAICandidateChangeSet(input: BuildCandidateInput): Candidate
       },
       fileOps,
       routeOps,
+      ...operations,
       requestedDependencies,
       targetPages: [...(input.targetPages ?? [])].sort(),
       attempt,

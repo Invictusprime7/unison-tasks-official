@@ -7,6 +7,19 @@ const base = Object.freeze({
 });
 
 describe('AICandidateChangeSet', () => {
+  it('includes every non-file proposal in the candidate identity', () => {
+    const input = { aiFiles: {}, baseFiles: base, resolveDependencies: false };
+    const unchanged = buildAICandidateChangeSet(input).changeSet.id;
+    const proposals = [
+      { backendOps: [{ type: 'requireCapability' as const, capability: 'auth' }] },
+      { bindingOps: [{ type: 'bindIntent' as const, elementId: 'login', intent: 'auth.login' }] },
+      { presentationOps: [{ type: 'setMotionBudget' as const, motionBudget: 'restrained' as const }] },
+      { playgroundOps: [{ type: 'updatePage' as const, pageId: 'home', payload: { title: 'Home' } }] },
+    ];
+    const ids = proposals.map((proposal) => buildAICandidateChangeSet({ ...input, ...proposal }).changeSet.id);
+    expect(ids).not.toContain(unchanged);
+    expect(new Set(ids).size).toBe(proposals.length);
+  });
   it('applies in memory without mutating the committed base', () => {
     const r = buildAICandidateChangeSet({
       aiFiles: { '/src/pages/Home.tsx': 'export default function Home(){return <main>New</main>}' },

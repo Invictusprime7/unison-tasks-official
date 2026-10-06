@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildAiCandidatePatch, type AiCommitContext } from '@/services/aiApplyGate';
+import { prepareAICandidate } from '@/services/builder/aiCandidateGates';
+import { assertPatchPlan } from '@/types/patchPlan';
 
 function context(): AiCommitContext {
   return {
@@ -26,6 +28,49 @@ function context(): AiCommitContext {
 }
 
 describe('AI candidate commit protocol', () => {
+  it('preserves non-file operations through preflight rebuild and canonical patch conversion', async () => {
+    const operations = {
+      backendOps: [{ type: 'requireCapability' as const, capability: 'booking', payload: { mode: 'appointments' } }],
+      bindingOps: [{ type: 'bindIntent' as const, elementId: 'book', intent: 'booking.create', payload: { action: 'createBooking' } }],
+      presentationOps: [{ type: 'setMotionBudget' as const, motionBudget: 'restrained' as const }],
+      playgroundOps: [{ type: 'updatePage' as const, pageId: 'home', payload: { title: 'Appointments' } }],
+    };
+    const baseFiles = { '/src/pages/Home.tsx': 'export default function Home(){return <main>Old</main>}' };
+    const prepared = await prepareAICandidate({
+      ...operations, baseFiles, baseRevisionId: 'revision-1', resolveDependencies: false,
+      aiFiles: { '/src/pages/Home.tsx': 'export default function Home(){return <main>New</main>}' },
+      preflight: (files) => Object.fromEntries(Object.entries(files).map(([path, content]) => [path, content.replace('New', 'Repaired')])),
+    });
+    expect(prepared.ok).toBe(true);
+    const patch = buildAiCandidatePatch({ ...context(), candidate: prepared.build.changeSet });
+    expect(patch).toMatchObject(operations);
+    expect(patch.fileOps[0]).toMatchObject({ contents: expect.stringContaining('Repaired') });
+    expect(patch.operationIds).toEqual([`ai-candidate:${prepared.build.changeSet.id}`]);
+    expect(patch.candidate?.id).toBe(prepared.build.changeSet.id);
+    operations.backendOps[0].payload.mode = 'mutated';
+    expect(prepared.build.changeSet.backendOps?.[0].payload?.mode).toBe('appointments');
+    patch.backendOps[0].payload!.mode = 'also mutated';
+    expect(prepared.build.changeSet.backendOps?.[0].payload?.mode).toBe('appointments');
+  });
+
+  it('accepts an operation-only candidate without inventing frontend source', async () => {
+    const prepared = await prepareAICandidate({
+      aiFiles: {}, baseFiles: {}, baseRevisionId: 'revision-1', resolveDependencies: false,
+      backendOps: [{ type: 'requireCapability', capability: 'auth' }],
+    });
+    expect(prepared.ok).toBe(true);
+    expect(prepared.nextFiles).toEqual({});
+    expect(buildAiCandidatePatch({ ...context(), candidate: prepared.build.changeSet }).backendOps)
+      .toEqual([{ type: 'requireCapability', capability: 'auth' }]);
+  });
+
+  it('rejects unknown backend operations before they can be silently skipped', () => {
+    const patch = buildAiCandidatePatch(context());
+    patch.backendOps = [{ type: 'rawSql', capability: 'auth' }] as never;
+    expect(() => assertPatchPlan(patch)).toThrow('invalid BackendOp');
+    patch.backendOps = [{ type: 'requireCapability', capability: '' }];
+    expect(() => assertPatchPlan(patch)).toThrow('invalid BackendOp');
+  });
   it('preserves exact candidate creates, replacements, and deletions in the commit plan', () => {
     expect(buildAiCandidatePatch(context())).toMatchObject({
       summary: 'AI candidate candidate-1',

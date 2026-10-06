@@ -915,7 +915,7 @@ describe('Golden E2E — salon launcher → AI edits → publish gate', () => {
       mockIntents();
       await expect(commitMutation({
         source: 'wizard-launch', identity: IDENTITY, current: { vfsFiles: {} },
-        patch: { ...legacyFilesToPatchPlan(reviewedFiles), backendOps: [{ type: 'provision', capability: 'booking' }] as never },
+        patch: { ...legacyFilesToPatchPlan(reviewedFiles), backendOps: [{ type: 'requireCapability', capability: 'booking' }] },
         options: { reviewedArtifact: { siteBundleSnapshot: snapshot, runtimeManifest: { version: 1 } as never } },
       })).rejects.toThrow('before backend effects changed reviewed source');
       expect(executeBackendOps).not.toHaveBeenCalled();

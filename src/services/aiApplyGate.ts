@@ -25,7 +25,7 @@ import {
   type CommitMutationResult,
   type PublishBlockerSummary,
 } from '@/services/vfsCommitService';
-import { legacyFilesToPatchPlan } from '@/types/patchPlan';
+import { assertPatchPlan, legacyFilesToPatchPlan } from '@/types/patchPlan';
 import type { BuilderIdentity } from '@/types/builderIdentity';
 import type { SiteBundleSnapshot } from '@/platform/core/canonicalPipeline';
 import type { PlaygroundState } from '@/platform/core/playground';
@@ -62,7 +62,7 @@ export function buildAiCandidatePatch(ctx: AiCommitContext): PatchPlan {
   if ((candidate.baseRevisionId ?? null) !== (ctx.revisionId ?? null)) {
     throw new Error('[aiApplyGate] candidate base revision is stale; regenerate from the current revision.');
   }
-  return {
+  const patch: PatchPlan = {
     summary: ctx.label ? `AI · ${ctx.label}` : `AI candidate ${candidate.id}`,
     operationIds: [`ai-candidate:${candidate.id}`],
     fileOps: candidate.fileOps.map((operation) => operation.type === 'delete'
@@ -71,10 +71,11 @@ export function buildAiCandidatePatch(ctx: AiCommitContext): PatchPlan {
     routeOps: candidate.routeOps.map((operation) => operation.type === 'add_page'
       ? { ...operation, createdBy: 'ai' as const }
       : { ...operation }),
-    playgroundOps: [],
-    bindingOps: [],
-    backendOps: [],
-    presentationOps: [],
+    playgroundOps: structuredClone([...(candidate.playgroundOps ?? [])]),
+    bindingOps: structuredClone([...(candidate.bindingOps ?? [])]),
+    backendOps: structuredClone([...(candidate.backendOps ?? [])]),
+    presentationOps: structuredClone([...(candidate.presentationOps ?? [])]),
+    businessSystem: candidate.businessSystem ? structuredClone(candidate.businessSystem) : undefined,
     candidate: {
       id: candidate.id,
       baseRevisionId: candidate.baseRevisionId,
@@ -87,6 +88,8 @@ export function buildAiCandidatePatch(ctx: AiCommitContext): PatchPlan {
       attempt: candidate.attempt,
     },
   };
+  assertPatchPlan(patch, 'aiApplyGate');
+  return patch;
 }
 
 function canonicalSnapshot(ctx: AiCommitContext): SiteBundleSnapshot | null {

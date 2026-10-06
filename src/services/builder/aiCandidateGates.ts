@@ -12,7 +12,7 @@
  * (commitMutation remains the single durable writer).
  */
 
-import { buildAICandidateChangeSet, type CandidateBuildResult } from './aiCandidateChangeSet';
+import { buildAICandidateChangeSet, type CandidateBuildResult, type CandidateOperationInput } from './aiCandidateChangeSet';
 import { repairAuthoredImages } from './authoredImageRepair';
 import { auditSiteAffinity, type HomepageVisualLanguage } from '@/services/launch/homepageFirstContract';
 
@@ -159,7 +159,7 @@ export interface PreparedCandidate {
  * The live AI apply entry: raw AI files → candidate → preflight on changed
  * files → blocking gates. Nothing is written here.
  */
-export async function prepareAICandidate(input: {
+export async function prepareAICandidate(input: CandidateOperationInput & {
   aiFiles: Record<string, string>;
   deletions?: string[];
   baseFiles: Record<string, string>;
@@ -189,6 +189,11 @@ export async function prepareAICandidate(input: {
     origin: input.origin,
     intent: input.intent,
     routeOps: input.routeOps,
+    playgroundOps: input.playgroundOps,
+    bindingOps: input.bindingOps,
+    backendOps: input.backendOps,
+    presentationOps: input.presentationOps,
+    businessSystem: input.businessSystem,
     evidence: input.evidence,
     attempt: input.attempt,
     resolveDependencies: input.resolveDependencies,
@@ -209,15 +214,25 @@ export async function prepareAICandidate(input: {
       origin: input.origin,
       intent: input.intent,
       routeOps: input.routeOps,
+      playgroundOps: input.playgroundOps,
+      bindingOps: input.bindingOps,
+      backendOps: input.backendOps,
+      presentationOps: input.presentationOps,
+      businessSystem: input.businessSystem,
       evidence: input.evidence,
       attempt: input.attempt,
       resolveDependencies: input.resolveDependencies,
     });
   }
   const gates = await runCandidateGates(build, input.affinity, input.pageCheck);
+  const candidate = build.changeSet;
+  const hasChanges = candidate.fileOps.length > 0 || candidate.routeOps.length > 0
+    || !!candidate.playgroundOps?.length || !!candidate.bindingOps?.length
+    || !!candidate.backendOps?.length || !!candidate.presentationOps?.length
+    || !!candidate.businessSystem;
   const errors = [
     ...gates.failures.map((f) => `${f.path}: ${f.message}`),
-    ...(build.changeSet.fileOps.length ? [] : ['The AI response did not change any files.']),
+    ...(hasChanges ? [] : ['The AI response did not change any files.']),
   ];
-  return { ok: gates.passed && build.changeSet.fileOps.length > 0, build, gates, nextFiles: build.candidateFiles, errors };
+  return { ok: gates.passed && hasChanges, build, gates, nextFiles: build.candidateFiles, errors };
 }
