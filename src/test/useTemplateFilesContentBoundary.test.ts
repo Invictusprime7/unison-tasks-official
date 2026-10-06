@@ -61,15 +61,35 @@ vi.mock('@/integrations/supabase/client', () => ({
 }));
 
 import { useTemplateFiles, draftRowToTemplate } from '@/hooks/useTemplateFiles';
+import { readBuilderRecoverySnapshot } from '@/services/builderStateRecovery';
 
 beforeEach(() => {
   responseQueue.length = 0;
   updateCalls.length = 0;
   insertCalls.length = 0;
   commitMutation.mockClear();
+  localStorage.clear();
 });
 
 describe('useTemplateFiles content boundary', () => {
+  it('preserves original metadata and legacy source when re-saving an existing draft with a rejected VFS commit', async () => {
+    const original = { siteBundleSnapshot: { snapshotId: 'original' }, vfsFiles: { '/src/App.tsx': 'original source' }, entryPoint: '/src/main.tsx', siteBundleId: 'bundle-original' };
+    responseQueue.push({ data: { id: 'draft-1', last_revision_id: 'parent', metadata: original }, error: null });
+    responseQueue.push({ data: { id: 'draft-1', project_id: 'project-1', business_id: 'business-1' }, error: null });
+    commitMutation.mockRejectedValueOnce(new Error('Canonical content commit rejected'));
+    const { result } = renderHook(() => useTemplateFiles());
+    await act(async () => {
+      expect(await result.current.saveTemplate('Renamed', '', false, '', {
+        projectId: 'project-1', businessId: 'business-1',
+        vfsFiles: { '/src/App.tsx': 'new candidate' },
+        metadata: { siteBundleSnapshot: { snapshotId: 'unaccepted' }, vfsFiles: {} },
+      })).toBeNull();
+    });
+    expect(updateCalls[0]).not.toHaveProperty('code');
+    expect(updateCalls[0]).not.toHaveProperty('editor_code');
+    expect(updateCalls[0].metadata).toMatchObject(original);
+    expect(readBuilderRecoverySnapshot('draft-1')?.vfsFiles).toEqual({ '/src/App.tsx': 'new candidate' });
+  });
   it('loads saved VFS from metadata without overwriting the draft during hydration', async () => {
     const files = { '/src/App.tsx': 'export default function App(){return <h1>Saved site</h1>}' };
     const row = { id: 'draft-1', project_id: 'project-1', vfs_files: {}, metadata: { vfsFiles: files } };
@@ -104,6 +124,9 @@ describe('useTemplateFiles content boundary', () => {
       expect(commitMutation).toHaveBeenCalledOnce();
       expect(saved).not.toHaveBeenCalled();
       expect(result.current.loading).toBe(false);
+      expect(readBuilderRecoverySnapshot('draft-1')).toMatchObject({
+        templateId: 'draft-1', vfsFiles: payload.vfsFiles, pendingRemote: true,
+      });
     } finally {
       window.removeEventListener('unison:project-draft-saved', saved);
     }

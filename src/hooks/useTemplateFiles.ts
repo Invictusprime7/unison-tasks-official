@@ -17,6 +17,7 @@ import { resolveLegacyDraftContent } from "@/services/legacyDraftHydration";
 import { commitMutation } from "@/services/vfsCommitService";
 import { legacyFilesToPatchPlan } from "@/types/patchPlan";
 import type { PlaygroundState } from "@/platform/core/playground";
+import { computeBuilderVfsSignature, readBuilderRecoverySnapshot, writeBuilderRecoverySnapshot } from '@/services/builderStateRecovery';
 
 interface TemplateData {
   html: string;
@@ -71,6 +72,12 @@ export interface SaveProjectPayload {
 }
 
 const LOCAL_STORAGE_KEY = "webbuilder_templates";
+
+// Source projections belong to commitMutation, never identity/name writes.
+function identityMetadata(metadata?: Record<string, unknown>): Record<string, unknown> {
+  const protectedKeys = new Set(['vfsFiles', 'siteBundleSnapshot', 'runtimeManifest', 'canonicalPlayground', 'activePagePath', 'businessRuntime']);
+  return Object.fromEntries(Object.entries(metadata || {}).filter(([key, value]) => !protectedKeys.has(key) && value !== undefined));
+}
 
 const getLocalTemplates = (): SavedTemplate[] => {
   try {
@@ -136,11 +143,24 @@ async function commitProjectContent(input: {
   payload: SaveProjectPayload;
   summary: string;
 }): Promise<void> {
+  const vfsFiles = input.payload.vfsFiles;
+  if (!vfsFiles) return;
+  // Keep the authored candidate recoverable even when validation or the cloud
+  // commit fails after creating a draft identity. This is a journal, not a
+  // canonical revision; only commitMutation can accept the candidate.
+  const signature = computeBuilderVfsSignature(vfsFiles);
+  const recovery = readBuilderRecoverySnapshot(input.draftId);
+  if (signature && recovery?.vfsSignature !== signature) {
+    writeBuilderRecoverySnapshot({
+      version: 2, templateId: input.draftId, vfsFiles, vfsSignature: signature,
+      code: vfsFiles[input.payload.entryPoint || '/src/App.tsx'] || '',
+      editorCode: vfsFiles[input.payload.entryPoint || '/src/App.tsx'] || '',
+      savedAt: new Date().toISOString(), pendingRemote: true, reason: 'navigation_flush',
+    });
+  }
   if (!input.businessId || !input.projectId) {
     throw new Error('Canonical content requires a linked business and project.');
   }
-  const vfsFiles = input.payload.vfsFiles;
-  if (!vfsFiles) return;
   const commit = await commitMutation({
     source: 'playground-edit',
     identity: {
@@ -294,7 +314,7 @@ export function useTemplateFiles() {
       // "Save as new" MUST NOT inherit the source project's id — otherwise the
       // DB trigger updates the same projects row instead of creating a copy.
       const effectiveProjectId = forceNew ? null : (payload?.projectId ?? null);
-      const incomingMeta = { ...(payload?.metadata || {}) } as Record<string, unknown>;
+      const incomingMeta = identityMetadata(payload?.metadata);
       if (forceNew) {
         delete incomingMeta.projectId;
         delete (incomingMeta as Record<string, unknown>).project_id;
@@ -326,10 +346,11 @@ export function useTemplateFiles() {
       // EXCEPTION: `forceNew` (Save as New) always inserts a fresh row.
       let existingDraftId: string | null = null;
       let existingRevisionId: string | null = null;
+      let existingMetadata: Record<string, unknown> = {};
       if (!forceNew) {
         let lookup = supabase
           .from("builder_drafts")
-          .select("id, last_revision_id")
+          .select("id, last_revision_id, metadata")
           .eq("user_id", user.id)
           .order("updated_at", { ascending: false })
           .limit(1);
@@ -342,9 +363,11 @@ export function useTemplateFiles() {
           lookup = lookup.is("business_id", null).is("project_id", null);
         }
 
-        const { data: existingRow } = await lookup.maybeSingle();
+        const { data: existingRow, error: lookupError } = await lookup.maybeSingle();
+        if (lookupError) throw lookupError;
         existingDraftId = existingRow?.id ?? null;
         existingRevisionId = (existingRow as { last_revision_id?: string | null } | null)?.last_revision_id ?? null;
+        existingMetadata = (existingRow?.metadata || {}) as Record<string, unknown>;
       }
 
       let data: { id: string; project_id?: string | null; business_id?: string | null } | null = null;
@@ -352,9 +375,8 @@ export function useTemplateFiles() {
       if (existingDraftId) {
         const updatePayload: Record<string, unknown> = {
           name: trimmedName,
-          code,
-          editor_code: code,
-          metadata: metadata as unknown as Json,
+          ...(code.trim() && !payload?.vfsFiles ? { code, editor_code: code } : {}),
+          metadata: { ...existingMetadata, ...Object.fromEntries(Object.entries(metadata).filter(([, value]) => value !== undefined)) } as unknown as Json,
           updated_at: new Date().toISOString(),
         };
         if (payload?.businessId !== undefined) updatePayload.business_id = payload.businessId;
@@ -482,14 +504,16 @@ export function useTemplateFiles() {
 
       // Read existing identity so we can merge name/description and resolve
       // the parent revision commitProjectContent must chain from.
-      const { data: existing } = await supabase
+      const { data: existing, error: existingError } = await supabase
         .from("builder_drafts")
         .select("metadata, last_revision_id, project_id, business_id")
         .eq("id", id)
         .maybeSingle();
+      if (existingError) throw existingError;
+      if (!existing) throw new Error(`Draft ${id} access or linkage is invalid.`);
 
       const prevMeta = (existing?.metadata || {}) as Record<string, any>;
-      const incomingMeta = (payload?.metadata || {}) as Record<string, unknown>;
+      const incomingMeta = identityMetadata(payload?.metadata);
       // Resolve canonical project name. Prefer incoming metadata.name (the
       // user-visible title), else preserve previous, else fallback.
       const resolvedName = (
@@ -513,8 +537,7 @@ export function useTemplateFiles() {
       } as unknown as Json;
 
       const updatePatch: Record<string, unknown> = {
-        code,
-        editor_code: code,
+        ...(code.trim() && !payload?.vfsFiles ? { code, editor_code: code } : {}),
         metadata: nextMeta,
         updated_at: new Date().toISOString(),
       };

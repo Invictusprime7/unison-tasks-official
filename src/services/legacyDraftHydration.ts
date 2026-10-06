@@ -87,7 +87,7 @@ export async function loadLegacyDraftContent(projectId: string, draftId: string)
   // A canonical revision pointer can never be bypassed by legacy source.
   if (!data || data.last_revision_id) return null;
   const content = resolveLegacyDraftContent(data);
-  if (!content.hasContent) {
+  if (!Object.keys(content.files).length && !content.code) {
     // The cloud row must first be accessible and have no accepted revision.
     // A scoped browser journal can recover an interrupted pre-revision save.
     const recovered = resolveScopedDraftRecovery(draftId, readBuilderRecoverySnapshot(draftId)) ?? readSavedTemplateRecovery(draftId);
@@ -101,7 +101,7 @@ export async function loadLegacyDraftContent(projectId: string, draftId: string)
       const bundleContent = resolveLegacyDraftContent({ metadata: { siteBundleSnapshot: savedBundle?.bundle } });
       if (bundleContent.hasContent) return { ...bundleContent, pageRegistry: undefined };
     }
-    if (metadata.siteBundleId || metadata.siteBuildId) {
+    if (!content.hasContent && (metadata.siteBundleId || metadata.siteBuildId)) {
       throw new Error('This saved project has no recoverable source in its draft. Its saved build/bundle reference is unavailable; a browser recovery copy or source backup is needed.');
     }
   }

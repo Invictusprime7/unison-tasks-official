@@ -35,6 +35,15 @@ describe('legacy saved draft hydration', () => {
     mock.row = { code: '', vfs_files: {}, metadata: { siteBuildId: 'old-build' }, last_revision_id: null };
     await expect(loadLegacyDraftContent('project', 'draft')).rejects.toThrow('browser recovery copy or source backup');
   });
+  it('uses surviving authored browser files before projecting an old saved plan', async () => {
+    const sitePlan = planSiteTopology('ecommerce', 'Saved Brand', { selectedTemplateId: 'removed-template' });
+    mock.row = { metadata: { sitePlan }, vfs_files: {}, last_revision_id: null };
+    vi.stubGlobal('localStorage', { getItem: (key: string) => key === 'webbuilder_templates'
+      ? JSON.stringify([{ id: 'draft', canvas_data: { vfsFiles: { '/src/App.tsx': 'original authored source' } } }]) : null });
+    try {
+      expect((await loadLegacyDraftContent('project', 'draft'))?.files['/src/App.tsx']).toBe('original authored source');
+    } finally { vi.unstubAllGlobals(); }
+  });
   beforeEach(() => { mock.row = null; mock.error = null; mock.filters = []; });
   it('prefers saved editor code without changing authored source', () => {
     const code = 'export default () => <h1>My saved site</h1>';
