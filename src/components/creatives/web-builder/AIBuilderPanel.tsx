@@ -61,6 +61,11 @@ import { AgentCommandPalette } from './ai-chat/AgentCommandPalette';
 import { CatalogPanel } from './ai-chat/CatalogPanel';
 import { agentOperations } from '@/services/agent-runtime/operations';
 import { renderCatalogForPrompt } from '@/services/agent-runtime/catalogOps';
+import {
+  discoverGeneratedSiteArtifacts,
+  renderGeneratedSiteDiscoveryForPrompt,
+  sourceTargetsForCartWiring,
+} from '@/services/builder/generatedSiteDiscovery';
 import { toast } from 'sonner';
 import type { BusinessSystemType } from '@/data/templates/types';
 import type { SystemsBuildContext } from '@/types/systemsBuildContext';
@@ -1771,6 +1776,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
           // Rendered site context: live DOM of the current route, cached
           // digests of routes viewed this session, source digests otherwise.
           let previewSnapshot: string | undefined;
+          let generatedSourceInventory = '';
           try {
             const iframe = previewRef?.current?.getIframe?.();
             let doc: Document | null = null;
@@ -1799,6 +1805,21 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
             }));
             if (graphText) previewSnapshot = `${previewSnapshot ?? ''}\n\n${graphText}`.trim();
             emitAgentEvent({ kind: 'discovery', message: 'Read the current revision graph, page structure, and preview diagnostics', status: 'ok' });
+          } catch { /* best-effort */ }
+          try {
+            const generatedArtifacts = discoverGeneratedSiteArtifacts(vfsFiles ?? {});
+            generatedSourceInventory = renderGeneratedSiteDiscoveryForPrompt(generatedArtifacts);
+            previewSnapshot = `${previewSnapshot ?? ''}\n\n${generatedSourceInventory}`.trim();
+            const artifactSummary = [
+              generatedArtifacts.authoredCatalogItems.length && `${generatedArtifacts.authoredCatalogItems.length} authored product${generatedArtifacts.authoredCatalogItems.length === 1 ? '' : 's'}`,
+              generatedArtifacts.controls.length && `${generatedArtifacts.controls.length} commerce control${generatedArtifacts.controls.length === 1 ? '' : 's'}`,
+              generatedArtifacts.cartRuntimeFiles.length && `${generatedArtifacts.cartRuntimeFiles.length} cart runtime file${generatedArtifacts.cartRuntimeFiles.length === 1 ? '' : 's'}`,
+            ].filter(Boolean).join(', ');
+            emitAgentEvent({
+              kind: 'discovery',
+              message: artifactSummary ? `Read ${artifactSummary} from generated source` : 'Read generated source inventory',
+              status: 'ok',
+            });
           } catch { /* best-effort */ }
           if (businessId) {
             try {
@@ -1883,13 +1904,13 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
               sourceTargets: Array.from(new Set([
                 page.filePath,
                 ...(isCartWiringRequest
-                  ? Object.keys(vfsFiles!).filter(path => /\/(?:src\/)?pages\/[^/]+\.[jt]sx$/.test(path)
-                    || /\/project-components\/[^/]*(?:cart|nav|header|product)[^/]*\.[jt]sx?$/i.test(path))
+                  ? sourceTargetsForCartWiring(vfsFiles!, page.filePath)
                   : []),
               ])),
               routes: [],
               registryContext: builderRegistryContext ?? undefined,
               runtimeContext: [
+                isCartWiringRequest ? generatedSourceInventory : '',
                 capabilityPlan.proposal.intentBindings.length && needsRenderableUiPatch
                   ? `Requested UI bindings: ${JSON.stringify(capabilityPlan.proposal.intentBindings)}. Find or create real matching controls in the authored source, adding these exact data-ut-slot and data-ut-intent attributes. Do not label unrelated controls to satisfy a target. Backend activation remains a separate capability approval.`
                   : '',
