@@ -359,6 +359,34 @@ function sanitizePreviewArtifacts(contents: string): string {
 // commitMutation — the only legal writer
 // ----------------------------------------------------------------------------
 
+/**
+ * Automated repair/sync saves may not overwrite a committed AI Builder change
+ * they never saw: if the newest committed revision for this draft is an
+ * AI Builder save and the caller's base revision is older, the save is refused.
+ * User-driven sources (AI, toolbar, theme, playground, restore) are unaffected.
+ */
+const AUTOMATED_SYNC_SOURCES = new Set<PatchSource>(['binding-fast-path', 'ghl-binding', 'republish']);
+async function assertNoStaleOverwriteOfAiRevision(input: CommitMutationInput): Promise<void> {
+  if (!AUTOMATED_SYNC_SOURCES.has(input.source) || !input.identity.draftId) return;
+  let latest: { id: string; source: string } | null = null;
+  try {
+    const { data } = await supabase
+      .from('site_revisions')
+      .select('id, source')
+      .eq('draft_id', input.identity.draftId)
+      .eq('status', 'committed')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    latest = (data as { id: string; source: string } | null) ?? null;
+  } catch {
+    return; // lookup failure never blocks a save
+  }
+  if (latest && latest.source === 'ai-builder' && latest.id !== (input.identity.revisionId || null)) {
+    throw new Error('[VFSCommitService] An automatic update was based on an older version and would overwrite a saved AI change. It was skipped; reload to use the latest version.');
+  }
+}
+
 export async function commitMutation(
   input: CommitMutationInput,
 ): Promise<CommitMutationResult> {
@@ -378,6 +406,7 @@ export async function commitMutation(
     || restoredRevision.businessId !== input.identity.businessId)) {
     throw new Error('[VFSCommitService] Restore requires a committed revision belonging to this project.');
   }
+  await assertNoStaleOverwriteOfAiRevision(input);
   const reviewedComposition = input.options?.reviewedComposition;
   if ([input.options?.reviewedArtifact, reviewedComposition, input.options?.compositionUpgrade, input.options?.restoreRevisionId].filter(Boolean).length > 1) {
     throw new Error('[VFSCommitService] Reviewed artifacts, upgrades and restores must be isolated operations.');

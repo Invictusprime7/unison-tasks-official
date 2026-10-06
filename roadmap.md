@@ -6,7 +6,7 @@
 - [x] Phase 4 (slice): Ctrl/Cmd+K command menu with site map + fonts
 - [x] click-to-target from preview
 - [x] Phase 4 rest: site map + session Changes list in command menu
-- [ ] Phase 5: block legacy repair/sync from overwriting committed AI change sets
+- [x] Phase 5: automatic sync saves (binding, GHL, republish) refused when based on a version older than a saved AI change
 - [x] Chat no longer says "not applied" after a real checkpoint save
 - [ ] Verify click-to-target with a real AI edit (label confirmed; full edit needs the user)
 - [x] Product/catalog edits (price, image) write the real database record (command menu)
