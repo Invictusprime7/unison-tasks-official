@@ -1,3 +1,4 @@
+import { agentOperations } from '@/services/agent-runtime/operations';
 /**
  * backendOpExecutor — Move C transactional commit across backend layers.
  *
@@ -90,19 +91,14 @@ async function seedBooking(businessId: string): Promise<BackendOpStatus> {
     let serviceId: string | null = null;
     let durationMinutes = 60;
     if ((svcCount ?? 0) === 0) {
-      const { data: svc, error: svcErr } = await supabase
-        .from('services')
-        .insert({
-          business_id: businessId,
-          name: 'Default Service',
-          duration_minutes: durationMinutes,
-          price_cents: 0,
-          is_active: true,
-        })
-        .select('id')
-        .single();
-      if (svcErr) return 'failed';
-      serviceId = (svc as { id: string } | null)?.id ?? null;
+      try {
+        const svc = await agentOperations.create_catalog_item({ files: {}, businessId }, 'services', {
+          name: 'Default Service', price: 0, active: true, duration_minutes: durationMinutes,
+        });
+        serviceId = svc.id;
+      } catch {
+        return 'failed';
+      }
     } else {
       const { data: existing } = await supabase
         .from('services')

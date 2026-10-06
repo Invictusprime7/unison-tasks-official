@@ -1,3 +1,4 @@
+import { agentOperations } from '@/services/agent-runtime/operations';
 /**
  * TemplateRuntimeProvider - Pre-wired template runtime context
  * 
@@ -917,21 +918,14 @@ function createBookingManagerWired(config: RuntimeIntentManagerConfig): IntentMa
         price: 0,
       };
 
-      if (!supabase) return defaultService;
-
-      const { data: service } = await supabase
-        .from('services')
-        .insert({
-          business_id: config.businessId,
-          name: defaultService.name,
-          duration_minutes: 60,
-          price_cents: 0,
-          is_active: true,
-        })
-        .select()
-        .single();
-
-      return service ? { ...defaultService, id: service.id } : defaultService;
+      try {
+        const item = await agentOperations.create_catalog_item({ files: {}, businessId: config.businessId }, 'services', {
+          name: defaultService.name, price: 0, active: true, duration_minutes: 60,
+        });
+        return { ...defaultService, id: item.id };
+      } catch {
+        return defaultService;
+      }
     },
   };
 }

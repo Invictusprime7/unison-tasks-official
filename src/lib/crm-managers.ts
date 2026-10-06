@@ -1,3 +1,4 @@
+import { agentOperations } from '@/services/agent-runtime/operations';
 /**
  * CRM Managers Implementation
  * 
@@ -213,23 +214,12 @@ function createBookingManager(businessId: string): IntentManagers['booking'] {
         price: 0,
       };
 
-      if (supabase) {
-        const { data: service, error } = await supabase
-          .from('services')
-          .insert({
-            business_id: businessId,
-            name: defaultService.name,
-            duration_minutes: defaultService.duration,
-            price_cents: 0,
-            is_active: true,
-          })
-          .select()
-          .single();
-
-        if (!error && service) {
-          return { ...defaultService, id: service.id };
-        }
-      }
+      try {
+        const item = await agentOperations.create_catalog_item({ files: {}, businessId }, 'services', {
+          name: defaultService.name, price: 0, active: true, duration_minutes: defaultService.duration,
+        });
+        return { ...defaultService, id: item.id };
+      } catch { /* fall back to a local default */ }
 
       return defaultService;
     },

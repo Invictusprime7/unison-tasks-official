@@ -49,7 +49,7 @@ const FORBIDDEN_FILE_REGEX_PATTERNS = [
 const CATALOG_WRITE = /\.from\(\s*["'](?:products|services|menu_items|pricing_plans)["']\s*(?:as\s+\w+\s*)?\)[\s\S]{0,300}?\.(?:insert|update|upsert|delete)\(/;
 
 // Pre-existing writers still to migrate onto agentOperations (roadmap.md).
-const CATALOG_WRITE_PENDING = new Set(['src/lib/crm-managers.ts', 'src/runtime/TemplateRuntimeProvider.tsx', 'src/services/backendOpExecutor.ts']);
+const CATALOG_WRITE_PENDING = new Set([]);
 
 const violations = [];
 
