@@ -1117,12 +1117,13 @@ export async function commitMutation(
   const backendOps = input.patch.backendOps ?? [];
   if (status === 'committed' && preExecutionReady && backendOps.length > 0) {
     try {
-      backendOpsReport = await executeBackendOps(backendOps, input.identity);
+      backendOpsReport = await executeBackendOps(backendOps, input.identity,
+        input.patch.candidate ? { runId: input.patch.candidate.id } : undefined);
       log(
         'backendOps',
         backendOpsReport.failedCount === 0 ? 'info' : 'warn',
         `executed ${backendOpsReport.results.length} ops (failed=${backendOpsReport.failedCount})`,
-        backendOpsReport.results.map((r) => ({ type: r.op.type, cap: r.op.capability, status: r.status })),
+        backendOpsReport.results.map((r) => ({ type: r.op.type, cap: 'capability' in r.op ? r.op.capability : undefined, status: r.status, operationId: r.operationId, runId: r.runId, code: r.code })),
       );
       if (backendOpsReport.failedCount > 0) {
         status = 'rejected';

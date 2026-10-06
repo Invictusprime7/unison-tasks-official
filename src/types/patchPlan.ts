@@ -12,6 +12,9 @@
 
 import type { BusinessSystemState } from '@/platform/core/capabilityRegistry';
 import type { TopologyChange } from '@/services/pageTopologyOrchestrator';
+import { assertBackendOps } from './backendOperations';
+import type { BackendOp } from './backendOperations';
+export type { BackendOp } from './backendOperations';
 
 export type PatchSource =
   | 'wizard-launch'
@@ -49,12 +52,6 @@ export interface BindingOp {
   type: 'bindIntent' | 'unbindIntent';
   elementId: string;
   intent?: string;
-  payload?: Record<string, unknown>;
-}
-
-export interface BackendOp {
-  type: 'requireCapability' | 'seedCapability';
-  capability: string;
   payload?: Record<string, unknown>;
 }
 
@@ -182,14 +179,7 @@ export function assertPatchPlan(plan: unknown, context = 'assertPatchPlan'): ass
       throw new Error(`[${context}] invalid PresentationOp: ${JSON.stringify(op)}`);
     }
   }
-  for (const op of p.backendOps as BackendOp[]) {
-    if (!op || typeof op !== 'object'
-      || !['requireCapability', 'seedCapability'].includes(op.type)
-      || typeof op.capability !== 'string' || !op.capability.trim()
-      || (op.payload !== undefined && (!op.payload || typeof op.payload !== 'object' || Array.isArray(op.payload)))) {
-      throw new Error(`[${context}] invalid BackendOp: expected a supported typed capability operation`);
-    }
-  }
+  assertBackendOps(p.backendOps, context);
   if (p.routeOps !== undefined) {
     if (!Array.isArray(p.routeOps)) throw new Error(`[${context}] PatchPlan.routeOps must be an array`);
     for (const op of p.routeOps) {

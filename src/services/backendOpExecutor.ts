@@ -27,6 +27,8 @@ import type { BackendOp } from '@/types/patchPlan';
 import type { BuilderIdentity } from '@/types/builderIdentity';
 import type { CapabilityId } from '@/platform/core/capabilityRegistry';
 import { generateAvailabilitySlots, type BusinessHoursWindow } from '@/services/availabilityGeneration';
+import { assertBackendOps } from '@/types/backendOperations';
+import { emitAgentEvent } from '@/services/agent-runtime/agentEvents';
 
 export type BackendOpStatus = 'ok' | 'skipped' | 'failed';
 
@@ -34,6 +36,9 @@ export interface BackendOpResult {
   op: BackendOp;
   status: BackendOpStatus;
   detail?: string;
+  code?: 'invalid-proposal' | 'executor-unavailable' | 'execution-failed' | 'batch-blocked';
+  operationId?: string;
+  runId?: string;
 }
 
 export interface BackendOpExecutionReport {
@@ -187,21 +192,42 @@ async function requireCapability(
 export async function executeBackendOps(
   ops: BackendOp[],
   identity: BuilderIdentity,
+  context?: { runId: string },
 ): Promise<BackendOpExecutionReport> {
+  const runId = context?.runId;
+  let invalid: string | undefined;
+  try { assertBackendOps(ops, 'backendOpExecutor'); }
+  catch (error) { invalid = error instanceof Error ? error.message : String(error); }
+  const unavailable = ops.some((op) => op.type !== 'requireCapability' && op.type !== 'seedCapability');
+  // Gate the whole batch before the first install/seed. An unsupported schema
+  // proposal must never silently succeed after partially provisioning a site.
+  if (invalid || unavailable) {
+    const results: BackendOpResult[] = ops.map((op, index) => ({
+      op, status: 'failed', operationId: op.operationId ?? (runId ? `${runId}:backend:${index}` : undefined), runId,
+      code: invalid ? 'invalid-proposal'
+        : op.type === 'requireCapability' || op.type === 'seedCapability' ? 'batch-blocked' : 'executor-unavailable',
+      detail: invalid ?? 'Schema execution is unavailable for this project; no backend operations were executed.',
+    }));
+    emitAgentEvent({ kind: 'error', message: invalid ?? 'Backend batch rejected: schema execution is unavailable.', status: 'failed', runId });
+    return { results, failedCount: results.length };
+  }
   const results: BackendOpResult[] = [];
-  for (const op of ops) {
-    const cap = op.capability as CapabilityId;
+  for (const [index, op] of ops.entries()) {
+    const operationId = op.operationId ?? (runId ? `${runId}:backend:${index}` : undefined);
+    emitAgentEvent({ kind: 'tool_call', message: `Executing backend operation: ${op.type}`, runId, status: 'running' });
     if (op.type === 'requireCapability') {
-      const status = await requireCapability(cap, identity);
-      results.push({ op, status });
+      const status = await requireCapability(op.capability as CapabilityId, identity);
+      results.push({ op, status, operationId, runId, ...(status === 'failed' ? { code: 'execution-failed' as const } : {}) });
+      emitAgentEvent({ kind: 'tool_call', message: `Backend capability ${op.capability}: ${status}`, runId, status: status === 'failed' ? 'failed' : 'ok' });
       continue;
     }
     if (op.type === 'seedCapability') {
-      const status = await seedCapability(cap, identity.businessId);
-      results.push({ op, status });
+      const status = await seedCapability(op.capability as CapabilityId, identity.businessId);
+      results.push({ op, status, operationId, runId, ...(status === 'failed' ? { code: 'execution-failed' as const } : {}) });
+      emitAgentEvent({ kind: 'tool_call', message: `Backend seed ${op.capability}: ${status}`, runId, status: status === 'failed' ? 'failed' : 'ok' });
       continue;
     }
-    results.push({ op, status: 'skipped', detail: 'unrecognised op type' });
+    results.push({ op, status: 'failed', code: 'executor-unavailable', operationId, runId });
   }
   return {
     results,

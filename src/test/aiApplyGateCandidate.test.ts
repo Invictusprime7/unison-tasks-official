@@ -48,9 +48,13 @@ describe('AI candidate commit protocol', () => {
     expect(patch.operationIds).toEqual([`ai-candidate:${prepared.build.changeSet.id}`]);
     expect(patch.candidate?.id).toBe(prepared.build.changeSet.id);
     operations.backendOps[0].payload.mode = 'mutated';
-    expect(prepared.build.changeSet.backendOps?.[0].payload?.mode).toBe('appointments');
-    patch.backendOps[0].payload!.mode = 'also mutated';
-    expect(prepared.build.changeSet.backendOps?.[0].payload?.mode).toBe('appointments');
+    const candidateOp = prepared.build.changeSet.backendOps?.[0];
+    const patchOp = patch.backendOps[0];
+    expect(candidateOp?.type).toBe('requireCapability');
+    if (candidateOp?.type !== 'requireCapability' || patchOp.type !== 'requireCapability') throw new Error('Capability proposal was lost');
+    expect(candidateOp.payload?.mode).toBe('appointments');
+    patchOp.payload!.mode = 'also mutated';
+    expect(candidateOp.payload?.mode).toBe('appointments');
   });
 
   it('accepts an operation-only candidate without inventing frontend source', async () => {

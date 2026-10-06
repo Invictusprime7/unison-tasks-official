@@ -15,9 +15,10 @@
 import { buildAICandidateChangeSet, type CandidateBuildResult, type CandidateOperationInput } from './aiCandidateChangeSet';
 import { repairAuthoredImages } from './authoredImageRepair';
 import { auditSiteAffinity, type HomepageVisualLanguage } from '@/services/launch/homepageFirstContract';
+import { assertBackendOps } from '@/types/backendOperations';
 
 export interface CandidateGateFailure {
-  gate: 'parse' | 'import-graph' | 'empty' | 'affinity' | 'design-source';
+  gate: 'parse' | 'import-graph' | 'empty' | 'affinity' | 'design-source' | 'backend-proposal';
   path: string;
   message: string;
 }
@@ -104,6 +105,10 @@ export async function runCandidateGates(build: CandidateBuildResult, affinity?: 
   const deleted = new Set(build.changeSet.fileOps.filter((o) => o.type === 'delete').map((o) => o.path));
   const failures: CandidateGateFailure[] = [];
   const advisories: string[] = [];
+  try { assertBackendOps(build.changeSet.backendOps ?? [], 'candidate'); }
+  catch (error) {
+    failures.push({ gate: 'backend-proposal', path: 'backendOps', message: error instanceof Error ? error.message : String(error) });
+  }
 
   for (const path of touched) {
     if (CODE_RE.test(path) && !files[path].trim()) {
