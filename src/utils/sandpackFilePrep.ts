@@ -4484,10 +4484,26 @@ export function prepareSandpackFiles(
   }
 
 
-  // ALWAYS use our controlled entry point — it includes the createElement safety
-  // guard, error boundary, Tailwind CDN config, and nav bridge. VFS-provided
-  // index.tsx/main.tsx are just boilerplate mounts that lack these protections.
-  sandpackFiles['/index.tsx'] = DEFAULT_INDEX;
+  // Boilerplate mounts use the controlled entry. Saved provider trees and
+  // initial App props are application state and must survive projection.
+  const savedBootstrap = sandpackFiles['/index.tsx'] || sandpackFiles['/index.jsx'];
+  const preserveSavedBootstrap = Boolean(savedBootstrap && /(?:createRoot|ReactDOM\.render)\s*\(/.test(savedBootstrap)
+    && ([...savedBootstrap.matchAll(/<([A-Z][\w.]*)\b/g)].some((match) => !['App', 'StrictMode', 'React.StrictMode'].includes(match[1]))
+      || /<App\s+[^/\s>]/.test(savedBootstrap)));
+  sandpackFiles['/index.tsx'] = preserveSavedBootstrap
+    ? savedBootstrap + `\n// Saved provider tree owns mounting; report its actual DOM commit.
+const __savedPreviewObserver = new MutationObserver(() => {
+  const root = document.getElementById('root');
+  if (root?.childElementCount) {
+    window.parent.postMessage({ type: 'UNISON_PREVIEW_RENDER_READY' }, '*');
+    __savedPreviewObserver.disconnect();
+  }
+});
+__savedPreviewObserver.observe(document.body, { childList: true, subtree: true });
+window.addEventListener('error', (event) => window.parent.postMessage({ type: 'UNISON_PREVIEW_RENDER_ERROR', error: event.message }, '*'));
+window.addEventListener('unhandledrejection', (event) => window.parent.postMessage({ type: 'UNISON_PREVIEW_RENDER_ERROR', error: String(event.reason?.message || event.reason) }, '*'));
+`
+    : DEFAULT_INDEX;
 
   // Remove any stale /main.tsx that might have leaked through
   delete sandpackFiles['/main.tsx'];
@@ -4537,6 +4553,16 @@ export function prepareSandpackFiles(
   // `<Routes>…</Routes>` inside the guard's router and multi-page navigation
   // (plus the INTENT_TRIGGER → navigateToBuilderPage round-trip) works again.
   for (const [filePath, content] of Object.entries(sandpackFiles)) {
+    if (preserveSavedBootstrap) {
+      // Preserve the authored provider/router tree. Browser history inside the
+      // runner starts at /sandpack/index.html, so use hash history in the overlay.
+      if (/\.(tsx?|jsx?)$/.test(filePath)) sandpackFiles[filePath] = content.replace(
+        /import\s*\{[^}]*\}\s*from\s*['"]react-router-dom['"]/g,
+        (statement) => statement.replace(/\bBrowserRouter\b(?:\s+as\s+(\w+))?/g,
+          (_match, alias) => `HashRouter as ${alias || 'BrowserRouter'}`),
+      );
+      continue;
+    }
     if (!/\.(tsx?|jsx?)$/.test(filePath)) continue;
     if (filePath === '/index.tsx' || filePath === '/index.jsx') continue;
     if (filePath === '/hooks-shim.ts' || filePath === '/lib-utils-shim.ts' || filePath === '/ui-shim.tsx') continue;

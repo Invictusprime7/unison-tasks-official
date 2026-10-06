@@ -4,6 +4,30 @@ import { buildPreviewArtifacts } from '@/utils/previewArtifacts';
 import { getDependenciesForSandpack } from '@/utils/dependencyExtractor';
 
 describe('Sandpack local module resolution', () => {
+  it('preserves initial saved App props in the entry module', () => {
+    const files = buildPreviewArtifacts({ sourceFiles: {
+      '/src/main.tsx': `import React from 'react';import {createRoot} from 'react-dom/client';import App from './App';createRoot(document.getElementById('root')!).render(<App title="Saved project state" />);`,
+      '/src/App.tsx': `export default function App({title}:{title:string}){return <h1>{title}</h1>}`,
+      '/src/index.css': 'body {color: black}',
+    } }).sandpackFiles;
+    expect(files['/index.tsx']).toContain('<App title="Saved project state" />');
+  });
+  it('preserves a saved provider bootstrap instead of mounting App outside its context', () => {
+    const files = buildPreviewArtifacts({ sourceFiles: {
+      '/src/main.tsx': `import React from 'react'; import { createRoot } from 'react-dom/client';
+import { BrowserRouter as Router } from 'react-router-dom';
+import App from './App'; import { SiteContext } from './context';
+createRoot(document.getElementById('root')!).render(<Router><SiteContext.Provider value="Saved state"><App /></SiteContext.Provider></Router>);`,
+      '/src/context.tsx': `import { createContext } from 'react'; export const SiteContext = createContext<string | null>(null);`,
+      '/src/App.tsx': `import {useContext} from 'react'; import {SiteContext} from './context'; export default function App(){const state=useContext(SiteContext);return state ? <h1>{state}</h1> : null;}`,
+      '/src/index.css': 'body { color: black; }',
+    } }).sandpackFiles;
+    expect(files['/index.tsx']).toContain('<SiteContext.Provider value="Saved state">');
+    expect(files['/index.tsx']).toContain('HashRouter as Router');
+    expect(files['/index.tsx']).not.toContain('__RouterGuard');
+    expect(files['/index.tsx']).toContain('UNISON_PREVIEW_RENDER_READY');
+    expect(files['/index.tsx']).toContain('__initUnisonPreviewNavBridge');
+  });
   it('resolves multiline aliased component imports after flattening /src', () => {
     const files = prepareSandpackFiles({
       '/src/App.tsx': `import {
