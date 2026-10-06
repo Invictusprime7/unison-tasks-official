@@ -80,6 +80,16 @@ export function neutralizeModelSuccessClaim(text: string | null | undefined): st
   return out;
 }
 
+/**
+ * Used when the commit already landed as a checkpoint but the preview has
+ * not confirmed it. Never say "not applied" here — the save is real.
+ */
+export const SAVED_UNCONFIRMED_VERDICT_LINE = '◐ Saved as a checkpoint — the preview has not confirmed it yet';
+
+export function savedUnconfirmedVerdictLine(reason?: string): string {
+  return reason ? `${SAVED_UNCONFIRMED_VERDICT_LINE} (${reason})` : SAVED_UNCONFIRMED_VERDICT_LINE;
+}
+
 /** The authoritative verdict line for a terminal transaction state. */
 export function transactionVerdictLine(verdict: BuilderTransactionVerdict, reason?: string): string {
   if (verdict === 'verified') return APPLIED_VERDICT_LINE;

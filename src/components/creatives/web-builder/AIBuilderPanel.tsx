@@ -113,6 +113,7 @@ import {
   CANDIDATE_PAGE_NOTICE,
   neutralizeModelSuccessClaim,
   transactionVerdictLine,
+  savedUnconfirmedVerdictLine,
 } from '@/services/builder/builderTransactionState';
 import { awaitPreviewVerification, markPreviewPending } from '@/services/builder/previewVerification';
 import {
@@ -2433,7 +2434,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
                   description: verification.reason,
                   duration: 8000,
                 });
-                transactionVerdict = transactionVerdictLine('held-for-review', verification.reason);
+                transactionVerdict = savedUnconfirmedVerdictLine(verification.reason);
               }
             } else {
               const applyError = applyOutcome.errors?.[0] ?? 'The VFS rejected the generated files.';
@@ -2622,7 +2623,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
                   duration: 8000,
                 });
                 setMessages(prev => prev.map(m => m.id === streamingId
-                  ? { ...m, content: `${m.content}\n\n${transactionVerdictLine('held-for-review', verification.reason)}` }
+                  ? { ...m, content: `${m.content}\n\n${savedUnconfirmedVerdictLine(verification.reason)}` }
                   : m));
               }
             } else {
