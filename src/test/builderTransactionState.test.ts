@@ -48,3 +48,13 @@ describe('builderTransactionState (P0.5 verified-success state machine)', () => 
     expect(withTransactionVerdict(once, 'verified')).toBe(once);
   });
 });
+
+import { savedUnconfirmedVerdictLine } from '@/services/builder/builderTransactionState';
+import { describe as d2, it as i2, expect as e2 } from 'vitest';
+d2('saved but unconfirmed verdict', () => {
+  i2('never claims the saved change was not applied', () => {
+    const line = savedUnconfirmedVerdictLine('The preview did not confirm the change in time.');
+    e2(line).toMatch(/Saved as a checkpoint/);
+    e2(line).not.toMatch(/not applied/i);
+  });
+});
