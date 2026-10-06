@@ -5,6 +5,7 @@
 
 import type { ClassifiedTask } from "./taskClassifier.ts";
 import type { PromptComplexity } from "./promptPreprocessor.ts";
+import { DEFAULT_GEMINI_GATEWAY_MODEL, configuredComposerGeminiModel } from './geminiModel.ts';
 
 export interface ModelSpec {
   id: string;
@@ -131,11 +132,9 @@ function prioritizeProviderModels(models: ModelSpec[], primaryProvider?: Paralle
 // ── Model tiers ─────────────────────────────────────────────────────────────
 
 const MODELS = {
-  // Current stable Gemini models; the previous Flash release remains a backup.
-  geminiFlash: { id: "google/gemini-3.8-flash", label: "Gemini 3.8 Flash" },
-  geminiPreviousFlash: { id: "google/gemini-3.7-flash", label: "Gemini 3.7 Flash" },
-  geminiFlashLite: { id: "google/gemini-3.5-flash-lite", label: "Gemini 3.5 Flash Lite" },
-  geminiComposer: { id: "google/gemini-3.8-flash", label: "Gemini 3.8 Flash" },
+  // Gemini 3.8 Flash is the one supported Gemini text model. Provider
+  // failover is handled by OpenAI and Lovable, not a stale Gemini version.
+  geminiFlash: { id: DEFAULT_GEMINI_GATEWAY_MODEL, label: "Gemini 3.8 Flash" },
   gpt41: { id: "openai/gpt-4.1", label: "GPT-4.1" },
   gpt41Mini: { id: "openai/gpt-4.1-mini", label: "GPT-4.1 Mini" },
   gpt4oMini: { id: "openai/gpt-4o-mini", label: "GPT-4o Mini" },
@@ -144,12 +143,8 @@ const MODELS = {
 
 /** Direct-Gemini composition model; GEMINI_COMPOSER_MODEL can name a newer one the key can use. */
 export function composerGeminiModel(readEnv: EnvReader): { id: string; label: string } {
-  const raw = readEnv('GEMINI_COMPOSER_MODEL')?.trim();
-  if (raw) {
-    const id = raw.startsWith('google/') ? raw : `google/${raw}`;
-    return { id, label: raw };
-  }
-  return MODELS.geminiComposer;
+  const raw = configuredComposerGeminiModel(readEnv);
+  return { id: `google/${raw}`, label: raw };
 }
 
 function m(spec: typeof MODELS[keyof typeof MODELS], maxTokens: number): ModelSpec {
@@ -224,7 +219,6 @@ export function buildProviderPlan(
           m(MODELS.gpt41Mini, 16_384),
           m(MODELS.gpt41, 16_384),
           m(composerGeminiModel(readEnv), 48_000),
-          m(MODELS.geminiPreviousFlash, 48_000),
         ],
         perModelTimeoutMs: 110_000,
         fallbackMaxTokens: 32_000,
@@ -240,7 +234,6 @@ export function buildProviderPlan(
           m(MODELS.gpt4o, 16_384),
           // Stronger Gemini leads composition when funded Gemini serves the turn.
           m(composerGeminiModel(readEnv), 48_000),
-          m(MODELS.geminiPreviousFlash, 48_000),
         ],
         perModelTimeoutMs: 110_000,
         fallbackMaxTokens: 32_000,
@@ -257,9 +250,6 @@ export function buildProviderPlan(
         gatewayModels: [
           // Current stable model for full-site generation.
           m(MODELS.geminiFlash, 36_000),
-          // Focused page-completion turns can use this bounded fallback when
-          // the full-size Flash request runs long.
-          m(MODELS.geminiFlashLite, 12_000),
           // GPT-4.1 has a 32k output window without a reasoning phase, making
           // it a better bounded fallback for this large structured response.
           m(MODELS.gpt41, 32_000),
@@ -279,7 +269,6 @@ export function buildProviderPlan(
     case "wizard_content_enrichment":
       plan = {
         gatewayModels: [
-          m(MODELS.geminiFlashLite, 6000),
           m(MODELS.geminiFlash, 6000),
         ],
         perModelTimeoutMs: 35000,
@@ -290,7 +279,6 @@ export function buildProviderPlan(
     case "nav_page_generation":
       plan = {
         gatewayModels: [
-          m(MODELS.geminiFlashLite, 12000),
           m(MODELS.geminiFlash, 12000),
           m(MODELS.gpt41, 12000),
           m(MODELS.gpt4oMini, 12000),

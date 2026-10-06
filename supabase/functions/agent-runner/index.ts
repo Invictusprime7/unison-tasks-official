@@ -4,6 +4,7 @@ import { secureJsonResponse, errorResponse } from '../_shared/response.ts'
 import { verifyAuth, verifyBusinessAccess, authError } from '../_shared/auth.ts'
 import { safeParseBody, isValidUUID, sanitizeString } from '../_shared/validate.ts'
 import { createChatCompletion } from '../_shared/ai/providerClient.ts'
+import { DEFAULT_GEMINI_GATEWAY_MODEL } from '../_shared/geminiModel.ts'
 import { createCanonicalBooking } from '../_shared/canonicalBooking.ts'
 
 // =============================================================================
@@ -474,7 +475,7 @@ async function callLLM(
   [key: string]: any 
 }> {
   const response = await createChatCompletion({
-    model: 'google/gemini-3.8-flash',
+    model: DEFAULT_GEMINI_GATEWAY_MODEL,
     messages: [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: JSON.stringify(userPayload, null, 2) },

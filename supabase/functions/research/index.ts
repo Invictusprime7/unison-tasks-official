@@ -4,6 +4,7 @@ import { verifyAuth, authError } from "../_shared/auth.ts";
 import { errorResponse, secureJsonResponse } from "../_shared/response.ts";
 import { safeParseBody, sanitizeString, isValidUrl } from "../_shared/validate.ts";
 import { createChatCompletion } from "../_shared/ai/providerClient.ts";
+import { DEFAULT_GEMINI_GATEWAY_MODEL } from "../_shared/geminiModel.ts";
 
 type ResearchPayload = {
   query: string;
@@ -177,7 +178,7 @@ async function callResearchAI(opts: {
   const timeoutId = setTimeout(() => controller.abort(), 90000); // 90 second timeout
 
   const resp = await createChatCompletion({
-    model: "openai/gpt-5-mini",
+    model: DEFAULT_GEMINI_GATEWAY_MODEL,
     messages: [
       { role: "system", content: system },
       { role: "user", content: JSON.stringify(user) },

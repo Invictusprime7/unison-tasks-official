@@ -70,7 +70,7 @@ function formatAbsolute(iso: string): string {
 
 function shortModel(model?: string): string | null {
   if (!model) return null;
-  // "google/gemini-2.5-flash" → "gemini-2.5-flash"
+  // "google/gemini-3.8-flash" → "gemini-3.8-flash"
   const slash = model.lastIndexOf('/');
   return slash >= 0 ? model.slice(slash + 1) : model;
 }

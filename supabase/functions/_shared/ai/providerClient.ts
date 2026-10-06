@@ -15,6 +15,7 @@ export type ChatCompletionRequest = {
 
 type Provider = "lovable" | "openai" | "gemini" | "anthropic";
 type EnvReader = (name: string) => string | undefined;
+import { DEFAULT_GEMINI_GATEWAY_MODEL, configuredGeminiModel } from '../geminiModel.ts';
 
 const LOVABLE_GATEWAY_CHAT_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 const OPENAI_CHAT_URL = "https://api.openai.com/v1/chat/completions";
@@ -156,7 +157,7 @@ function modelFor(provider: Provider, requestedModel?: string): string {
     if (model.startsWith("gpt-")) return `openai/${model}`;
     if (model.startsWith("gemini-")) return `google/${model}`;
     if (model.startsWith("claude-")) return `anthropic/${model}`;
-    return "google/gemini-3.8-flash";
+    return DEFAULT_GEMINI_GATEWAY_MODEL;
   }
 
   if (provider === "openai") {
@@ -168,7 +169,7 @@ function modelFor(provider: Provider, requestedModel?: string): string {
   if (provider === "gemini") {
     const bare = model.startsWith("google/") ? model.slice("google/".length) : model;
     if (bare.startsWith("gemini-")) return bare;
-    return (Deno.env.get("GEMINI_MODEL")?.trim() || "gemini-3.8-flash").replace(/^google\//, "");
+    return configuredGeminiModel();
   }
 
   if (Deno.env.get("ANTHROPIC_MODEL")) return Deno.env.get("ANTHROPIC_MODEL")!;

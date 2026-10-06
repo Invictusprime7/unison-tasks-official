@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { Settings2, Zap, Brain, Sparkles, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { DEFAULT_GEMINI_MODEL_ID, DEFAULT_GEMINI_MODEL_LABEL } from '@/config/aiModels';
 
 export interface GatewayModel {
   id: string;
@@ -11,9 +12,7 @@ export interface GatewayModel {
 }
 
 const AVAILABLE_MODELS: GatewayModel[] = [
-  { id: "google/gemini-2.5-flash-lite", label: "Flash Lite", provider: "google", tier: "lite", supportsReasoning: false },
-  { id: "google/gemini-2.5-flash", label: "Flash", provider: "google", tier: "fast", supportsReasoning: true },
-  { id: "google/gemini-2.5-pro", label: "Pro", provider: "google", tier: "pro", supportsReasoning: true },
+  { id: DEFAULT_GEMINI_MODEL_ID, label: DEFAULT_GEMINI_MODEL_LABEL, provider: "google", tier: "pro", supportsReasoning: true },
   { id: "openai/gpt-4.1", label: "GPT-4.1", provider: "openai", tier: "standard", supportsReasoning: false },
   { id: "openai/gpt-4o-mini", label: "GPT-4o Mini", provider: "openai", tier: "lite", supportsReasoning: false },
   { id: "openai/gpt-4o", label: "GPT-4o", provider: "openai", tier: "standard", supportsReasoning: false },
@@ -31,8 +30,8 @@ export interface GatewayConfig {
 }
 
 const DEFAULT_CONFIG: GatewayConfig = {
-  selectedModelId: "openai/gpt-4.1",
-  reasoningEffort: "none",
+  selectedModelId: DEFAULT_GEMINI_MODEL_ID,
+  reasoningEffort: "medium",
   timeoutMs: 110000,
   autoModelSelection: true,
   streamResponse: true,

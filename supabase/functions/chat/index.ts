@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { buildUnisonDesignArchitectureDirective } from "../_shared/canonicalPipelinePrompt.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { createChatCompletion } from "../_shared/ai/providerClient.ts";
+import { DEFAULT_GEMINI_GATEWAY_MODEL } from "../_shared/geminiModel.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
 
 serve(async (req) => {
@@ -57,7 +58,7 @@ serve(async (req) => {
   };
 
   try {
-    const { messages, model = 'openai/gpt-5-mini', reasoning } = await req.json();
+    const { messages, model = DEFAULT_GEMINI_GATEWAY_MODEL, reasoning } = await req.json();
     const response = await createChatCompletion({
       model,
       messages: [

@@ -190,7 +190,6 @@ Deno.test("uses Gemini exclusively when AI_PROVIDER_MODE opts out of the OpenAI 
   assertEquals(plan.primaryProvider, "gemini");
   assertEquals(plan.gatewayModels.map((model) => model.id), [
     "google/gemini-3.8-flash",
-    "google/gemini-3.5-flash-lite",
   ]);
 });
 
@@ -224,7 +223,6 @@ Deno.test("keeps a funded Gemini Wizard leading, with OpenAI retained as a fallb
 
   assertEquals(plan.gatewayModels.map((model) => model.id), [
     "google/gemini-3.8-flash",
-    "google/gemini-3.5-flash-lite",
     "openai/gpt-4.1",
   ]);
   assertEquals(plan.primaryProvider, "gemini");
@@ -240,7 +238,7 @@ Deno.test("gives focused Wizard page completion one model with its full budget, 
       timeoutMs: 50_000,
       maxTokens: 20_000,
       autoModelSelection: false,
-      selectedModelId: "google/gemini-3.5-flash-lite",
+      selectedModelId: "google/gemini-3.8-flash",
     },
     "advanced",
     "wizard-page-route",
@@ -248,7 +246,7 @@ Deno.test("gives focused Wizard page completion one model with its full budget, 
   );
 
   assertEquals(plan.gatewayModels.map((model) => model.id), [
-    "google/gemini-3.5-flash-lite",
+    "google/gemini-3.8-flash",
   ]);
   assertEquals(plan.gatewayModels.map((model) => model.maxTokens), [20_000]);
   assertEquals(plan.fallbackMaxTokens, 20_000);
@@ -268,10 +266,9 @@ Deno.test("keeps Wizard content enrichment bounded to small structured-output mo
   );
 
   assertEquals(plan.gatewayModels.map((model) => model.id), [
-    "google/gemini-3.5-flash-lite",
     "google/gemini-3.8-flash",
   ]);
-  assertEquals(plan.gatewayModels.map((model) => model.maxTokens), [6_000, 6_000]);
+  assertEquals(plan.gatewayModels.map((model) => model.maxTokens), [6_000]);
   assertEquals(plan.fallbackMaxTokens, 6_000);
   assertEquals(plan.perModelTimeoutMs, 35_000);
 });

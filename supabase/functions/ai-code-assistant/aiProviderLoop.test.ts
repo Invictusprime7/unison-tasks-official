@@ -41,13 +41,13 @@ Deno.test('preserves tool-only fallback success after billing exhaustion and a m
       navPageGen: false,
       tools: [{ type: 'function', function: { name: 'updateCatalogRow', parameters: { type: 'object' } } }],
       providerPlan: {
-        gatewayModels: ['google/gemini-3.7-flash', 'openai/gpt-4.1', 'openai/gpt-4o-mini'].map(id => ({ id, label: id, maxTokens: 1000 })),
+        gatewayModels: ['google/gemini-3.8-flash', 'openai/gpt-4.1', 'openai/gpt-4o-mini'].map(id => ({ id, label: id, maxTokens: 1000 })),
         perModelTimeoutMs: 45000, fallbackMaxTokens: 1000,
       },
     });
     assert(result.modelUsed === 'openai/gpt-4o-mini', 'successful fallback must be returned');
     assert(result.toolCalls?.[0].id === 'call_test', 'tool call must survive');
-    assert(calls[0] === 'gemini-3.7-flash' && calls.length === 3, 'Gemini first, then no further providers after tool-only success: ' + calls.join(','));
+    assert(calls[0] === 'gemini-3.8-flash' && calls.length === 3, 'Gemini first, then no further providers after tool-only success: ' + calls.join(','));
     const body = buildResponseBody(result);
     assert(Array.isArray(body.tool_calls) && body.tool_calls.length === 1, 'HTTP response must forward the tool call');
   } finally {
@@ -75,7 +75,7 @@ async function withProviderEnv(config: Record<string, string>, run: () => Promis
   }
 }
 const hybridPlan = { gatewayModels: [
-  { id: 'google/gemini-3.7-flash', label: 'Gemini', maxTokens: 1000 },
+  { id: 'google/gemini-3.8-flash', label: 'Gemini', maxTokens: 1000 },
   { id: 'openai/gpt-4.1', label: 'OpenAI', maxTokens: 1000 },
 ], perModelTimeoutMs: 110_000, fallbackMaxTokens: 1000, preferLongLeadAttempt: true, fallbackReserveMs: 30_000 };
 
@@ -195,7 +195,7 @@ Deno.test('omits reasoning_effort for the GPT-4.1 Wizard fallback', () => {
 
 Deno.test('keeps reasoning_effort for Gemini OpenAI-compatible requests', () => {
   const request = buildPlannedChatCompletionRequest({
-    model: { id: 'google/gemini-3.7-flash', label: 'Gemini 3.7 Flash', maxTokens: 36_000 },
+    model: { id: 'google/gemini-3.8-flash', label: 'Gemini 3.8 Flash', maxTokens: 36_000 },
     aiMessages: messages,
     reasoningEffort: 'medium',
   });
@@ -254,7 +254,7 @@ Deno.test('continues from Gemini billing exhaustion to the OpenAI fallback in hy
       aiMessages: messages,
       providerPlan: {
         gatewayModels: [
-          { id: 'google/gemini-3.7-flash', label: 'Gemini 3.7 Flash', maxTokens: 36_000 },
+          { id: 'google/gemini-3.8-flash', label: 'Gemini 3.8 Flash', maxTokens: 36_000 },
           { id: 'openai/gpt-4.1', label: 'OpenAI GPT-4.1', maxTokens: 32_000 },
         ],
         perModelTimeoutMs: 30_000,

@@ -57,7 +57,7 @@ export interface FileChangeStat {
 export interface EditSnapshotMeta {
   /** Original user prompt that triggered the edit */
   prompt?: string;
-  /** AI model that produced the change (e.g. "google/gemini-2.5-flash") */
+  /** AI model that produced the change (e.g. "google/gemini-3.8-flash") */
   model?: string;
   /** Short human summary written by AI (review summary, action type, etc.) */
   summary?: string;

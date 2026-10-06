@@ -16,12 +16,13 @@ import { verifyAuth, authError } from "../_shared/auth.ts";
 import { errorResponse, secureJsonResponse } from "../_shared/response.ts";
 import { safeParseBody } from "../_shared/validate.ts";
 import { createChatCompletion, isTextGenerationConfigured } from "../_shared/ai/providerClient.ts";
+import { DEFAULT_GEMINI_GATEWAY_MODEL } from "../_shared/geminiModel.ts";
 import {
   BUSINESS_CAPABILITY_IDS,
   filterBusinessCapabilityIds,
 } from "../_shared/businessCapabilityVocabulary.ts";
 
-const AI_MODEL = "google/gemini-3.8-flash";
+const AI_MODEL = DEFAULT_GEMINI_GATEWAY_MODEL;
 const MAX_PROMPT_CHARS = 24_000;
 
 const ABSTRACT_GOAL_ONTOLOGY = `

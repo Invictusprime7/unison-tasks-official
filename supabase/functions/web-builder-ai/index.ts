@@ -6,6 +6,7 @@ import { verifyAuth, authError } from "../_shared/auth.ts";
 import { errorResponse, secureJsonResponse } from "../_shared/response.ts";
 import { safeParseBody } from "../_shared/validate.ts";
 import { createChatCompletion, isTextGenerationConfigured } from "../_shared/ai/providerClient.ts";
+import { DEFAULT_GEMINI_GATEWAY_MODEL } from "../_shared/geminiModel.ts";
 
 serve(async (req) => {
   const corsHeaders = getCorsHeaders(req);
@@ -120,7 +121,7 @@ Action type: ${action || 'create'}
 IMPORTANT: Return ONLY valid JSON, no markdown, no explanations outside the JSON structure.`;
 
     const response = await createChatCompletion({
-      model: "google/gemini-3.8-flash",
+      model: DEFAULT_GEMINI_GATEWAY_MODEL,
       messages: [
         { role: "system", content: systemPrompt + buildUnisonDesignArchitectureDirective("brief") },
         { role: "user", content: prompt }

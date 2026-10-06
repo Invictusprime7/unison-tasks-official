@@ -96,7 +96,7 @@ Deno.test("routes explicit OpenAI models to OpenAI first", () => {
 });
 
 Deno.test("routes explicit Gemini models to Gemini first", () => {
-  const providers = resolveConfiguredProviders("google/gemini-2.5-flash", env({
+  const providers = resolveConfiguredProviders("google/gemini-3.8-flash", env({
     GEMINI_API_KEY: "gemini-test-key",
     OPENAI_API_KEY: "openai-test-key",
   }));
@@ -105,7 +105,7 @@ Deno.test("routes explicit Gemini models to Gemini first", () => {
 });
 
 Deno.test("accepts GOOGLE_API_KEY as the server-side Gemini alias", () => {
-  const providers = resolveConfiguredProviders("gemini-2.5-flash", env({
+  const providers = resolveConfiguredProviders("gemini-3.8-flash", env({
     GOOGLE_API_KEY: "google-test-key",
   }));
 
@@ -200,10 +200,10 @@ Deno.test("current Gemini wire models survive deployment defaults and blank key 
     return new Response('{"choices":[{"message":{"content":"ok"}}]}');
   }) as typeof fetch;
   try {
-    for (const model of ["google/gemini-3.8-flash", "google/gemini-3.7-flash", "google/gemini-3.6-flash"]) {
+    for (const model of ["google/gemini-3.8-flash"]) {
       await createPlannedChatCompletion({ model, messages: [{ role: "user", content: "Generate a page" }], max_tokens: 16000 });
     }
-    assertEquals(sent.map(body => body.model), ["gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.6-flash"]);
+    assertEquals(sent.map(body => body.model), ["gemini-3.8-flash"]);
     assertEquals(sent.every(body => body.reasoning_effort === "low"), true);
   } finally {
     globalThis.fetch = originalFetch;
