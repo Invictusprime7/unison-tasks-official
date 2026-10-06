@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { deriveChatLaunchPlan, buildSyncedVisionBrief, type ChatLaunchPlan } from "@/services/launch/chatLaunchPlan";
+import type { ChatWizardStep } from '@/services/launch/chatWizardStep';
 import {
   Dialog,
   DialogContent,
@@ -93,6 +94,9 @@ export interface LauncherWizardProps {
   onOpenChange: (open: boolean) => void;
   initialVisionPrompt?: string | null;
   presentation?: "dialog" | "chat";
+  guidedStep?: ChatWizardStep;
+  guidancePending?: boolean;
+  onSelectionConfirmed?: (answer: string) => void;
   prefill?: {
     businessId: string;
     businessName: string | null;
@@ -126,6 +130,9 @@ export const LauncherWizard = ({
   initialVisionPrompt,
   prefill,
   presentation = "dialog",
+  guidedStep,
+  guidancePending = false,
+  onSelectionConfirmed,
 }: LauncherWizardProps) => {
   const navigate = useNavigate();
   const { setLaunch } = useLaunch();
@@ -163,6 +170,7 @@ export const LauncherWizard = ({
   const [socialLinks, setSocialLinks] = useState<Record<string, string>>({});
   const [visionPrompt, setVisionPrompt] = useState("");
   const chatPlanRef = useRef<ChatLaunchPlan | null>(null);
+  const seededFromChatRef = useRef(false);
 
   const [isLaunching, setIsLaunching] = useState(false);
   const [launchStatus, setLaunchStatus] = useState("");
@@ -188,6 +196,7 @@ export const LauncherWizard = ({
     setPreviewReady(false);
     setStep("industry");
     setCompletedTurns([]);
+    seededFromChatRef.current = false;
     setSelectedIndustry(null);
     setSystemId(null);
     setBusinessName("");
@@ -218,6 +227,18 @@ export const LauncherWizard = ({
     // One synced plan: everything the chat settled prefills the Wizard.
     const plan = deriveChatLaunchPlan(initialVisionPrompt);
     chatPlanRef.current = plan;
+    // Keep the live brief current, but never replay defaults over choices
+    // already made in this mounted conversation.
+    if (guidedStep && seededFromChatRef.current) {
+      if (plan.businessName) setBusinessName(current => current || plan.businessName!);
+      if (plan.industry && plan.systemId) {
+        setSelectedIndustry(current => current ?? plan.industry);
+        setSystemId(current => current ?? plan.systemId);
+        if (plan.primaryGoal) setPrimaryGoal(current => current ?? plan.primaryGoal);
+      }
+      return;
+    }
+    seededFromChatRef.current = true;
     if (plan.businessName) setBusinessName(plan.businessName);
     if (plan.selectedPages.length) setSelectedPages(plan.selectedPages);
     const matchedTheme = THEME_PRESETS.find((preset) => preset.id === plan.themePresetId);
@@ -228,8 +249,12 @@ export const LauncherWizard = ({
     setSystemId(plan.systemId);
     if (plan.primaryGoal) setPrimaryGoal(plan.primaryGoal);
     setCustomerNeeds(plan.customerNeeds);
-    setStep("goals");
-  }, [open, initialVisionPrompt, prefill?.businessName]);
+    if (!guidedStep) setStep("goals");
+  }, [open, initialVisionPrompt, prefill?.businessName, guidedStep]);
+
+  useEffect(() => {
+    if (open && guidedStep && !isLaunching && !review) setStep(guidedStep);
+  }, [open, guidedStep, isLaunching, review]);
 
   const selectIndustry = (industry: string, id: BusinessSystemType) => {
     setSelectedIndustry(industry);
@@ -320,6 +345,22 @@ export const LauncherWizard = ({
   };
 
   const goNext = () => {
+    if (onSelectionConfirmed) {
+      const answer = selectionSummary(step);
+      const confirmed = [...completedTurns.filter(turn => turn.step !== step), { step, answer }];
+      setCompletedTurns(confirmed);
+      const labels: Record<SelectionStep, string> = {
+        industry: 'Business type', goals: 'Main goal', questions: 'Visitor actions',
+        pages: 'Pages', aesthetic: 'Visual direction', brand: 'Brand name', confirm: 'Review',
+      };
+      onSelectionConfirmed([
+        `My selection: ${answer}`,
+        `Business type: ${selectionSummary('industry')}`,
+        'Choices confirmed so far:',
+        ...confirmed.map(turn => `${labels[turn.step]}: ${turn.answer}`),
+      ].join('\n'));
+      return;
+    }
     const index = stepOrder.indexOf(step);
     if (index < stepOrder.length - 1) {
       if (isChat) setCompletedTurns(current => [...current, { step, answer: selectionSummary(step) }]);
@@ -426,7 +467,7 @@ export const LauncherWizard = ({
   const currentStepIndex = stepOrder.indexOf(step);
   const content = (
     <>
-        {isChat && !review && !isLaunching && <div className="space-y-4 p-3" aria-live="polite">
+        {isChat && !guidedStep && !review && !isLaunching && <div className="space-y-4 p-3" aria-live="polite">
           {completedTurns.map((turn, index) => <div key={index} className="space-y-2">
             <p className="rounded-lg bg-white/5 p-3 text-sm text-white/80">{CHAT_GUIDANCE[turn.step]}</p>
             <p className="ml-8 rounded-lg border border-cyan-300/20 bg-cyan-400/10 p-3 text-sm text-cyan-100">{turn.answer}</p>
@@ -500,7 +541,7 @@ export const LauncherWizard = ({
                 <LaunchStageTimeline snapshot={progress} statusText={launchStatus} className="w-full" />
               </div>
             ) : (
-              <fieldset disabled={isLaunching} aria-busy={isLaunching} className={cn("mx-auto min-w-0 max-w-4xl", isChat ? "px-3 pb-4 pt-2" : "px-5 py-7 sm:px-8 sm:py-10")}>
+              <fieldset disabled={isLaunching || guidancePending} aria-busy={isLaunching || guidancePending} className={cn("mx-auto min-w-0 max-w-4xl", isChat ? "px-3 pb-4 pt-2" : "px-5 py-7 sm:px-8 sm:py-10")}>
                 <div key={step} className="animate-fade-in">
                   {step === "industry" && (
                     <div className="mx-auto max-w-3xl space-y-7">

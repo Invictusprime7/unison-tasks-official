@@ -16,6 +16,24 @@ vi.mock("@/components/onboarding/wizard/DesignContractInspector", () => ({ Desig
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
 
 describe("Launcher Wizard guided flow", () => {
+  it('matches the AI question without replaying defaults over selections on later turns', async () => {
+    const answer = vi.fn();
+    const props = { open: true, presentation: 'chat' as const, onOpenChange: vi.fn(), onSelectionConfirmed: answer };
+    const { rerender } = render(<MemoryRouter><LauncherWizard {...props} guidedStep="goals"
+      initialVisionPrompt="A salon website" /></MemoryRouter>);
+    fireEvent.click(await screen.findByRole('button', { name: /Book Appointments/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    expect(answer).toHaveBeenCalledWith(expect.stringContaining('My selection: Book Appointments'));
+    expect(runLaunchPipeline).not.toHaveBeenCalled();
+    rerender(<MemoryRouter><LauncherWizard {...props} guidedStep="brand"
+      initialVisionPrompt="A salon website. We also discussed selling products." /></MemoryRouter>);
+    fireEvent.change(await screen.findByLabelText('Business name'), { target: { value: 'Studio Glow' } });
+    rerender(<MemoryRouter><LauncherWizard {...props} guidedStep="confirm"
+      initialVisionPrompt="A salon website. We also discussed selling products. Ready to review?" /></MemoryRouter>);
+    expect(screen.getByRole('region', { name: 'Your site plan' })).toHaveTextContent('Book Appointments');
+    expect(screen.getByRole('region', { name: 'Your site plan' })).toHaveTextContent('Studio Glow');
+    expect(screen.getByRole('button', { name: 'Create site' })).toBeEnabled();
+  });
   it("guides chat selections without an overlay and launches only after the final plan is confirmed", async () => {
     vi.mocked(runLaunchPipeline).mockImplementation(async (_input, callbacks) => {
       await callbacks!.onReview!({ files: { '/src/App.tsx': 'chat candidate' }, entryPoint: '/src/App.tsx' });
@@ -48,7 +66,7 @@ describe("Launcher Wizard guided flow", () => {
     fireEvent.click(screen.getByRole('button', { name: 'Create site' }));
     expect(runLaunchPipeline).toHaveBeenCalledTimes(1);
     expect(vi.mocked(runLaunchPipeline).mock.calls[0][0]).toMatchObject({ businessName: 'Studio Glow', primaryGoal: 'book_appointments' });
-    await screen.findByRole('heading', { name: 'Your site is ready to review' });
+    await screen.findByRole('heading', { name: 'Preparing your site preview' });
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Open in builder' })).toBeDisabled();
     fireEvent.click(screen.getByRole('button', { name: /Preview loaded chat candidate/ }));
@@ -114,7 +132,7 @@ it('requires preview readiness and discards the first candidate when regeneratin
  fireEvent.click(screen.getByRole('button',{name:'Continue'}));
  fireEvent.change(screen.getByLabelText('Business name'),{target:{value:'Glow'}});
  fireEvent.click(screen.getByRole('button',{name:'Create site'}));
- await screen.findByRole('heading',{name:'Your site is ready to review'});
+ await screen.findByRole('heading',{name:'Preparing your site preview'});
  expect(screen.getByRole('button',{name:'Open in builder'})).toBeDisabled();
  expect(accepted).toEqual([]);
  fireEvent.click(screen.getByRole('button',{name:'Preview loaded 1'}));

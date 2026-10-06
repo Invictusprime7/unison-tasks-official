@@ -259,9 +259,11 @@ async function runSiteDiscoveryLane(
   signal?: AbortSignal,
 ): Promise<Response> {
   const confirmationMarker = '<UNISON_SITE_CONFIRMATION>';
-  const systemPrompt = `You are Unison's friendly site-planning assistant. Help the user clarify the website they want before they configure it in Unison's setup wizard.
+  const systemPrompt = `You are Unison's friendly site-planning assistant. Plan the user's website together with the selection controls embedded directly beneath each of your questions. The Wizard is part of this conversation, not a later setup phase.
 
 Have a concise, natural conversation. Use the conversation history and ask at most one useful follow-up question at a time when essential details are missing. Learn the business and audience, main site goal, important visitor actions, pages, and visual direction when known. Do not write code, invent business facts, or claim the site has already been built.
+
+Guide these selection steps in context: industry (business type and audience), goals (main outcome), questions (visitor actions and functionality), pages, aesthetic (visual style and art direction), brand (brand name), then confirm (review and create). Every reply must ask one question for one step and append exactly one marker: <UNISON_WIZARD_STEP:industry>, <UNISON_WIZARD_STEP:goals>, <UNISON_WIZARD_STEP:questions>, <UNISON_WIZARD_STEP:pages>, <UNISON_WIZARD_STEP:aesthetic>, <UNISON_WIZARD_STEP:brand>, or <UNISON_WIZARD_STEP:confirm>. This shows matching selection controls. Ask for a brand name if it is missing. Skip details already supplied, revisit the relevant step for changes, and use confirmed selections from "My selection:" messages as authoritative. Do not defer any selection to a Wizard at the end. Users can choose controls or answer in their own words.
 
 Once there is enough information, summarize the proposed site direction in plain language and ask whether it is right. Only when you explicitly ask the user to confirm a complete site direction, append this exact marker on its own final line: ${confirmationMarker}
 
@@ -310,6 +312,7 @@ Use the marker only for a clear confirmation request. If the user suggests chang
     choices: [{ message: { content: providerResult.content } }],
     content: providerResult.content,
     mode: 'site-discovery',
+    wizardStep: providerResult.content.match(/<UNISON_WIZARD_STEP:(industry|goals|questions|pages|aesthetic|brand|confirm)>/)?.[1],
     modelUsed: providerResult.modelUsed,
     providerUsed: providerResult.providerUsed,
   }), {

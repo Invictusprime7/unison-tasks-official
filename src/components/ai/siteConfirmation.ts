@@ -8,7 +8,8 @@ export function isSiteConfirmation(value: string): boolean {
 }
 
 export function stripSiteConfirmationMarker(value: string): string {
-  return value.replace(SITE_CONFIRMATION_MARKER, "").trim();
+  return value.split(SITE_CONFIRMATION_MARKER).join("")
+    .replace(/<UNISON_WIZARD_STEP:[a-z]+>/g, "").trim();
 }
 
 export function buildConfirmedSiteBrief(messages: AIMessage[]): string {

@@ -34,6 +34,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { getChatWizardStep, type ChatWizardStep } from '@/services/launch/chatWizardStep';
 import { FileDropZone, DroppedFile } from "@/components/creatives/web-builder/FileDropZone";
 import { useAIFileAnalysis } from "@/hooks/useAIFileAnalysis";
 import {
@@ -51,6 +52,7 @@ export interface AIMessage {
   timestamp: Date;
   hasCode?: boolean;
   code?: string;
+  wizardStep?: ChatWizardStep;
 }
 
 export interface QuickAction {
@@ -101,6 +103,9 @@ export interface AIAssistantCoreProps {
   conversationContent?: React.ReactNode;
   /** Selection turns provide their own controls while keeping history visible. */
   selectionActive?: boolean;
+  /** Selection controls accompanying the current AI discovery question. */
+  discoverySelections?: (turn: { step: ChatWizardStep; brief: string; pending: boolean }, answer: (value: string) => void) => React.ReactNode;
+  onDiscoveryStarted?: () => void;
   /** Custom send handler - if provided, bypasses default AI logic */
   customSendHandler?: (message: string, files?: DroppedFile[]) => Promise<{ content: string; code?: string } | null>;
 }
@@ -126,6 +131,8 @@ export const AIAssistantCore: React.FC<AIAssistantCoreProps> = ({
   appearance = "default",
   conversationContent,
   selectionActive = false,
+  discoverySelections,
+  onDiscoveryStarted,
   customSendHandler,
 }) => {
   const [messages, setMessages] = useState<AIMessage[]>(initialMessages);
@@ -171,8 +178,8 @@ export const AIAssistantCore: React.FC<AIAssistantCoreProps> = ({
   };
 
   // Send message
-  const handleSend = async () => {
-    const trimmedInput = input.trim();
+  const handleSend = async (selectionAnswer?: string) => {
+    const trimmedInput = (selectionAnswer ?? input).trim();
     if (!trimmedInput && droppedFiles.length === 0) return;
     if (isLoading) return;
     if (onBeforeSend && !onBeforeSend(trimmedInput)) return;
@@ -188,6 +195,7 @@ export const AIAssistantCore: React.FC<AIAssistantCoreProps> = ({
       .find((message) => message.role === "assistant");
     if (
       onSiteConfirmed
+      && !discoverySelections
       && isSiteConfirmation(trimmedInput)
       && hasSiteConfirmationRequest(previousAssistantMessage)
     ) {
@@ -210,7 +218,7 @@ export const AIAssistantCore: React.FC<AIAssistantCoreProps> = ({
     setIsLoading(true);
 
     try {
-      let response: { content: string; code?: string } | null = null;
+      let response: { content: string; code?: string; wizardStep?: ChatWizardStep } | null = null;
 
       // Use custom handler if provided
       if (customSendHandler) {
@@ -265,6 +273,7 @@ export const AIAssistantCore: React.FC<AIAssistantCoreProps> = ({
         response = {
           content,
           code: codeMatch ? codeMatch[1].trim() : undefined,
+          ...(aiMode === 'site-discovery' ? { wizardStep: getChatWizardStep(content, data?.wizardStep) } : {}),
         };
       }
 
@@ -278,9 +287,11 @@ export const AIAssistantCore: React.FC<AIAssistantCoreProps> = ({
           timestamp: new Date(),
           hasCode: !!response.code,
           code: response.code,
+          wizardStep: response.wizardStep,
         };
 
         setMessages(prev => [...prev, assistantMessage]);
+        if (aiMode === 'site-discovery') onDiscoveryStarted?.();
 
         // Notify parent if code was generated
         if (response.code && onCodeGenerated) {
@@ -530,6 +541,13 @@ export const AIAssistantCore: React.FC<AIAssistantCoreProps> = ({
             </div>
           )}
           {conversationContent}
+          {!conversationContent && discoverySelections && messages.some(message => message.wizardStep) && (() => {
+            const turn = [...messages].reverse().find(message => message.wizardStep)!;
+            return discoverySelections({
+              step: getChatWizardStep(turn.content, turn.wizardStep),
+              brief: buildConfirmedSiteBrief(messages), pending: isLoading,
+            }, value => { void handleSend(value); });
+          })()}
         </div>
       </ScrollArea>
 
@@ -579,7 +597,7 @@ export const AIAssistantCore: React.FC<AIAssistantCoreProps> = ({
           />
           
           <Button
-            onClick={handleSend}
+            onClick={() => { void handleSend(); }}
             disabled={isLoading || (!input.trim() && droppedFiles.length === 0)}
             size="icon"
             className={cn(

@@ -1,4 +1,5 @@
 import { Badge } from "@/components/ui/badge";
+import { useState } from 'react';
 import { Sparkles } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 import { cn } from "@/lib/utils";
@@ -34,7 +35,8 @@ const HOME_QUICK_ACTIONS: QuickAction[] = [
   },
 ];
 
-export function HeroSection({ user, onAuthRequired, onSiteConfirmed, launcherOpen, launchBrief, onLauncherOpenChange }: HeroSectionProps) {
+export function HeroSection({ user, onAuthRequired, launcherOpen, launchBrief, onLauncherOpenChange }: HeroSectionProps) {
+  const [discoveryActive, setDiscoveryActive] = useState(false);
 
   return (
     <section className="relative overflow-hidden">
@@ -153,11 +155,20 @@ export function HeroSection({ user, onAuthRequired, onSiteConfirmed, launcherOpe
             </div>
             <AIAssistantCore
               appearance="unison"
-              className={cn("transition-[height] duration-500 motion-reduce:transition-none", launcherOpen ? "h-[min(740px,85dvh)]" : "h-[250px] sm:h-[270px]")}
+              className={cn("transition-[height] duration-500 motion-reduce:transition-none", launcherOpen || discoveryActive ? "h-[min(740px,85dvh)]" : "h-[250px] sm:h-[270px]")}
               placeholder="Tell Unison about your idea..."
               quickActions={HOME_QUICK_ACTIONS}
               aiMode="site-discovery"
-              onSiteConfirmed={onSiteConfirmed}
+              onDiscoveryStarted={() => setDiscoveryActive(true)}
+              discoverySelections={(turn, answer) => <LauncherWizard
+                open
+                presentation="chat"
+                guidedStep={turn.step}
+                guidancePending={turn.pending}
+                initialVisionPrompt={turn.brief}
+                onSelectionConfirmed={answer}
+                onOpenChange={onLauncherOpenChange}
+              />}
               selectionActive={launcherOpen}
               conversationContent={launcherOpen ? <LauncherWizard
                 open
@@ -177,7 +188,7 @@ export function HeroSection({ user, onAuthRequired, onSiteConfirmed, launcherOpe
               hideHeader
             />
             <p className="mt-2 text-center text-xs text-white/40">
-              {launcherOpen ? "Refine each choice at your own pace. Create your site when you're ready." : "Describe your idea or choose a starting point above"}
+              {launcherOpen || discoveryActive ? "Choose an option or reply in chat. Create your site when you're ready." : "Describe your idea or choose a starting point above"}
             </p>
           </motion.div>
 
