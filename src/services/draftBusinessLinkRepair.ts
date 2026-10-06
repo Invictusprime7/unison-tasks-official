@@ -11,12 +11,11 @@
  * This module recreates that relationship deterministically:
  *   1. resolve an owning business (draft → project → owned → member → create)
  *   2. relink the draft and, when needed, its project
- *   3. backfill a committed canonical revision from the draft's own content
+ *   3. validate and accept saved content through commitMutation
  *
  * It is intentionally idempotent: running it on a healthy draft is a no-op.
  */
 import { supabase } from '@/integrations/supabase/client';
-import { resolveLegacyDraftContent } from './legacyDraftHydration';
 
 export interface DraftBusinessRepairResult {
   repaired: boolean;
@@ -24,7 +23,7 @@ export interface DraftBusinessRepairResult {
   revisionId: string | null;
   createdBusiness: boolean;
   committedRevision: boolean;
-  /** True when the draft simply has no site content yet (never generated). */
+  /** True when no saved content is available; this does not establish past generation. */
   emptyDraft: boolean;
   notes: string[];
 }
@@ -124,69 +123,64 @@ async function backfillCommittedRevision(
   projectId: string,
   notes: string[],
 ): Promise<{ revisionId: string | null; empty: boolean }> {
-  const content = resolveLegacyDraftContent(draft);
-  const vfsFiles = content.files;
-  const metadata = asRecord(draft.metadata);
-  const snapshot = asRecord(metadata.siteBundleSnapshot);
-  const activePagePath =
-    typeof metadata.activePagePath === 'string' && metadata.activePagePath.trim()
-      ? metadata.activePagePath.trim()
-      : Object.keys(vfsFiles).find((path) => /\/(pages\/)?(Home|Index)\.tsx$/i.test(path))
-        || Object.keys(vfsFiles).find((path) => path.endsWith('.tsx'))
-        || '';
-
-  if (Object.keys(vfsFiles).length === 0 || !activePagePath || !vfsFiles[activePagePath]) {
-    if (!content.hasContent && (metadata.siteBundleId || metadata.siteBuildId)) {
-      notes.push('This saved project has build references but its source is unavailable. Recover the saved source rather than rerunning the launcher.');
-      return { revisionId: null, empty: false };
+  const { loadLegacyDraftContent } = await import('./legacyDraftHydration');
+  const { prepareSavedVfsRuntime } = await import('./savedVfsRuntime');
+  const { ensureViteRootFiles } = await import('./previewSession');
+  const { templateToVFSFiles } = await import('@/utils/templateToVFS');
+  const { commitMutation } = await import('./vfsCommitService');
+  const { legacyFilesToPatchPlan } = await import('@/types/patchPlan');
+  const { computeBuilderVfsSignature, writeBuilderRecoverySnapshot, markBuilderRecoveryPersisted } = await import('./builderStateRecovery');
+  const { createEmptyCreatorData } = await import('@/types/creatorData');
+  const { THEME_PRESETS } = await import('@/components/onboarding/themePresets');
+  const { themePresetToThemeTokens } = await import('@/components/onboarding/themePresetToTokens');
+  try {
+    const content = await loadLegacyDraftContent(projectId, draft.id);
+    if (!content) {
+      notes.push('No saved source or saved site plan is available to convert.');
+      return { revisionId: null, empty: true };
     }
-    notes.push(content.hasContent ? 'Saved legacy content is available for hydration.' : 'This project has no generated site content yet.');
-    return { revisionId: null, empty: !content.hasContent };
-  }
-
-  // The commit routine requires snapshot.vfsFiles to equal the canonical VFS.
-  const snapshotForCommit = {
-    ...snapshot,
-    snapshotId:
-      typeof snapshot.snapshotId === 'string' && snapshot.snapshotId
-        ? snapshot.snapshotId
-        : `repair-${draft.id}-${Date.now()}`,
-    vfsFiles,
-  };
-
-  const { data, error } = await (supabase.rpc as unknown as (
-    fn: string,
-    args: Record<string, unknown>,
-  ) => Promise<{ data: unknown; error: { message: string } | null }>)(
-    'commit_canonical_site_revision_v2',
-    {
-      p_project_id: projectId,
-      p_business_id: businessId,
-      p_draft_id: draft.id,
-      p_parent_revision_id: draft.last_revision_id,
-      p_source: 'system-repair',
-      p_status: 'committed',
-      p_patch_json: {},
-      p_vfs_files: vfsFiles,
-      p_site_bundle_snapshot: snapshotForCommit,
-      p_runtime_manifest: asRecord(metadata.runtimeManifest),
-      p_playground_state: asRecord(metadata.playground ?? metadata.playgroundState),
-      p_readiness_report: {},
-      p_diagnostics: [],
-      p_publish_ready: false,
-      p_publish_blockers: [],
-      p_backend_ops_applied: [],
-      p_vfs_hash: null,
-      p_active_page_path: activePagePath,
-    },
-  );
-
-  if (error || typeof data !== 'string') {
-    notes.push(`Could not backfill a committed revision: ${error?.message ?? 'unknown error'}`);
+    const metadata = asRecord(draft.metadata);
+    const source = Object.keys(content.files).length ? content.files : templateToVFSFiles(content.code, draft.name || 'Saved project');
+    const files = ensureViteRootFiles(prepareSavedVfsRuntime(source, {
+      businessId, projectId, siteId: typeof metadata.siteId === 'string' ? metadata.siteId : undefined,
+      industry: typeof metadata.industry === 'string' ? metadata.industry : undefined,
+      templateId: content.sitePlan?.selectedTemplateId, themePresetId: content.sitePlan?.selectedThemePresetId,
+    }));
+    const parse = (path: string) => { try { return asRecord(JSON.parse(files[path] || '{}')); } catch { return {}; } };
+    const snapshot = Object.keys(asRecord(metadata.siteBundleSnapshot)).length ? asRecord(metadata.siteBundleSnapshot) : parse('/.unison/site-bundle-snapshot.json');
+    const savedPlayground = Object.keys(asRecord(metadata.canonicalPlayground)).length ? asRecord(metadata.canonicalPlayground) : parse('/.unison/canonical-playground.json');
+    const pageRegistry = content.pageRegistry || savedPlayground.pageRegistry || snapshot.pageRegistry;
+    if (!pageRegistry) throw new Error('Saved page registry is unavailable; source is retained for recovery.');
+    const savedTheme = parse('/.unison/legacy-theme.json');
+    const savedRecovery = parse('/.unison/legacy-recovery.json');
+    const themePresetId = content.sitePlan?.selectedThemePresetId || metadata.themePresetId || asRecord(snapshot.meta).themePresetId || savedTheme.themePresetId;
+    const preset = THEME_PRESETS.find(preset => preset.id === themePresetId);
+    const themeTokens = snapshot.themeTokens || metadata.themeTokens || savedTheme.themeTokens || (preset ? themePresetToThemeTokens(preset) : undefined);
+    if (!themeTokens || typeof themePresetId !== 'string') throw new Error('Saved theme selection is unavailable; source is retained for recovery.');
+    const playground = { creatorData: createEmptyCreatorData(draft.name || 'Saved project'), bindings: {}, calendars: {}, popups: {}, ...savedPlayground, pageRegistry };
+    const recovery = { version: 2 as const, templateId: draft.id, code: content.code, editorCode: content.code,
+      savedAt: new Date().toISOString(), vfsSignature: computeBuilderVfsSignature(files), vfsFiles: files,
+      reason: 'ai_recovery' as const, pendingRemote: true };
+    writeBuilderRecoverySnapshot(recovery);
+    const committed = await commitMutation({
+      source: 'playground-edit',
+      identity: { userId: draft.user_id, businessId, projectId, draftId: draft.id, revisionId: '', sessionId: 'legacy-conversion:' + draft.id },
+      current: { vfsFiles: files, activePagePath: content.activePagePath, playground: playground as unknown as import('@/platform/core/playground').PlaygroundState },
+      patch: legacyFilesToPatchPlan(files, 'Convert saved cloud project to canonical VFS'),
+      options: { requirePreviewPass: true, requireReadinessPass: false,
+        businessName: content.sitePlan?.businessName || (typeof savedRecovery.businessName === 'string' ? savedRecovery.businessName : draft.name || undefined),
+        industry: content.sitePlan?.industry || (typeof metadata.industry === 'string' ? metadata.industry : typeof savedRecovery.industry === 'string' ? savedRecovery.industry : undefined),
+        selectedTemplateId: content.sitePlan?.selectedTemplateId || (typeof metadata.templateId === 'string' ? metadata.templateId : typeof savedRecovery.templateId === 'string' ? savedRecovery.templateId : undefined),
+        themePresetId, themeTokens: themeTokens as import('@/sections/types').ThemeTokens },
+    });
+    if (!committed.persistedRevisionId) throw new Error('Canonical conversion did not persist an accepted revision.');
+    markBuilderRecoveryPersisted(recovery, draft.id, undefined, committed.persistedRevisionId);
+    notes.push('Converted saved content into a validated canonical revision.');
+    return { revisionId: committed.persistedRevisionId, empty: false };
+  } catch (error) {
+    notes.push('Saved project conversion failed: ' + (error instanceof Error ? error.message : String(error)));
     return { revisionId: null, empty: false };
   }
-  notes.push('Backfilled a committed canonical revision from the draft content.');
-  return { revisionId: data, empty: false };
 }
 
 export async function repairDraftBusinessLink(args: {
@@ -228,7 +222,16 @@ export async function repairDraftBusinessLink(args: {
     return result;
   }
 
+  if (draftRow.user_id !== userId || (draftRow.project_id && args.projectId && draftRow.project_id !== args.projectId)) {
+    notes.push('Draft ownership or project linkage does not match; conversion refused.');
+    return result;
+  }
   const projectId = draftRow.project_id || args.projectId || null;
+  if (!draftRow.project_id && projectId) {
+    const { error } = await supabase.from('builder_drafts').update({ project_id: projectId }).eq('id', draftRow.id).eq('user_id', userId);
+    if (error) { notes.push(`Could not link the legacy draft: ${error.message}`); return result; }
+    result.repaired = true;
+  }
   let projectBusinessId: string | null = null;
   if (projectId) {
     const { data: project } = await supabase

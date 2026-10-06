@@ -91,7 +91,10 @@ export async function loadLegacyDraftContent(projectId: string, draftId: string)
     // The cloud row must first be accessible and have no accepted revision.
     // A scoped browser journal can recover an interrupted pre-revision save.
     const recovered = resolveScopedDraftRecovery(draftId, readBuilderRecoverySnapshot(draftId)) ?? readSavedTemplateRecovery(draftId);
-    if (recovered) return { ...recovered, pageRegistry: undefined };
+    if (recovered) {
+      const { populateRegistryFromTopology } = await import('@/platform/core/siteTopologyPlanner');
+      return { ...recovered, sitePlan: content.sitePlan, pageRegistry: content.sitePlan ? populateRegistryFromTopology(content.sitePlan) : undefined };
+    }
     const metadata = record(data.metadata);
     const siteId = data.site_id || metadata.siteId;
     if (typeof metadata.siteBundleId === 'string' && typeof siteId === 'string') {

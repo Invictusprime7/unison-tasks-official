@@ -137,6 +137,7 @@ import { applyCapabilityMigration } from '@/services/capabilityMigrationRunner';
 import { applyButtonBinding } from '@/services/aiBindingTool';
 import { upgradeCurrentUserDraftFrameworkVfs } from '@/services/draftFrameworkMigrationService';
 import { loadLegacyDraftContent, savedVfsFilesFrom } from '@/services/legacyDraftHydration';
+import { recoverLegacyCloudProject } from '@/services/legacyCloudProjectRecovery';
 import { prepareSavedVfsRuntime } from '@/services/savedVfsRuntime';
 
 // Helpers extracted to web-builder/*
@@ -2756,6 +2757,29 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
         setCurrentRevisionId(revision.id);
         settled = true;
       } catch (err) {
+        if (hasCanonicalDraft && !cancelled && err instanceof Error && err.message.includes('was not found for project')) {
+          try {
+            const recoveredDraftId = await recoverLegacyCloudProject(durableProjectId!);
+            const conversion = await repairDraftBusinessLink({ draftId: recoveredDraftId, projectId: durableProjectId! });
+            if (!conversion.revisionId) throw new Error(conversion.notes.join(' ') || 'Recovered project could not be converted.');
+            if (cancelled) return;
+            templateFiles.setCurrentDraftId(recoveredDraftId);
+            setCurrentDraftId(recoveredDraftId);
+            setCurrentRevisionId(conversion.revisionId);
+            setCanonicalHydrationError(null);
+            setHydrationNonce(value => value + 1);
+            navigate(`/web-builder?id=${recoveredDraftId}`, { replace: true, state: {
+              projectId: durableProjectId, draftId: recoveredDraftId,
+              businessId: conversion.businessId, revisionId: conversion.revisionId,
+            } });
+            settled = true;
+            return;
+          } catch (recoveryError) {
+            if (!cancelled) setCanonicalHydrationError(recoveryError instanceof Error ? recoveryError.message : String(recoveryError));
+            settled = true;
+            return;
+          }
+        }
         if (hasCanonicalDraft && !cancelled && err instanceof Error && err.message.includes('has no committed revision projection')) {
           try {
             const legacy = await loadLegacyDraftContent(durableProjectId!, currentDraftId!);

@@ -62,6 +62,9 @@ import {
 } from '@/services/projectSchemaCompat';
 import { mergeWorkspaceProjects } from '@/services/cloudProjectDrafts';
 import { findBuilderDraftIdForProject } from '@/services/builderDraftBridge';
+import { migrateCloudProjects, type CloudMigrationResult } from '@/services/cloudProjectCanonicalMigration';
+import { recoverLegacyCloudProject } from '@/services/legacyCloudProjectRecovery';
+import { repairDraftBusinessLink } from '@/services/draftBusinessLinkRepair';
 
 import CRMDashboard, { type CRMView } from '@/pages/CRMDashboard';
 import { CloudTeams } from './CloudTeams';
@@ -194,6 +197,17 @@ interface CloudProjectsLocationState {
 }
 
 export function CloudProjects({ userId, businessId: propBusinessId, onProjectSelect }: CloudProjectsProps) {
+  const [migrationProgress, setMigrationProgress] = useState<{ completed: number; total: number } | null>(null);
+  const [migrationResults, setMigrationResults] = useState<CloudMigrationResult[] | null>(null);
+  const restoreCloudProjects = async () => {
+    setMigrationProgress({ completed: 0, total: 0 });
+    try {
+      setMigrationResults(await migrateCloudProjects((completed, total) => setMigrationProgress({ completed, total })));
+      window.dispatchEvent(new CustomEvent('unison:project-draft-saved'));
+    } catch (error) {
+      setMigrationResults([{ draftId: '', projectId: '', converted: false, notes: [error instanceof Error ? error.message : String(error)] }]);
+    } finally { setMigrationProgress(null); }
+  };
   // Core state
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -952,6 +966,17 @@ export function CloudProjects({ userId, businessId: propBusinessId, onProjectSel
       console.warn('[CloudProjects] failed to resolve draft for project', project.id, err);
     }
 
+    if (!project.draft_only) {
+      try {
+        draftId = await recoverLegacyCloudProject(project.id);
+        const conversion = await repairDraftBusinessLink({ draftId, projectId: project.id });
+        if (!conversion.revisionId) throw new Error(conversion.notes.join(' ') || 'Saved project conversion could not be accepted.');
+      } catch (error) {
+        toast({ title: 'Project recovery needs attention', description: error instanceof Error ? error.message : String(error), variant: 'destructive' });
+        return;
+      }
+    }
+
     const url = draftId ? `/web-builder?id=${draftId}` : '/web-builder';
     navigate(url, {
       state: {
@@ -1516,12 +1541,21 @@ export function CloudProjects({ userId, businessId: propBusinessId, onProjectSel
                         Select
                       </Button>
                     )}
+                    <Button variant="outline" disabled={migrationProgress !== null} onClick={() => void restoreCloudProjects()}>
+                      {migrationProgress ? `Restoring ${migrationProgress.completed}/${migrationProgress.total}` : 'Restore older projects'}
+                    </Button>
                     <Button onClick={() => setCreateProjectOpen(true)}>
                       <Plus className="h-4 w-4 mr-2" />
                       New Project
                     </Button>
                   </div>
 
+                  {migrationResults && <div role="status" className="mb-4 text-sm">
+                    <p>{migrationResults.filter(result => result.converted).length} projects restored. {migrationResults.filter(result => !result.converted).length} need attention.</p>
+                    {migrationResults.some(result => !result.converted) && <details><summary>View projects needing attention</summary>
+                      <ul>{migrationResults.filter(result => !result.converted).map((result, index) => <li key={result.draftId || index}>{result.draftId || result.projectId}: {result.notes.join(' ')}</li>)}</ul>
+                    </details>}
+                  </div>}
                   {/* Projects */}
                   {filteredProjects.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-16 text-center">
