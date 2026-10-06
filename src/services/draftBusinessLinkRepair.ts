@@ -16,6 +16,7 @@
  * It is intentionally idempotent: running it on a healthy draft is a no-op.
  */
 import { supabase } from '@/integrations/supabase/client';
+import { resolveLegacyDraftContent } from './legacyDraftHydration';
 
 export interface DraftBusinessRepairResult {
   repaired: boolean;
@@ -29,6 +30,8 @@ export interface DraftBusinessRepairResult {
 }
 
 type DraftRow = {
+  code: string | null;
+  editor_code: string | null;
   id: string;
   user_id: string;
   business_id: string | null;
@@ -121,7 +124,8 @@ async function backfillCommittedRevision(
   projectId: string,
   notes: string[],
 ): Promise<{ revisionId: string | null; empty: boolean }> {
-  const vfsFiles = asRecord(draft.vfs_files) as Record<string, string>;
+  const content = resolveLegacyDraftContent(draft);
+  const vfsFiles = content.files;
   const metadata = asRecord(draft.metadata);
   const snapshot = asRecord(metadata.siteBundleSnapshot);
   const activePagePath =
@@ -132,8 +136,8 @@ async function backfillCommittedRevision(
         || '';
 
   if (Object.keys(vfsFiles).length === 0 || !activePagePath || !vfsFiles[activePagePath]) {
-    notes.push('This project has no generated site content yet.');
-    return { revisionId: null, empty: true };
+    notes.push(content.hasContent ? 'Saved legacy content is available for hydration.' : 'This project has no generated site content yet.');
+    return { revisionId: null, empty: !content.hasContent };
   }
 
   // The commit routine requires snapshot.vfsFiles to equal the canonical VFS.
@@ -211,7 +215,7 @@ export async function repairDraftBusinessLink(args: {
         };
       };
     })
-    .select('id, user_id, business_id, project_id, name, vfs_files, metadata, last_revision_id')
+    .select('id, user_id, business_id, project_id, name, code, editor_code, vfs_files, metadata, last_revision_id')
     .eq('id', args.draftId)
     .maybeSingle();
 

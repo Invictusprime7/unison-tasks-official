@@ -136,6 +136,7 @@ import {
 import { applyCapabilityMigration } from '@/services/capabilityMigrationRunner';
 import { applyButtonBinding } from '@/services/aiBindingTool';
 import { upgradeCurrentUserDraftFrameworkVfs } from '@/services/draftFrameworkMigrationService';
+import { loadLegacyDraftContent } from '@/services/legacyDraftHydration';
 
 // Helpers extracted to web-builder/*
 import {
@@ -2624,6 +2625,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   // `site_revisions` over the sessionStorage / launch-context VFS. This closes
   // the launcher→builder loop so the canonical revision chain is authoritative.
   const hydratedRevisionRef = useRef<string | null>(null);
+  const legacyHydrationKeyRef = useRef<string | null>(null);
   const hydratedDraftIdentityRef = useRef<string | null>(null);
   const [hydratedRevision, setHydratedRevision] = useState<LoadedRevision | null>(null);
   const [runtimeProjectionRevisionId, setRuntimeProjectionRevisionId] = useState<string | null>(null);
@@ -2657,6 +2659,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     const hydrationKey = baseKey ? `${baseKey}#${hydrationNonce}` : '';
     if (!hydrationKey || hydratedRevisionRef.current === hydrationKey) return;
     hydratedRevisionRef.current = hydrationKey;
+    legacyHydrationKeyRef.current = null;
 
     // A new revision of the SAME draft (AI edit, theme edit, undo, restore)
     // must not tear down the hydrated runtime: clearing it unmounts the live
@@ -2747,6 +2750,33 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
         setCurrentRevisionId(revision.id);
         settled = true;
       } catch (err) {
+        if (hasCanonicalDraft && !cancelled && err instanceof Error && err.message.includes('has no committed revision projection')) {
+          try {
+            const legacy = await loadLegacyDraftContent(durableProjectId!, currentDraftId!);
+            if (cancelled) return;
+            if (legacy) {
+              const files = Object.keys(legacy.files).length ? legacy.files : templateToVFSFiles(legacy.code, 'Saved project');
+              // canonical-vfs-exempt: hydration of a saved draft into the working set
+              const imported = importBuilderFiles(files, { replace: true, preferredPath: legacy.activePagePath,
+                adoption: { source: 'hydration', exemptReason: 'legacy-saved-draft-content' } });
+              if (!imported) throw new Error('Saved legacy content could not be loaded into the builder.');
+              setCanonicalHydrationError(null);
+              setEmptyProjectDraft(false);
+              // No accepted revision exists yet. Hydration is read-only; future
+              // saves still use the existing canonical commit boundary.
+              legacyHydrationKeyRef.current = hydrationKey;
+              const savedFiles = virtualFSRef.current.getSandpackFiles();
+              lastSavedVfsSignatureRef.current = computeBuilderVfsSignature(savedFiles);
+              lastPersistedVfsFilesRef.current = { ...savedFiles };
+              settled = true;
+              return;
+            }
+          } catch (legacyError) {
+            if (!cancelled) setCanonicalHydrationError(legacyError instanceof Error ? legacyError.message : String(legacyError));
+            settled = true;
+            return;
+          }
+        }
         const message = err instanceof Error ? err.message : String(err);
         const hasCommittedRouteArtifact = Boolean(
           effectiveRouteState?.revisionId
@@ -4380,7 +4410,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     reason?: BuilderSaveReason;
     vfsFiles?: Record<string, string>;
   }): Promise<boolean> => {
-    if (hydratedRevisionRef.current && !hydratedRevision) return Promise.resolve(false);
+    if (hydratedRevisionRef.current && !hydratedRevision && legacyHydrationKeyRef.current !== hydratedRevisionRef.current) return Promise.resolve(false);
     const currentVfsFiles = options?.vfsFiles || virtualFSRef.current.getSandpackFiles();
     const vfsSignature = computeVfsSignature(currentVfsFiles);
     const codeForSave = currentVfsFiles[activePagePath] || previewCode || '';
@@ -4638,7 +4668,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   // debounce a save so changes survive Preview refresh + builder navigation.
   useEffect(() => {
     const t = window.setTimeout(() => {
-      if (hydratedRevisionRef.current && !hydratedRevision) return;
+      if (hydratedRevisionRef.current && !hydratedRevision && legacyHydrationKeyRef.current !== hydratedRevisionRef.current) return;
       // First-ever VFS observation after mount/load: seed the baseline signature
       // instead of saving. Only legacy drafts replay pending local journals;
       // a hydrated canonical revision remains the authority for saved projects.
@@ -6935,7 +6965,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
         toast.error(`${verb} could not be saved`, { description: result.publishBlockers?.[0]?.message });
         return false;
       }
-      // canonical-vfs-exempt: adoption of an accepted commitMutation (restore) result
+      // canonical-vfs-exempt: adoption of an accepted commitMutation result
       importBuilderFiles(result.vfsFiles, {
         replace: true, preferredPath: activePagePath, entryPoint: launchEntryPoint,
         adoption: commitAdoptionRecord(result),
