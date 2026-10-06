@@ -136,6 +136,10 @@ async function backfillCommittedRevision(
         || '';
 
   if (Object.keys(vfsFiles).length === 0 || !activePagePath || !vfsFiles[activePagePath]) {
+    if (!content.hasContent && (metadata.siteBundleId || metadata.siteBuildId)) {
+      notes.push('This saved project has build references but its source is unavailable. Recover the saved source rather than rerunning the launcher.');
+      return { revisionId: null, empty: false };
+    }
     notes.push(content.hasContent ? 'Saved legacy content is available for hydration.' : 'This project has no generated site content yet.');
     return { revisionId: null, empty: !content.hasContent };
   }

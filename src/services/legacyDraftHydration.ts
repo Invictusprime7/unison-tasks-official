@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import type { GeneratedSitePlan } from '@/platform/core/siteTopologyPlanner';
+import { readBuilderRecoverySnapshot, type BuilderRecoverySnapshot } from './builderStateRecovery';
 
 const record = (value: unknown): Record<string, unknown> => value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
 /** Both persisted string maps and Sandpack's { code } file descriptors are VFS input. */
@@ -9,6 +10,27 @@ export const savedVfsFilesFrom = (value: unknown): Record<string, string> => Obj
     return typeof source === 'string' ? [[`/${path.replace(/\\/g, '/').replace(/^\/+/, '')}`, source]] : [];
   }),
 );
+
+export function resolveScopedDraftRecovery(draftId: string, recovery: BuilderRecoverySnapshot | null) {
+  if (!recovery || recovery.templateId !== draftId) return null;
+  const content = resolveLegacyDraftContent({ vfs_files: recovery.vfsFiles, editor_code: recovery.editorCode, code: recovery.code });
+  return content.hasContent ? content : null;
+}
+
+export function resolveScopedSavedTemplate(draftId: string, templates: unknown) {
+  if (!Array.isArray(templates)) return null;
+  const template = templates.map(record).find((item) => item.id === draftId || record(item.canvas_data).draftId === draftId);
+  if (!template) return null;
+  const canvas = record(template.canvas_data);
+  const content = resolveLegacyDraftContent({ vfsFiles: canvas.vfsFiles, editor_code: canvas.previewCode,
+    code: canvas.html, metadata: canvas });
+  return content.hasContent ? content : null;
+}
+
+function readSavedTemplateRecovery(draftId: string) {
+  try { return resolveScopedSavedTemplate(draftId, JSON.parse(localStorage.getItem('webbuilder_templates') ?? '[]')); }
+  catch { return null; }
+}
 
 /** Resolve saved source or the historical declarative save format without writing it. */
 export function resolveLegacyDraftContent(row: {
@@ -65,6 +87,24 @@ export async function loadLegacyDraftContent(projectId: string, draftId: string)
   // A canonical revision pointer can never be bypassed by legacy source.
   if (!data || data.last_revision_id) return null;
   const content = resolveLegacyDraftContent(data);
+  if (!content.hasContent) {
+    // The cloud row must first be accessible and have no accepted revision.
+    // A scoped browser journal can recover an interrupted pre-revision save.
+    const recovered = resolveScopedDraftRecovery(draftId, readBuilderRecoverySnapshot(draftId)) ?? readSavedTemplateRecovery(draftId);
+    if (recovered) return { ...recovered, pageRegistry: undefined };
+    const metadata = record(data.metadata);
+    const siteId = data.site_id || metadata.siteId;
+    if (typeof metadata.siteBundleId === 'string' && typeof siteId === 'string') {
+      const { data: savedBundle, error: bundleError } = await supabase.from('site_bundles')
+        .select('bundle').eq('id', metadata.siteBundleId).eq('site_id', siteId).maybeSingle();
+      if (bundleError) throw bundleError;
+      const bundleContent = resolveLegacyDraftContent({ metadata: { siteBundleSnapshot: savedBundle?.bundle } });
+      if (bundleContent.hasContent) return { ...bundleContent, pageRegistry: undefined };
+    }
+    if (metadata.siteBundleId || metadata.siteBuildId) {
+      throw new Error('This saved project has no recoverable source in its draft. Its saved build/bundle reference is unavailable; a browser recovery copy or source backup is needed.');
+    }
+  }
   if (!content.hasContent) return null;
   if (!Object.keys(content.files).length && !content.code && content.sitePlan) {
     return { ...content, ...await projectLegacySavedPlan(content.sitePlan, { projectId, businessId: data.business_id, siteId: data.site_id }) };

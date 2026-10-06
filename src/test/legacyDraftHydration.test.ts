@@ -12,13 +12,29 @@ vi.mock('@/integrations/supabase/client', () => ({ supabase: {
     return query;
   }),
 } }));
-import { loadLegacyDraftContent, resolveLegacyDraftContent, projectLegacySavedPlan } from '@/services/legacyDraftHydration';
+import { loadLegacyDraftContent, resolveLegacyDraftContent, projectLegacySavedPlan, resolveScopedDraftRecovery, resolveScopedSavedTemplate } from '@/services/legacyDraftHydration';
+import type { BuilderRecoverySnapshot } from '@/services/builderStateRecovery';
 import { planSiteTopology } from '@/platform/core/siteTopologyPlanner';
 import { build } from 'esbuild';
 import path from 'node:path';
 import { prepareSavedVfsRuntime } from '@/services/savedVfsRuntime';
 
 describe('legacy saved draft hydration', () => {
+  it('recovers legacy browser template files only for the exact draft identity', () => {
+    const templates = [{ id: 'local-cache', canvas_data: { draftId: 'draft', vfsFiles: { '/src/App.tsx': 'saved browser source' } } }];
+    expect(resolveScopedSavedTemplate('draft', templates)?.files['/src/App.tsx']).toBe('saved browser source');
+    expect(resolveScopedSavedTemplate('other-draft', templates)).toBeNull();
+  });
+  it('recovers a matching browser journal without mixing projects', () => {
+    const recovery: BuilderRecoverySnapshot = { version: 2, templateId: 'draft', code: '', editorCode: '', savedAt: '2026-10-03',
+      vfsSignature: 'saved', pendingRemote: true, reason: 'ai_edit', vfsFiles: { '/src/App.tsx': 'saved source' } };
+    expect(resolveScopedDraftRecovery('draft', recovery)?.files['/src/App.tsx']).toBe('saved source');
+    expect(resolveScopedDraftRecovery('other-draft', recovery)).toBeNull();
+  });
+  it('reports unavailable saved build source instead of calling a previously launched project empty', async () => {
+    mock.row = { code: '', vfs_files: {}, metadata: { siteBuildId: 'old-build' }, last_revision_id: null };
+    await expect(loadLegacyDraftContent('project', 'draft')).rejects.toThrow('browser recovery copy or source backup');
+  });
   beforeEach(() => { mock.row = null; mock.error = null; mock.filters = []; });
   it('prefers saved editor code without changing authored source', () => {
     const code = 'export default () => <h1>My saved site</h1>';
