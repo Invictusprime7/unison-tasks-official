@@ -15,6 +15,7 @@ interface Props {
   onApply: AIBuilderApplyCallback;
   onAsk: (prompt: string) => void;
   businessId?: string | null;
+  revisionId?: string | null;
 }
 
 type Mode = 'root' | 'font' | 'map' | 'changes' | 'catalog' | 'price' | 'image';
@@ -26,11 +27,14 @@ type ChangeEntry = AgentEvent & { at: number };
  * Ctrl/Cmd+K. Every action calls the same agent-runtime operations and the
  * same save path the AI uses — the menu has no capabilities of its own.
  */
-export function AgentCommandPalette({ files, onApply, onAsk, businessId }: Props) {
+export function AgentCommandPalette({ files, onApply, onAsk, businessId, revisionId }: Props) {
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<Mode>('root');
   const [query, setQuery] = useState('');
-  const graph = useMemo(() => (open ? buildSystemGraph(files) : null), [open, files]);
+  const graph = useMemo(
+    () => (open ? buildSystemGraph({ files, revisionId }) : null),
+    [open, files, revisionId],
+  );
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {

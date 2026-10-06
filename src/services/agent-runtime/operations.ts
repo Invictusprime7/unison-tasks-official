@@ -10,12 +10,28 @@ import {
   listCatalog, createCatalogItem, updateCatalogItemRow, deleteCatalogItem,
   type CatalogItem, type CatalogPatch,
 } from './catalogOps';
+import {
+  buildSystemGraph,
+  findGraphNode,
+  graphEdgesFor,
+  type GraphDiagnostic,
+  type SystemGraphBackendActionInput,
+  type SystemGraphInput,
+  type SystemGraphSchemaInput,
+} from './systemGraph';
 
 export interface AgentContext {
   files: Record<string, string>;
   businessId?: string | null;
   projectId?: string | null;
   previewErrors?: string[];
+  /** Canonical state made available by the Builder; inspection only. */
+  revisionId?: string | null;
+  snapshot?: SystemGraphInput['snapshot'];
+  runtimeManifest?: SystemGraphInput['runtimeManifest'];
+  schema?: SystemGraphSchemaInput | null;
+  backendActions?: SystemGraphBackendActionInput[];
+  diagnostics?: GraphDiagnostic[];
 }
 
 export type ProposedChange = { files: Record<string, string>; summary: string };
@@ -37,6 +53,51 @@ export const agentOperations = {
     const out: Record<string, string[]> = {};
     collectIntentTargets(ctx.files).forEach((v, k) => { out[k] = [...v]; });
     return out;
+  },
+  /** Rebuilds a fresh graph from the caller's canonical state; never caches or writes it. */
+  inspect_system_graph(ctx: AgentContext) {
+    return buildSystemGraph({
+      files: ctx.files,
+      revisionId: ctx.revisionId,
+      snapshot: ctx.snapshot,
+      runtimeManifest: ctx.runtimeManifest,
+      schema: ctx.schema,
+      backendActions: ctx.backendActions,
+      diagnostics: ctx.diagnostics,
+    });
+  },
+  inspect_graph_node(ctx: AgentContext, id: string): unknown | null {
+    return findGraphNode(agentOperations.inspect_system_graph(ctx), id);
+  },
+  inspect_graph_edges(ctx: AgentContext, id: string) {
+    return graphEdgesFor(agentOperations.inspect_system_graph(ctx), id);
+  },
+  inspect_route(ctx: AgentContext, route: string) {
+    return agentOperations.inspect_system_graph(ctx).routes.find((candidate) => candidate.path === route) ?? null;
+  },
+  inspect_dependencies(ctx: AgentContext) {
+    return agentOperations.inspect_system_graph(ctx).dependencies;
+  },
+  inspect_capabilities(ctx: AgentContext) {
+    return agentOperations.inspect_system_graph(ctx).capabilities;
+  },
+  inspect_schema(ctx: AgentContext) {
+    return agentOperations.inspect_system_graph(ctx).database;
+  },
+  inspect_table(ctx: AgentContext, table: string) {
+    return agentOperations.inspect_system_graph(ctx).database.tables.find((candidate) => candidate.name === table || candidate.id === table) ?? null;
+  },
+  inspect_policies(ctx: AgentContext, table?: string) {
+    const graph = agentOperations.inspect_system_graph(ctx);
+    return table
+      ? graph.database.policies.filter((policy) => policy.tableId === `table:${table}` || policy.tableId === table)
+      : graph.database.policies;
+  },
+  inspect_backend_actions(ctx: AgentContext) {
+    return agentOperations.inspect_system_graph(ctx).backendActions;
+  },
+  inspect_preview(ctx: AgentContext) {
+    return ctx.previewErrors ?? [];
   },
   /** Project-scoped catalog read through the normal access rules. */
   async inspect_data(ctx: AgentContext, table: CatalogTable, limit = 20): Promise<unknown[]> {

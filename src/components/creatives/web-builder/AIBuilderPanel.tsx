@@ -1787,9 +1787,18 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
             });
           } catch { /* best-effort */ }
           try {
-            const graphText = renderSystemGraphForPrompt(buildSystemGraph(vfsFiles ?? {}));
+            const graphText = renderSystemGraphForPrompt(buildSystemGraph({
+              files: vfsFiles ?? {},
+              revisionId,
+              diagnostics: iframeErrors.map((error, index) => ({
+                id: `diagnostic:preview:${index}`,
+                level: error.type === 'runtime' || error.type === 'syntax' ? 'error' : 'warning',
+                message: error.message,
+                path: error.file,
+              })),
+            }));
             if (graphText) previewSnapshot = `${previewSnapshot ?? ''}\n\n${graphText}`.trim();
-            emitAgentEvent({ kind: 'discovery', message: 'Read every page, section and button destination', status: 'ok' });
+            emitAgentEvent({ kind: 'discovery', message: 'Read the current revision graph, page structure, and preview diagnostics', status: 'ok' });
           } catch { /* best-effort */ }
           if (businessId) {
             try {
@@ -3315,7 +3324,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
             className="flex-shrink-0 border-t border-border"
           />
 
-          <AgentCommandPalette files={vfsFiles ?? {}} onApply={onApplyToVFS} onAsk={setInput} businessId={businessId} />
+          <AgentCommandPalette files={vfsFiles ?? {}} onApply={onApplyToVFS} onAsk={setInput} businessId={businessId} revisionId={revisionId} />
           <div className="flex justify-end border-t border-border px-2 py-1">
             <CatalogPanel files={vfsFiles ?? {}} businessId={businessId} onApply={onApplyToVFS} />
           </div>

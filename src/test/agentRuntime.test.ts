@@ -27,6 +27,23 @@ describe('agent runtime', () => {
     off();
     expect(seen).toEqual(['plan']);
   });
+  it('reads graph, schema, and backend metadata without changing the caller state', () => {
+    const ctx = {
+      files: {
+        '/package.json': JSON.stringify({ dependencies: { zod: '4.0.0' } }),
+        '/src/pages/Home.tsx': '<main><button data-ut-intent="booking.create">Book</button></main>',
+      },
+      revisionId: 'revision-42',
+      schema: { tables: [{ name: 'bookings', columns: [{ name: 'user_id', type: 'uuid' }], policies: [{ name: 'own rows', command: 'select' }] }] },
+      backendActions: [{ name: 'createBooking', capability: 'booking', writesTo: ['bookings'] }],
+    };
+
+    expect(agentOperations.inspect_system_graph(ctx).revision.id).toBe('revision-42');
+    expect(agentOperations.inspect_table(ctx, 'bookings')).toMatchObject({ id: 'table:bookings' });
+    expect(agentOperations.inspect_policies(ctx, 'bookings')).toEqual([expect.objectContaining({ id: 'policy:bookings:own rows' })]);
+    expect(agentOperations.inspect_dependencies(ctx)).toEqual([expect.objectContaining({ id: 'dependency:zod' })]);
+    expect(ctx.files['/src/pages/Home.tsx']).toContain('booking.create');
+  });
 });
 
 import { buildSystemGraph, renderSystemGraphForPrompt } from '@/services/agent-runtime/systemGraph';
@@ -37,5 +54,36 @@ describe('system graph', () => {
     expect(g.pages[0].sections.map((s) => s.id)).toEqual(['hero', 'faq']);
     expect(g.pages[0].intents[0]).toMatchObject({ intent: 'nav.goto', target: '/book', label: 'Book now' });
     expect(renderSystemGraphForPrompt(g)).toContain('→ /book');
+  });
+  it('rebuilds stable frontend and backend relationships from canonical inputs', () => {
+    const g = buildSystemGraph({
+      revisionId: 'revision-42',
+      files: {
+        '/package.json': JSON.stringify({ dependencies: { '@supabase/supabase-js': '2.0.0' } }),
+        '/src/pages/Home.tsx': 'import { BookingForm } from "@/components/BookingForm"; export default function Home(){return <main><section data-ut-section-id="hero"><BookingForm /><button data-ut-intent="booking.create">Book</button></section></main>}',
+      },
+      snapshot: {
+        snapshotId: 'snapshot-42',
+        pageRegistry: { pages: { home: { pageId: 'home', path: '/', filePath: '/src/pages/Home.tsx' } }, funnels: {}, homePageId: 'home', version: 1 },
+        bindings: { booking: { bindingId: 'booking', sourcePageId: 'home', coreIntent: 'booking.create', targetId: 'createBooking', sourceLabel: 'Book' } },
+        businessSystem: { capabilities: [{ id: 'booking', status: 'approved' }] },
+      } as never,
+      runtimeManifest: { routes: ['/'], dependencies: { 'lucide-react': '1.0.0' } },
+      schema: { tables: [{ name: 'bookings', columns: [{ name: 'id', type: 'uuid' }], policies: [{ name: 'own rows', command: 'select' }] }] },
+      backendActions: [{ name: 'createBooking', capability: 'booking', writesTo: ['bookings'] }],
+      diagnostics: [{ id: 'diagnostic:preview', level: 'warning', message: 'Preview is stale' }],
+    });
+
+    expect(g.revision).toMatchObject({ id: 'revision-42', source: 'canonical-revision' });
+    expect(g.pages).toEqual([expect.objectContaining({ id: 'home', route: '/', componentIds: ['component:BookingForm'] })]);
+    expect(g.routes).toEqual([expect.objectContaining({ id: 'route:/', pageId: 'home' })]);
+    expect(g.bindings).toEqual([expect.objectContaining({ id: 'binding:booking', intentId: 'intent:booking.create' })]);
+    expect(g.database.tables[0]).toMatchObject({ id: 'table:bookings', policyIds: ['policy:bookings:own rows'] });
+    expect(g.edges).toEqual(expect.arrayContaining([
+      expect.objectContaining({ from: 'home', to: 'route:/', kind: 'has_route' }),
+      expect.objectContaining({ from: 'action:createBooking', to: 'capability:booking', kind: 'requires' }),
+      expect.objectContaining({ from: 'action:createBooking', to: 'table:bookings', kind: 'writes_to' }),
+      expect.objectContaining({ from: 'table:bookings', to: 'policy:bookings:own rows', kind: 'has_policy' }),
+    ]));
   });
 });
