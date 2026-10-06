@@ -611,7 +611,7 @@ export { Button, IconButton, type ButtonProps, type IconButtonProps } from './bu
 export { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from './card';
 export { cn } from './cn';
 export { Section, Container, Stack, Grid, Split, Bleed, Divider, type SectionProps, type SectionTone, type ContainerWidth, type StackProps, type StackGap, type GridProps, type SplitProps } from './layout';
-export { Eyebrow, Heading, Lead, Body, Badge, Stat, Quote, CTAGroup, SectionHeader, type HeadingProps, type HeadingLevel, type HeadingSize, type StatProps, type QuoteProps, type SectionHeaderProps } from './content';
+export { Eyebrow, Heading, Lead, Body, Paragraph, Badge, Stat, Quote, CTAGroup, SectionHeader, type HeadingProps, type HeadingLevel, type HeadingSize, type StatProps, type QuoteProps, type SectionHeaderProps } from './content';
 export { Panel, MediaFrame, FeaturePanel, type PanelProps, type PanelTone, type MediaFrameProps, type FeaturePanelProps } from './surface';
 export { FieldLabel, Label, FormLabel, Input, TextInput, Textarea, TextArea, Select, Checkbox, FormField, FormFields, FormGrid, FormHint, FormError, Form, FormItem, FormControl, FormDescription, FormMessage } from './form-fields';
 export { useForm, useFormContext, useFieldArray, Controller, zodResolver, z } from './forms';
@@ -906,6 +906,9 @@ export function Lead({ className, ...props }: React.HTMLAttributes<HTMLParagraph
 export function Body({ className, ...props }: React.HTMLAttributes<HTMLParagraphElement>) {
   return <p className={cn('font-body text-base leading-7 text-muted-foreground max-w-[var(--ut-measure)]', className)} {...props} />;
 }
+
+// Compatibility name used by previously generated pages.
+export const Paragraph = Body;
 
 export function Badge({ className, ...props }: React.HTMLAttributes<HTMLSpanElement>) {
   return (
@@ -1650,7 +1653,7 @@ export const GENERATED_UI_BARREL_EXPORTS: ReadonlySet<string> = new Set([
   'Card', 'CardHeader', 'CardTitle', 'CardDescription', 'CardContent', 'CardFooter',
   'cn',
   'Section', 'Container', 'Stack', 'Grid', 'Split', 'Bleed', 'Divider',
-  'Eyebrow', 'Heading', 'Lead', 'Body', 'Badge', 'Stat', 'Quote', 'CTAGroup', 'SectionHeader',
+  'Eyebrow', 'Heading', 'Lead', 'Body', 'Paragraph', 'Badge', 'Stat', 'Quote', 'CTAGroup', 'SectionHeader',
   'Panel', 'MediaFrame', 'FeaturePanel',
   'FieldLabel', 'Label', 'FormLabel', 'Input', 'TextInput', 'Textarea', 'TextArea',
   'Select', 'Checkbox', 'FormField', 'FormFields', 'FormGrid', 'FormHint', 'FormError',

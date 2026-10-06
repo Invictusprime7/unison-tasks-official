@@ -4,6 +4,21 @@ import { buildPreviewArtifacts } from '@/utils/previewArtifacts';
 import { getDependenciesForSandpack } from '@/utils/dependencyExtractor';
 
 describe('Sandpack local module resolution', () => {
+  it('supports saved Shop pages importing Paragraph from an older content foundation', () => {
+    const shop = `import { Paragraph } from '../unison/ui/content'; export default function Shop(){return <Paragraph id="shop-copy">Original shop copy</Paragraph>}`;
+    const saved = {
+      '/src/App.tsx': `import Shop from './pages/Shop'; export default function App(){return <Shop />}`,
+      '/src/pages/Shop.tsx': shop,
+      '/src/unison/ui/content.tsx': `export function Body(props){return <p {...props} />}`,
+      '/src/index.css': 'body { color: black; }',
+    };
+    const prepared = prepareSandpackFiles(saved);
+    expect(prepared['/unison/ui/content.tsx']).toContain('export const Paragraph = Body;');
+    expect(prepared['/unison/ui/index.ts']).toContain('Body, Paragraph');
+    expect(prepared['/pages/Shop.tsx']).toContain('<Paragraph id="shop-copy">Original shop copy</Paragraph>');
+    expect(saved['/src/pages/Shop.tsx']).toBe(shop);
+    expect(saved['/src/unison/ui/content.tsx']).not.toContain('Paragraph');
+  });
   it('preserves initial saved App props in the entry module', () => {
     const files = buildPreviewArtifacts({ sourceFiles: {
       '/src/main.tsx': `import React from 'react';import {createRoot} from 'react-dom/client';import App from './App';createRoot(document.getElementById('root')!).render(<App title="Saved project state" />);`,
