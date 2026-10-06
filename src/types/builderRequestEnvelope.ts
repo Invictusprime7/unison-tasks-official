@@ -403,6 +403,11 @@ export function requiresRenderableUiPatch(
   envelope: BuilderRequestEnvelope,
   prompt = '',
 ): boolean {
+  // Wiring an existing control is source work even when the interpreter
+  // describes the requested capability as backend scope.
+  if (/\b(?:wire|connect|hook\s+up)\b[\s\S]{0,120}\b(?:cart|bag|checkout|buttons?|forms?|booking)\b/i.test(prompt)) {
+    return true;
+  }
   if (!envelope.requestKinds.some((kind) => kind === 'create' || kind === 'edit')) {
     return false;
   }

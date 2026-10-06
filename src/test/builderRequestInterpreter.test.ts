@@ -5,6 +5,13 @@ import {
 } from '@/types/builderRequestEnvelope';
 
 describe('Builder request UI patch routing', () => {
+  it('keeps cart wiring in the source path even when interpreted as backend-only', () => {
+    const prompt = 'wire add to cart so items update live in bag, and at checkout';
+    const envelope = heuristicEnvelope('Configure the commerce backend', { hasExistingTemplate: true });
+    envelope.requestKinds = ['backend_configuration'];
+    envelope.scope.level = 'backend';
+    expect(requiresRenderableUiPatch(envelope, prompt)).toBe(true);
+  });
   it('keeps an explicit checkout page request in the renderable UI path', () => {
     const prompt = 'Create the checkout page for confirmed bookings';
     const envelope = heuristicEnvelope(prompt, { hasExistingTemplate: true });

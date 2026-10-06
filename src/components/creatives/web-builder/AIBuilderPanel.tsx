@@ -317,7 +317,7 @@ function detectLaunchPlanningIntent(prompt: string): boolean {
 
 /** Catalog tools are for persisted catalog data, never source-level UI work. */
 function isCatalogMutationRequest(prompt: string): boolean {
-  const sourceEdit = /\b(?:nav(?:igation)?|menu|route(?:s|r)?|hashrouter|link(?:s|ing)?|redirect|hook|state|handler|component|section|typography|layout)\b/i;
+  const sourceEdit = /\b(?:nav(?:igation)?|menu|route(?:s|r)?|hashrouter|link(?:s|ing)?|redirect|hook|state|handler|component|section|typography|layout|cart|bag|checkout|button|form|wire|connect)\b/i;
   if (sourceEdit.test(prompt)) return false;
   const catalogEntity = /\b(?:service|product|menu item|price|pricing plan|offer|testimonial|portfolio)\b/i;
   const mutation = /\b(?:add|create|change|update|edit|remove|delete|sort|filter|limit)\b/i;
@@ -1848,6 +1848,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
             pageRole: canonicalPageContext?.role ?? null,
           });
 
+          const isCartWiringRequest = /\b(?:cart|bag|checkout)\b/i.test(_userContent);
           const useCanonicalComposer = shouldUseCanonicalComposer({
             isReactProject,
             isLaunchPlanningRequest,
@@ -1879,10 +1880,22 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
               instruction: _userContent.slice(0, 4000),
               currentFiles: vfsFiles!,
               baseRevisionId: revisionId,
-              sourceTargets: [page.filePath],
+              sourceTargets: Array.from(new Set([
+                page.filePath,
+                ...(isCartWiringRequest
+                  ? Object.keys(vfsFiles!).filter(path => /\/(?:src\/)?pages\/[^/]+\.[jt]sx$/.test(path)
+                    || /\/project-components\/[^/]*(?:cart|nav|header|product)[^/]*\.[jt]sx?$/i.test(path))
+                  : []),
+              ])),
               routes: [],
               registryContext: builderRegistryContext ?? undefined,
               runtimeContext: [
+                capabilityPlan.proposal.intentBindings.length && needsRenderableUiPatch
+                  ? `Requested UI bindings: ${JSON.stringify(capabilityPlan.proposal.intentBindings)}. Find or create real matching controls in the authored source, adding these exact data-ut-slot and data-ut-intent attributes. Do not label unrelated controls to satisfy a target. Backend activation remains a separate capability approval.`
+                  : '',
+                isCartWiringRequest
+                  ? 'Reuse the existing shared cart runtime so add-to-cart, bag counts and checkout read the same live items; never use a second hard-coded cart. Preserve existing navigation actions and destinations, including the interactive bag link.'
+                  : '',
                 selectionContext ? `Selected rendered element: ${selectionContext}` : '',
                 previewSnapshot,
                 businessDataContext ? `Business data: ${businessDataContext}` : '',

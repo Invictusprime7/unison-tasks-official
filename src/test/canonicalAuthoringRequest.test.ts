@@ -29,7 +29,7 @@ describe('canonical AI authorship request assembly', () => {
     expect(shouldUseCanonicalComposer({ ...base, isLaunchPlanningRequest: true })).toBe(false);
     expect(shouldUseCanonicalComposer({ ...base, hasAttachments: true })).toBe(false);
     expect(shouldUseCanonicalComposer({ ...base, isReactProject: false })).toBe(false);
-    expect(shouldUseCanonicalComposer({ ...base, isScopedEdit: true })).toBe(false);
+    expect(shouldUseCanonicalComposer({ ...base, isScopedEdit: true })).toBe(true);
   });
 
   it('resolves Builder targets from accepted page topology', () => {

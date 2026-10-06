@@ -33,11 +33,12 @@ export function shouldUseCanonicalComposer(input: {
   hasVfs: boolean;
   isScopedEdit?: boolean;
 }): boolean {
+  // Scoped UI and behavioral edits need the same validated source protocol;
+  // a selected element changes context, not the authoring lane.
   return input.isReactProject
     && !input.isLaunchPlanningRequest
     && !input.isCatalogMutationRequest
     && !input.hasAttachments
-    && !input.isScopedEdit
     && input.hasVfs;
 }
 

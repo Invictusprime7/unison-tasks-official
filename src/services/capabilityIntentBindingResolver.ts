@@ -1,3 +1,4 @@
+import * as Babel from '@babel/standalone';
 import type { CapabilityIntentBinding } from '@/services/businessCapabilityPlanner';
 
 export interface ResolvedCapabilityIntentBinding {
@@ -25,15 +26,37 @@ function resolveInFile(
   source: string,
   binding: CapabilityIntentBinding,
 ): { source: string; resolved: ResolvedCapabilityIntentBinding } | null {
-  const slotPattern = new RegExp(`<[^>]*\\bdata-ut-slot=["']${binding.target.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}["'][^>]*>`, 'i');
-  const existingSlot = source.match(slotPattern);
-  if (existingSlot?.index !== undefined) {
-    const nextTag = replaceIntent(existingSlot[0], binding.intent);
-    return {
-      source: source.slice(0, existingSlot.index) + nextTag + source.slice(existingSlot.index + existingSlot[0].length),
-      resolved: { symbolicTarget: binding.target, filePath, slot: binding.target, intent: binding.intent },
-    };
-  }
+  // Resolve authored intent controls even when App Builder did not stamp the
+  // recipe's symbolic slot. AST ranges protect JSX handlers containing ">".
+  try {
+    const packages = (Babel as any).packages;
+    const ast = packages.parser.parse(source, { sourceType: 'module', plugins: ['jsx', 'typescript'] });
+    const candidates: Array<{ node: any; exactSlot: boolean }> = [];
+    packages.traverse.default(ast, {
+      JSXOpeningElement(path: any) {
+        const node = path.node;
+        if (!['a', 'button', 'form', 'input', 'Button', 'Link', 'NavLink'].includes(node.name?.name)) return;
+        const literal = (name: string) => {
+          const attr = node.attributes.find((entry: any) => entry.type === 'JSXAttribute' && entry.name?.name === name);
+          const value = attr?.value?.type === 'JSXExpressionContainer' ? attr.value.expression : attr?.value;
+          return value?.type === 'StringLiteral' ? value.value : undefined;
+        };
+        const slot = literal('data-ut-slot');
+        if (slot === binding.target) candidates.push({ node, exactSlot: true });
+        else if (!slot && literal('data-ut-intent') === binding.intent) candidates.push({ node, exactSlot: false });
+      },
+    });
+    const match = candidates.find(candidate => candidate.exactSlot) ?? candidates[0];
+    if (match) {
+      const { node } = match;
+      let tag = replaceIntent(source.slice(node.start, node.end), binding.intent);
+      if (!match.exactSlot) tag = tag.replace(/\s*(\/?>)$/, ` data-ut-slot="${binding.target}"$1`);
+      return {
+        source: source.slice(0, node.start) + tag + source.slice(node.end),
+        resolved: { symbolicTarget: binding.target, filePath, slot: binding.target, intent: binding.intent },
+      };
+    }
+  } catch { return null; }
 
   if (binding.target !== 'service-card.primary-action' || !/(service|treatment)/i.test(filePath + source)) {
     return null;
