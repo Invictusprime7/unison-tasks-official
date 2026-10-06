@@ -217,9 +217,24 @@ function finishPreviewArtifacts(
     { entryPoints: ['/index.tsx', '/index.jsx', '/index.ts', '/index.js'] },
   );
 
+  // The runner reads package.json as well as customSetup. Keep its install
+  // graph identical to the reachable browser dependencies; saved export
+  // tooling and unused facade packages must not trigger a cold install.
+  sandpackFiles['/package.json'] = projectPreviewPackageJson(sandpackFiles['/package.json'], dependencies);
+
   return {
     sandpackFiles,
     dependencies,
   };
+}
+
+export function projectPreviewPackageJson(source: string | undefined, dependencies: Record<string, string>): string {
+  let manifest: Record<string, unknown> = {};
+  try {
+    const parsed: unknown = JSON.parse(source ?? '{}');
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) manifest = parsed as Record<string, unknown>;
+  } catch { /* runtime manifest replaces malformed export metadata */ }
+  const { devDependencies: _devDependencies, dependencies: _dependencies, ...metadata } = manifest;
+  return JSON.stringify({ ...metadata, dependencies }, null, 2);
 }
 

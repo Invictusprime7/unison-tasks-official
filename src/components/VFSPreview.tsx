@@ -200,18 +200,9 @@ const SandpackErrorListener: React.FC<{
 
   useEffect(() => attachPreviewListener(), []);
 
-  useEffect(() => {
-    if (sandpack.status === 'running' || sandpack.status === 'timeout' || sandpack.error) return;
-    const watchdog = window.setTimeout(() => {
-      const message = 'Preview runner did not connect in time. Retrying automatically.';
-      if (lastReportedRef.current !== message) {
-        lastReportedRef.current = message;
-        onError?.(message);
-        onTimeout?.();
-      }
-    }, 30_000);
-    return () => window.clearTimeout(watchdog);
-  }, [sandpack.status, sandpack.error, onError, onTimeout]);
+  // Only the client's actual timeout may restart the runner. A shorter
+  // watchdog aborts healthy cold-start module installs before the SDK's
+  // connection deadline and turns slow saved-project loads into retry loops.
 
   useEffect(() => {
     const status = sandpack.status;
