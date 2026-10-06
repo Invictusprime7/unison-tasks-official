@@ -6827,6 +6827,11 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   }, [activePagePath, activePublishedRevisionId, builderRuntimeContext?.workspaceId, hydratedRevision, runtimeProjectionRevisionId]);
 
   const hasCanonicalIdentity = Boolean((resolvedProjectId || projectId) && currentDraftId);
+  // Checkpoint hooks must also run on hydration-error and empty-project renders.
+  const checkpointEffectiveRef = useRef<string | null>(null);
+  const [checkpointRedo, setCheckpointRedo] = useState<Checkpoint[]>([]);
+  const [checkpointBusy, setCheckpointBusy] = useState(false);
+  const [checkpointTick, setCheckpointTick] = useState(0);
   const canonicalRuntimeError = canonicalHydrationError
     || (hasCanonicalIdentity
       && hydratedRevision
@@ -6900,10 +6905,6 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
 
 
   // ── Saved checkpoints: undo/redo restore committed revisions ──────────
-  const checkpointEffectiveRef = useRef<string | null>(null);
-  const [checkpointRedo, setCheckpointRedo] = useState<Checkpoint[]>([]);
-  const [checkpointBusy, setCheckpointBusy] = useState(false);
-  const [checkpointTick, setCheckpointTick] = useState(0);
   const checkpointIdentity = () =>
     currentUserId && businessId && currentDraftId
       ? buildCommitIdentity({
