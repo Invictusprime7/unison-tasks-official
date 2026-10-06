@@ -474,7 +474,7 @@ async function callLLM(
   [key: string]: any 
 }> {
   const response = await createChatCompletion({
-    model: 'google/gemini-2.5-flash',
+    model: 'google/gemini-3.8-flash',
     messages: [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: JSON.stringify(userPayload, null, 2) },

@@ -16,7 +16,7 @@ import { createChatCompletion, isTextGenerationConfigured } from "../_shared/ai/
  * falls back to regex-based heuristics otherwise.
  */
 
-const AI_MODEL = "google/gemini-2.5-flash";
+const AI_MODEL = "google/gemini-3.8-flash";
 
 interface ClassifyRequest {
   prompt: string;

@@ -63,7 +63,7 @@ serve(async (req) => {
     systemPrompt += ` Use a ${tone} tone. Keep the core message but enhance clarity, impact, and engagement. Return only the rewritten text without explanations.`;
 
     const response = await createChatCompletion({
-      model: "google/gemini-2.5-flash",
+      model: "google/gemini-3.8-flash",
       messages: [
         { role: "system", content: systemPrompt + buildUnisonDesignArchitectureDirective("brief") },
         { role: "user", content: text }

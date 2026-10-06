@@ -343,7 +343,7 @@ export async function runProviderLoop(opts: {
   };
 
   // ── Direct Gemini API helper ──────────────────────────────────────────
-  // gemini-2.5-flash supports 65 536 output tokens — the most capable
+  // gemini-3.7-flash supports 65 536 output tokens — the most capable
   // single-shot provider for large wizard seed generation (9+ pages).
   const runDirectGemini = async (): Promise<void> => {
     const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY') || Deno.env.get('GOOGLE_API_KEY') || Deno.env.get('UNISONGEMINI_API_KEY');
@@ -355,9 +355,9 @@ export async function runProviderLoop(opts: {
     const geminiModels = [
       // 65 536 output tokens — ideal for multi-page wizard generation
       // Strongest composition model first (overridable via GEMINI_COMPOSER_MODEL).
-      { id: (Deno.env.get('GEMINI_COMPOSER_MODEL')?.trim() || 'gemini-2.5-pro').replace(/^google\//, ''), maxTokens: Math.min(providerPlan.fallbackMaxTokens, 65536), label: 'Gemini composer' },
-      { id: 'gemini-2.5-flash', maxTokens: Math.min(providerPlan.fallbackMaxTokens, 65536), label: 'Gemini 2.5 Flash' },
-      { id: 'gemini-2.5-flash-lite', maxTokens: Math.min(providerPlan.fallbackMaxTokens, 8192), label: 'Gemini 2.5 Flash Lite' },
+      { id: (Deno.env.get('GEMINI_COMPOSER_MODEL')?.trim() || 'gemini-3.8-flash').replace(/^google\//, ''), maxTokens: Math.min(providerPlan.fallbackMaxTokens, 65536), label: 'Gemini composer' },
+      { id: 'gemini-3.7-flash', maxTokens: Math.min(providerPlan.fallbackMaxTokens, 65536), label: 'Gemini 3.7 Flash' },
+      { id: 'gemini-3.5-flash-lite', maxTokens: Math.min(providerPlan.fallbackMaxTokens, 8192), label: 'Gemini 3.5 Flash Lite' },
     ];
 
     for (const model of geminiModels) {
@@ -463,7 +463,7 @@ export async function runProviderLoop(opts: {
   let gatewayFailure: ProviderEarlyError | undefined;
   const runManagedGatewayAttempt = async (label: string, windowMs: number) => {
     const gatewayModel: ModelSpec = {
-      id: 'google/gemini-3.6-flash',
+      id: 'google/gemini-3.8-flash',
       maxTokens: Math.min(providerPlan.fallbackMaxTokens, 32_000),
       label,
     };
@@ -562,7 +562,7 @@ export async function runProviderLoop(opts: {
   if (!hasResponse() && !hasDirectGemini && !gatewayTriedFirst && providerPlan.raceGateway && allowDirectFallbacks && hasLastResortGateway && providerPlan.gatewayModels.length > 0) {
     const lead = providerPlan.gatewayModels[0];
     const gatewayModel: ModelSpec = {
-      id: 'google/gemini-3.6-flash',
+      id: 'google/gemini-3.8-flash',
       maxTokens: Math.min(providerPlan.fallbackMaxTokens, 32_000),
       label: 'Managed gateway (race)',
     };

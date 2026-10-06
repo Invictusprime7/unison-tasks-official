@@ -53,7 +53,7 @@ export function isGeminiExclusiveProviderMode(
   readEnv: EnvReader = (name) => Deno.env.get(name),
 ): boolean {
   const mode = (readEnv('AI_PROVIDER_MODE') || 'hybrid').trim().toLowerCase();
-  if (mode === 'hybrid') return false;
+  if (mode !== 'gemini-only') return false;
   // Never lock to Gemini when it has no key but OpenAI does.
   if (!readEnv('GEMINI_API_KEY') && !readEnv('GOOGLE_API_KEY') && !readEnv('UNISONGEMINI_API_KEY')) return false;
   return true;
@@ -131,12 +131,11 @@ function prioritizeProviderModels(models: ModelSpec[], primaryProvider?: Paralle
 // ── Model tiers ─────────────────────────────────────────────────────────────
 
 const MODELS = {
-  // Full-site Wizard generation selects the stable 2.5 Flash tier below;
-  // shorter tasks may still use the newer Flash tier.
-  geminiFlash: { id: "google/gemini-2.5-flash", label: "Gemini 2.5 Flash" },
-  gemini25Flash: { id: "google/gemini-2.5-flash", label: "Gemini 2.5 Flash" },
-  geminiFlashLite: { id: "google/gemini-2.5-flash-lite", label: "Gemini 2.5 Flash Lite" },
-  geminiPro: { id: "google/gemini-2.5-pro", label: "Gemini 2.5 Pro" },
+  // Current stable Gemini models; the previous Flash release remains a backup.
+  geminiFlash: { id: "google/gemini-3.8-flash", label: "Gemini 3.8 Flash" },
+  geminiPreviousFlash: { id: "google/gemini-3.7-flash", label: "Gemini 3.7 Flash" },
+  geminiFlashLite: { id: "google/gemini-3.5-flash-lite", label: "Gemini 3.5 Flash Lite" },
+  geminiComposer: { id: "google/gemini-3.8-flash", label: "Gemini 3.8 Flash" },
   gpt41: { id: "openai/gpt-4.1", label: "GPT-4.1" },
   gpt41Mini: { id: "openai/gpt-4.1-mini", label: "GPT-4.1 Mini" },
   gpt4oMini: { id: "openai/gpt-4o-mini", label: "GPT-4o Mini" },
@@ -150,7 +149,7 @@ export function composerGeminiModel(readEnv: EnvReader): { id: string; label: st
     const id = raw.startsWith('google/') ? raw : `google/${raw}`;
     return { id, label: raw };
   }
-  return MODELS.geminiPro;
+  return MODELS.geminiComposer;
 }
 
 function m(spec: typeof MODELS[keyof typeof MODELS], maxTokens: number): ModelSpec {
@@ -225,7 +224,7 @@ export function buildProviderPlan(
           m(MODELS.gpt41Mini, 16_384),
           m(MODELS.gpt41, 16_384),
           m(composerGeminiModel(readEnv), 48_000),
-          m(MODELS.geminiFlash, 48_000),
+          m(MODELS.geminiPreviousFlash, 48_000),
         ],
         perModelTimeoutMs: 110_000,
         fallbackMaxTokens: 32_000,
@@ -241,7 +240,7 @@ export function buildProviderPlan(
           m(MODELS.gpt4o, 16_384),
           // Stronger Gemini leads composition when funded Gemini serves the turn.
           m(composerGeminiModel(readEnv), 48_000),
-          m(MODELS.geminiFlash, 48_000),
+          m(MODELS.geminiPreviousFlash, 48_000),
         ],
         perModelTimeoutMs: 110_000,
         fallbackMaxTokens: 32_000,
@@ -256,10 +255,8 @@ export function buildProviderPlan(
       // bundle. Both honor the same multi-file JSON output contract.
       plan = {
         gatewayModels: [
-          // Stable direct Gemini model with a 65k output window. Keep the
-          // newer 3.6 tier for shorter tasks until it proves reliable under
-          // full-site Lane B response sizes.
-          m(MODELS.gemini25Flash, 36_000),
+          // Current stable model for full-site generation.
+          m(MODELS.geminiFlash, 36_000),
           // Focused page-completion turns can use this bounded fallback when
           // the full-size Flash request runs long.
           m(MODELS.geminiFlashLite, 12_000),
@@ -283,7 +280,7 @@ export function buildProviderPlan(
       plan = {
         gatewayModels: [
           m(MODELS.geminiFlashLite, 6000),
-          m(MODELS.gemini25Flash, 6000),
+          m(MODELS.geminiFlash, 6000),
         ],
         perModelTimeoutMs: 35000,
         fallbackMaxTokens: 6000,
@@ -444,7 +441,7 @@ export function buildProviderPlan(
     plan.gatewayModels = prioritizeProviderModels(plan.gatewayModels, plan.primaryProvider);
     // Hybrid: launch page writing/repair goes to the managed gateway first (the
     // model that produced the Oct 1 baseline); funded Gemini is the backup.
-    if ((task.type === 'site_page_author' || task.type === 'site_page_repair') && readEnv('LOVABLE_API_KEY')) {
+    if ((task.type === 'site_page_author' || task.type === 'site_page_repair') && readEnv('LOVABLE_API_KEY') && readEnv('AI_PROVIDER_MODE') !== 'gemini-primary') {
       plan.gatewayLeads = true;
     }
   } else if (!hasExplicitModel) {
@@ -476,6 +473,8 @@ export function buildProviderPlan(
     plan.primaryProvider = plan.gatewayModels.length > 0 ? 'gemini' : undefined;
   }
 
+  plan.gatewayModels = plan.gatewayModels.filter((model, index, models) =>
+    models.findIndex(candidate => candidate.id === model.id) === index);
   plan.gatewayModels = plan.gatewayModels.map((model) => ({
     ...model,
     maxTokens: /^(?:openai\/)?gpt-4o(?:-|$)/.test(model.id)

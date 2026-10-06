@@ -7,7 +7,7 @@ import { errorResponse, secureJsonResponse } from "../_shared/response.ts";
 import { safeParseBody, sanitizeString } from "../_shared/validate.ts";
 import { createChatCompletion, isTextGenerationConfigured } from "../_shared/ai/providerClient.ts";
 
-const AI_MODEL = "google/gemini-2.5-pro";
+const AI_MODEL = "google/gemini-3.8-flash";
 
 /**
  * Systems AI - Compile Endpoint

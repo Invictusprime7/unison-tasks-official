@@ -21,7 +21,7 @@ import {
   filterBusinessCapabilityIds,
 } from "../_shared/businessCapabilityVocabulary.ts";
 
-const AI_MODEL = "google/gemini-2.5-flash";
+const AI_MODEL = "google/gemini-3.8-flash";
 const MAX_PROMPT_CHARS = 24_000;
 
 const ABSTRACT_GOAL_ONTOLOGY = `

@@ -75,7 +75,8 @@ export async function fetchWithShortRateLimitRetry(
 }
 
 function readGeminiApiKey(readEnv: EnvReader = (name) => Deno.env.get(name)): string | undefined {
-  return readEnv("GEMINI_API_KEY") ?? readEnv("GOOGLE_API_KEY") ?? readEnv("UNISONGEMINI_API_KEY");
+  return ["GEMINI_API_KEY", "GOOGLE_API_KEY", "UNISONGEMINI_API_KEY"]
+    .map((name) => readEnv(name)?.trim()).find((key) => Boolean(key));
 }
 
 function requestedProvider(model?: string): Provider | undefined {
@@ -155,7 +156,7 @@ function modelFor(provider: Provider, requestedModel?: string): string {
     if (model.startsWith("gpt-")) return `openai/${model}`;
     if (model.startsWith("gemini-")) return `google/${model}`;
     if (model.startsWith("claude-")) return `anthropic/${model}`;
-    return "google/gemini-2.5-flash";
+    return "google/gemini-3.8-flash";
   }
 
   if (provider === "openai") {
@@ -165,11 +166,9 @@ function modelFor(provider: Provider, requestedModel?: string): string {
   }
 
   if (provider === "gemini") {
-    if (Deno.env.get("GEMINI_MODEL")) return Deno.env.get("GEMINI_MODEL")!;
     const bare = model.startsWith("google/") ? model.slice("google/".length) : model;
-    if (bare === "gemini-3.6-flash" || bare === "gemini-3-flash-preview") return "gemini-2.5-flash";
     if (bare.startsWith("gemini-")) return bare;
-    return "gemini-2.5-flash";
+    return (Deno.env.get("GEMINI_MODEL")?.trim() || "gemini-3.8-flash").replace(/^google\//, "");
   }
 
   if (Deno.env.get("ANTHROPIC_MODEL")) return Deno.env.get("ANTHROPIC_MODEL")!;
@@ -198,6 +197,12 @@ async function callOpenAICompatible(
 
   const model = modelFor(provider, request.model);
   const body: Record<string, unknown> = { ...request, model };
+  // Gemini 3 cannot disable thinking. Keep fast tasks bounded rather than
+  // accidentally selecting the provider default (high thinking).
+  if (provider === "gemini" && /^gemini-3/.test(model)
+      && (body.reasoning_effort === undefined || body.reasoning_effort === "none")) {
+    body.reasoning_effort = "low";
+  }
   // Apply limits to the actual wire model, including deployment overrides.
   if (/^(?:openai\/)?gpt-4o(?:-|$)/.test(model)) {
     const tokens = body.max_completion_tokens ?? body.max_tokens;

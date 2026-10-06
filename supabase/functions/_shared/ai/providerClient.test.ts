@@ -25,10 +25,10 @@ Deno.test("preserves capable OpenAI models and applies actual model output limit
       });
     }
     assertEquals(sent.map((body) => body.model), ["gpt-4.1", "gpt-4.1", "gpt-4.1"]);
-    assertEquals(sent[0].max_tokens, 32_768);
+    assertEquals(sent[0].max_tokens, 16_384);
     assertEquals(sent[0].reasoning_effort, undefined);
     for (const body of sent.slice(1)) {
-      assertEquals(body.max_tokens, 32_768);
+      assertEquals(body.max_tokens, 16_384);
       assertEquals(body.max_completion_tokens, undefined);
       assertEquals(body.reasoning_effort, undefined);
       assertEquals(body.tools, []);
@@ -39,7 +39,7 @@ Deno.test("preserves capable OpenAI models and applies actual model output limit
       max_tokens: 24_000, reasoning_effort: "low",
     });
     assertEquals(sent[3].model, "gpt-4.1");
-    assertEquals(sent[3].max_tokens, 24_000);
+    assertEquals(sent[3].max_tokens, 16_384);
     assertEquals(sent[3].reasoning_effort, undefined);
     Deno.env.set("OPENAI_MODEL", "gpt-4o-mini");
     await createPlannedChatCompletion({
@@ -183,4 +183,32 @@ Deno.test("never places the Lovable gateway ahead of direct provider keys", () =
   }));
 
   assertEquals(providers, ["openai", "gemini", "lovable"]);
+});
+
+Deno.test("current Gemini wire models survive deployment defaults and blank key aliases", async () => {
+  const originalFetch = globalThis.fetch;
+  const names = ["GEMINI_API_KEY", "GOOGLE_API_KEY", "GEMINI_MODEL"];
+  const saved = new Map(names.map(name => [name, Deno.env.get(name)]));
+  const sent: Record<string, unknown>[] = [];
+  Deno.env.set("GEMINI_API_KEY", " ");
+  Deno.env.set("GOOGLE_API_KEY", " test-key ");
+  Deno.env.set("GEMINI_MODEL", "google/gemini-3.8-flash");
+  globalThis.fetch = (async (url, init) => {
+    assertEquals(String(url), "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions");
+    assertEquals(new Headers(init?.headers).get("authorization"), "Bearer test-key");
+    sent.push(JSON.parse(String(init?.body)));
+    return new Response('{"choices":[{"message":{"content":"ok"}}]}');
+  }) as typeof fetch;
+  try {
+    for (const model of ["google/gemini-3.8-flash", "google/gemini-3.7-flash", "google/gemini-3.6-flash"]) {
+      await createPlannedChatCompletion({ model, messages: [{ role: "user", content: "Generate a page" }], max_tokens: 16000 });
+    }
+    assertEquals(sent.map(body => body.model), ["gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.6-flash"]);
+    assertEquals(sent.every(body => body.reasoning_effort === "low"), true);
+  } finally {
+    globalThis.fetch = originalFetch;
+    for (const [name, value] of saved) {
+      if (value === undefined) Deno.env.delete(name); else Deno.env.set(name, value);
+    }
+  }
 });

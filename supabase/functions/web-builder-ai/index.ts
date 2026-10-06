@@ -120,7 +120,7 @@ Action type: ${action || 'create'}
 IMPORTANT: Return ONLY valid JSON, no markdown, no explanations outside the JSON structure.`;
 
     const response = await createChatCompletion({
-      model: "google/gemini-2.5-pro",
+      model: "google/gemini-3.8-flash",
       messages: [
         { role: "system", content: systemPrompt + buildUnisonDesignArchitectureDirective("brief") },
         { role: "user", content: prompt }
