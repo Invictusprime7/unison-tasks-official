@@ -1573,7 +1573,7 @@ export async function hashVfsFiles(files: Record<string, string>): Promise<strin
   return `fallback-${(h >>> 0).toString(16)}`;
 }
 
-const PERSIST_RECOVERY_DELAYS_MS = [0, 500, 1_000] as const;
+const PERSIST_RECOVERY_DELAYS_MS = [0, 500, 1_000, 2_000, 3_000, 5_000] as const;
 
 function isRecoverablePersistTimeout(error: { message?: string } | null): boolean {
   return /upstream request timeout|gateway timeout|request timed out|\btimeout\b|\b504\b/i.test(
@@ -1597,18 +1597,23 @@ async function recoverTimedOutRevision(args: {
   projectId: string;
   draftId: string;
   vfsHash: string;
+  parentRevisionId: string | null;
 }): Promise<string | null> {
   for (const delayMs of PERSIST_RECOVERY_DELAYS_MS) {
     if (delayMs > 0) {
       await new Promise<void>((resolve) => globalThis.setTimeout(resolve, delayMs));
     }
-    const { data, error } = await supabase
+    let query = supabase
       .from('site_revisions')
       .select('id')
       .eq('project_id', args.projectId)
       .eq('draft_id', args.draftId)
       .eq('status', 'committed')
-      .eq('vfs_hash', args.vfsHash)
+      .eq('vfs_hash', args.vfsHash);
+    query = args.parentRevisionId
+      ? query.eq('parent_revision_id', args.parentRevisionId)
+      : query.is('parent_revision_id', null);
+    const { data, error } = await query
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -1739,7 +1744,7 @@ async function finalize(args: {
     );
     const breakerKey = input.identity.draftId || input.identity.projectId || 'anonymous';
     const breakerSignature = `${parentRevisionId ?? ''}:${vfsHash}`;
-    const blockedReason = persistCircuitBlockReason(breakerKey, breakerSignature, input.source);
+    const blockedReason = persistCircuitBlockReason(breakerKey, breakerSignature);
     if (blockedReason) {
       diagnostics.push({ stage: 'persist', level: 'error', message: 'canonical revision transaction throttled', detail: blockedReason });
       recordCommitOutcome({ source: input.source, outcome: 'threw', vfsHash, revisionId: null, draftId: input.identity.draftId || null, dryRun });
@@ -1784,49 +1789,53 @@ async function finalize(args: {
       }
     } catch (rpcError) {
       rpcResult = { data: null, error: { message: rpcError instanceof Error ? rpcError.message : String(rpcError) } };
+    }
+    // Keep the draft locked while an ambiguous timeout is reconciled.
+    try {
+      let { data, error } = rpcResult;
+      if (error && isRecoverablePersistTimeout(error)) {
+        const recoveredRevisionId = await recoverTimedOutRevision({
+          projectId: input.identity.projectId,
+          draftId: input.identity.draftId,
+          vfsHash,
+          parentRevisionId,
+        });
+        if (recoveredRevisionId) {
+          diagnostics.push({
+            stage: 'persist',
+            level: 'warn',
+            message: 'canonical revision response timed out after commit; recovered committed revision',
+            detail: { revisionId: recoveredRevisionId },
+          });
+          data = recoveredRevisionId;
+          error = null;
+        }
+      }
+      if (error || typeof data !== 'string' || !data) {
+        recordPersistFailure(breakerKey, breakerSignature);
+        const detail = error?.message || 'atomic commit returned no revision id';
+        diagnostics.push({
+          stage: 'persist',
+          level: 'error',
+          message: 'canonical revision transaction failed',
+          detail,
+        });
+        recordCommitOutcome({
+          source: input.source,
+          outcome: 'threw',
+          vfsHash,
+          revisionId: null,
+          draftId: input.identity.draftId || null,
+          dryRun,
+        });
+        throw new Error(`[VFSCommitService] canonical revision transaction failed: ${detail}`);
+      }
+
+      PERSIST_FAILURES.delete(breakerKey);
+      persistedRevisionId = data;
     } finally {
       PERSIST_IN_FLIGHT.delete(breakerKey);
     }
-    let { data, error } = rpcResult;
-    if (error && isRecoverablePersistTimeout(error)) {
-      const recoveredRevisionId = await recoverTimedOutRevision({
-        projectId: input.identity.projectId,
-        draftId: input.identity.draftId,
-        vfsHash,
-      });
-      if (recoveredRevisionId) {
-        diagnostics.push({
-          stage: 'persist',
-          level: 'warn',
-          message: 'canonical revision response timed out after commit; recovered committed revision',
-          detail: { revisionId: recoveredRevisionId },
-        });
-        data = recoveredRevisionId;
-        error = null;
-      }
-    }
-    if (error || typeof data !== 'string' || !data) {
-      recordPersistFailure(breakerKey, breakerSignature);
-      const detail = error?.message || 'atomic commit returned no revision id';
-      diagnostics.push({
-        stage: 'persist',
-        level: 'error',
-        message: 'canonical revision transaction failed',
-        detail,
-      });
-      recordCommitOutcome({
-        source: input.source,
-        outcome: 'threw',
-        vfsHash,
-        revisionId: null,
-        draftId: input.identity.draftId || null,
-        dryRun,
-      });
-      throw new Error(`[VFSCommitService] canonical revision transaction failed: ${detail}`);
-    }
-
-    PERSIST_FAILURES.delete(breakerKey);
-    persistedRevisionId = data;
     fileProvenance = stampAcceptedRevision(fileProvenance, persistedRevisionId);
 
     // Move F #1 — fire-and-forget commit telemetry. Never block on failure.
@@ -1971,10 +1980,9 @@ const PERSIST_IN_FLIGHT = new Set<string>();
 const PERSIST_FAILURES = new Map<string, { signature: string; count: number; until: number }>();
 const PERSIST_BACKOFF_BASE_MS = 2_000;
 const PERSIST_BACKOFF_MAX_MS = 60_000;
-const USER_INITIATED_SOURCES = new Set<string>(['ai-builder', 'wizard-launch', 'theme-change', 'zip-import', 'restore']);
 
-function persistCircuitBlockReason(key: string, signature: string, source: string): string | null {
-  if (PERSIST_IN_FLIGHT.has(key) && !USER_INITIATED_SOURCES.has(source)) {
+function persistCircuitBlockReason(key: string, signature: string): string | null {
+  if (PERSIST_IN_FLIGHT.has(key)) {
     return 'another save for this project is still in progress';
   }
   const failure = PERSIST_FAILURES.get(key);

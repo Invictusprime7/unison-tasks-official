@@ -71,16 +71,19 @@ const projection = { activePublishedRevisionId: 'published-current', activePageP
 describe('WebBuilder persisted revision adoption effect', () => {
   it('fetches the advanced committed revision even when the draft identity is unchanged', async () => {
     const files = { '/src/App.tsx': 'committed router' };
+    const editedFiles = { '/src/App.tsx': 'router after the accepted AI edit' };
     const dependencies = {
       useEffect,
       currentDraftId: 'draft-same', resolvedProjectId: 'project-same', projectId: undefined,
       effectiveRouteState: undefined, hydrationNonce: 0,
       hydratedRevisionRef: { current: null as string | null },
+      legacyHydrationKeyRef: { current: null as string | null },
+      hydratedDraftIdentityRef: { current: null as string | null },
       setCanonicalHydrationError: vi.fn(), setHydratedRevision: vi.fn(),
       setRuntimeProjectionRevisionId: vi.fn(), setCurrentRevisionId: vi.fn(),
       loadProjectedRevisionForDraft: vi.fn()
         .mockResolvedValueOnce({ ...revision('same', 'revision-1'), vfsFiles: files })
-        .mockResolvedValueOnce({ ...revision('same', 'revision-2'), vfsFiles: files }),
+        .mockResolvedValueOnce({ ...revision('same', 'revision-2'), vfsFiles: editedFiles }),
       loadRevision: vi.fn(), loadLatestRevisionForProject: vi.fn(),
       virtualFSRef: { current: { getSandpackFiles: () => files } },
       computeBuilderVfsSignature: JSON.stringify,
@@ -96,6 +99,10 @@ describe('WebBuilder persisted revision adoption effect', () => {
 
     expect(dependencies.loadProjectedRevisionForDraft).toHaveBeenCalledTimes(2);
     expect(dependencies.setHydratedRevision).toHaveBeenLastCalledWith(expect.objectContaining({ id: 'revision-2' }));
+    expect(dependencies.importBuilderFiles).toHaveBeenLastCalledWith(editedFiles, expect.objectContaining({
+      replace: true, adoption: expect.objectContaining({ revisionId: 'revision-2' }),
+    }));
+    expect(dependencies.setCanonicalHydrationError).toHaveBeenLastCalledWith(null);
     expect(dependencies.loadRevision).not.toHaveBeenCalled();
     expect(dependencies.loadLatestRevisionForProject).not.toHaveBeenCalled();
   });

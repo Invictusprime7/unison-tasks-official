@@ -74,6 +74,7 @@ type RevisionRow = {
 const revisionStore: RevisionRow[] = [];
 const draftProjectionUpdates: Array<{ id: unknown; userId: unknown; revisionId: unknown }> = [];
 let canonicalCommitRpcError: { message: string } | null = null;
+let canonicalCommitRpcWait: Promise<void> | null = null;
 let lastCanonicalCommitPayload: Record<string, unknown> | null = null;
 
 vi.mock('@/integrations/supabase/client', () => {
@@ -112,6 +113,8 @@ vi.mock('@/integrations/supabase/client', () => {
           filter(rows).filter((r) => (r as unknown as Record<string, unknown>)[col] === val);
         return selectChain(next);
       },
+      is: (col: string, val: unknown) => selectChain((rows) =>
+        filter(rows).filter((row) => (row as unknown as Record<string, unknown>)[col] === val)),
       order: (_col: string, _opts: unknown) => selectChain((rows) => [...filter(rows)].reverse()),
       limit: (n: number) => selectChain((rows) => filter(rows).slice(0, n)),
       maybeSingle: async () => {
@@ -158,6 +161,7 @@ vi.mock('@/integrations/supabase/client', () => {
           return { data: null, error: { message: `Unexpected RPC ${functionName}` } };
         }
         lastCanonicalCommitPayload = payload;
+        if (canonicalCommitRpcWait) await canonicalCommitRpcWait;
         if (canonicalCommitRpcError) return { data: null, error: canonicalCommitRpcError };
         const seq = String(revisionStore.length + 1).padStart(12, '0');
         const id = `00000000-0000-0000-0000-${seq}`;
@@ -284,6 +288,7 @@ beforeEach(() => {
   revisionStore.length = 0;
   draftProjectionUpdates.length = 0;
   canonicalCommitRpcError = null;
+  canonicalCommitRpcWait = null;
   lastCanonicalCommitPayload = null;
   __resetPersistCircuitForTests();
   vi.clearAllMocks();
@@ -991,6 +996,92 @@ describe('Golden E2E — salon launcher → AI edits → publish gate', () => {
       fileOps?: Array<Record<string, unknown>>;
     } | undefined;
     expect(persistedPatch?.fileOps?.[0]).not.toHaveProperty('contents');
+  });
+
+  it('waits for a late commit and does not recover an older same-hash revision from another parent', async () => {
+    const files = { '/src/App.tsx': 'export default function App(){return null}' };
+    mockPipeline(files);
+    mockPreflight(files);
+    mockIntents(0, 0);
+    canonicalCommitRpcError = { message: 'upstream request timeout' };
+    const vfsHash = await hashVfsFiles(files);
+    const recoveredRevisionId = '00000000-0000-0000-0000-999999999999';
+    const recoveredRow = {
+      id: recoveredRevisionId,
+      project_id: IDENTITY.projectId,
+      business_id: IDENTITY.businessId,
+      draft_id: IDENTITY.draftId,
+      parent_revision_id: null,
+      source: 'ai-builder',
+      status: 'committed',
+      patch_json: {},
+      vfs_files: files,
+      site_bundle_snapshot: {},
+      runtime_manifest: {},
+      playground_state: {},
+      readiness_report: {},
+      diagnostics: [],
+      candidate_id: null,
+      operation_ids: [],
+      file_provenance: {},
+      created_by: IDENTITY.userId,
+      created_at: new Date().toISOString(),
+      vfs_hash: vfsHash,
+    } as RevisionRow;
+    revisionStore.push({ ...recoveredRow, id: 'stale-revision', parent_revision_id: 'different-parent' });
+    vi.useFakeTimers();
+    try {
+      setTimeout(() => revisionStore.push(recoveredRow), 3_000);
+
+      const pending = commitMutation({
+        source: 'ai-builder',
+        identity: IDENTITY,
+        current: { vfsFiles: {}, activePagePath: '/src/App.tsx' },
+        patch: legacyFilesToPatchPlan(files, 'recover timed out commit'),
+        options: { selections: { industry: 'portfolio' } as never },
+      });
+
+      await vi.waitFor(() => expect(lastCanonicalCommitPayload).not.toBeNull());
+      await expect(commitMutation({
+        source: 'ai-builder',
+        identity: IDENTITY,
+        current: { vfsFiles: {}, activePagePath: '/src/App.tsx' },
+        patch: legacyFilesToPatchPlan(files, 'overlap during timeout recovery'),
+        options: { selections: { industry: 'portfolio' } as never },
+      })).rejects.toThrow('another save for this project is still in progress');
+      await vi.runAllTimersAsync();
+      const result = await pending;
+      expect(result.status).toBe('committed');
+      expect(result.persistedRevisionId).toBe(recoveredRevisionId);
+      expect(revisionStore).toHaveLength(2);
+      const persistedPatch = lastCanonicalCommitPayload?.p_patch_json as {
+        fileOps?: Array<Record<string, unknown>>;
+      } | undefined;
+      expect(persistedPatch?.fileOps?.[0]).not.toHaveProperty('contents');
+    } finally { vi.useRealTimers(); }
+  });
+
+  it('refuses an overlapping AI save while the same draft is being persisted', async () => {
+    const files = { '/src/App.tsx': 'export default function App(){return null}' };
+    mockPipeline(files);
+    mockPreflight(files);
+    mockIntents(0, 0);
+    let release!: () => void;
+    canonicalCommitRpcWait = new Promise<void>((resolve) => { release = resolve; });
+    const input = {
+      source: 'ai-builder' as const,
+      identity: IDENTITY,
+      current: { vfsFiles: {}, activePagePath: '/src/App.tsx' },
+      patch: legacyFilesToPatchPlan(files, 'one accepted AI edit'),
+      options: { selections: { industry: 'portfolio' } as never },
+    };
+    const first = commitMutation(input);
+    try {
+      await vi.waitFor(() => expect(lastCanonicalCommitPayload).not.toBeNull());
+      await expect(commitMutation(input)).rejects.toThrow('another save for this project is still in progress');
+    } finally { release(); }
+    expect((await first).status).toBe('committed');
+    expect(revisionStore).toHaveLength(1);
   });
 
   it('chains five commits across sources and persists a revision per step', async () => {
