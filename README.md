@@ -217,7 +217,8 @@ scripts/                   Local setup, deployment, and infrastructure helpers
 ```bash
 git clone https://github.com/Invictusprime7/unison-tasks-official.git
 cd unison-tasks-official
-npm install
+# Reproducible install for CI, Codex, and a source ZIP checkout.
+npm ci
 
 # Copy the public browser configuration template, then add your own values.
 cp .env.example .env.local
@@ -251,13 +252,17 @@ The React preview does not need a separate preview service. Vite serves the same
 
 ```bash
 # Check the application
-npx vitest run
+npm test
 npm run lint
 npm run type-check
 npm run build
 npm run lint:pipeline-bypass
 npm run lint:single-source-of-truth
 npm run lint:catalog-contracts
+
+# Run the same full verification sequence used before a CI build.
+npm run verify
+npm run ci
 
 # Run the application and React preview
 npm run dev
