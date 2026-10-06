@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mock = vi.hoisted(() => ({ row: null as Record<string, unknown> | null, error: null as unknown, filters: [] as unknown[][] }));
@@ -11,7 +12,10 @@ vi.mock('@/integrations/supabase/client', () => ({ supabase: {
     return query;
   }),
 } }));
-import { loadLegacyDraftContent, resolveLegacyDraftContent } from '@/services/legacyDraftHydration';
+import { loadLegacyDraftContent, resolveLegacyDraftContent, projectLegacySavedPlan } from '@/services/legacyDraftHydration';
+import { planSiteTopology } from '@/platform/core/siteTopologyPlanner';
+import { build } from 'esbuild';
+import path from 'node:path';
 
 describe('legacy saved draft hydration', () => {
   beforeEach(() => { mock.row = null; mock.error = null; mock.filters = []; });
@@ -27,6 +31,55 @@ describe('legacy saved draft hydration', () => {
   it('recognizes truly empty drafts and ignores placeholder code', () => {
     expect(resolveLegacyDraftContent({ code: 'AI-generated code will appear here', vfs_files: { '/src/App.tsx': ' ' } }).hasContent).toBe(false);
   });
+  it('recognizes old plan-only projects as saved content', () => {
+    const sitePlan = planSiteTopology('ecommerce', 'Saved Brand', { selectedTemplateId: 'store-boutique' });
+    expect(resolveLegacyDraftContent({ code: '', vfs_files: {}, metadata: { sitePlan } }).hasContent).toBe(true);
+  });
+  it('renders saved declarative pages and their original routes using the compatibility renderer', async () => {
+    const plan = planSiteTopology('ecommerce', 'Saved Brand', { selectedTemplateId: 'store-boutique' });
+    const original = JSON.stringify(plan);
+    const projected = await projectLegacySavedPlan(plan);
+    expect(JSON.stringify(plan)).toBe(original);
+    expect(projected.files['/src/main.tsx']).toBeTruthy();
+    expect(projected.files['/src/App.tsx']).toBeTruthy();
+    for (const page of plan.pages) {
+      expect(projected.files[page.filePath]).toBeTruthy();
+      expect(projected.pageRegistry.pages[page.id]?.path).toBe(page.route);
+    }
+    await build({
+      entryPoints: ['/src/main.tsx'], bundle: true, write: false, logLevel: 'silent',
+      plugins: [{ name: 'saved-vfs', setup(builder) {
+        builder.onResolve({ filter: /.*/ }, (args) => {
+          if (args.kind !== 'entry-point' && !args.path.startsWith('.') && !args.path.startsWith('@/')) return { path: args.path, external: true };
+          const base = args.path.startsWith('@/') ? `/src/${args.path.slice(2)}`
+            : args.kind === 'entry-point' ? args.path : path.posix.resolve(path.posix.dirname(args.importer), args.path);
+          const resolved = [base, ...['.tsx', '.ts', '.jsx', '.js', '/index.tsx', '/index.ts'].map((extension) => base + extension)]
+            .find((candidate) => candidate in projected.files);
+          if (!resolved) throw new Error(`Unresolved saved-site module: ${args.path} from ${args.importer}`);
+          return { path: resolved, namespace: 'saved-vfs' };
+        });
+        builder.onLoad({ filter: /.*/, namespace: 'saved-vfs' }, (args) => ({
+          contents: projected.files[args.path], loader: args.path.endsWith('.css') ? 'empty' : 'tsx',
+        }));
+      } }],
+    });
+  });
+  it('reports an unavailable saved template rather than substituting a different site', async () => {
+    const plan = planSiteTopology('ecommerce', 'Saved Brand', { selectedTemplateId: 'store-boutique' });
+    await expect(projectLegacySavedPlan({ ...plan, selectedTemplateId: 'removed-template' })).rejects.toThrow('The project is not empty');
+  });
+  it.each([
+    ['salon', 'salon-premium'], ['portfolio', 'portfolio-photography'],
+    ['ecommerce', 'store-premium'], ['restaurant', 'restaurant-premium'],
+    ['salon', 'salon-organic'], ['portfolio', 'portfolio-designer'],
+    ['restaurant', 'restaurant-fine-dining'], ['agency', 'agency-consulting'],
+    ['portfolio', 'portfolio-architect'], ['agency', 'agency-bold'],
+  ])('projects the legacy %s template %s', async (industry, selectedTemplateId) => {
+    const plan = planSiteTopology(industry, 'Saved Brand', { selectedTemplateId, restrictToAdditionalPages: true });
+    const projected = await projectLegacySavedPlan(plan);
+    expect(projected.files[plan.pages[0].filePath]).toBeTruthy();
+    expect(projected.files['/src/index.css']).toContain('--primary');
+  });
   it('scopes recovery to the requested project and draft', async () => {
     mock.row = { code: 'saved', last_revision_id: null };
     expect((await loadLegacyDraftContent('project', 'draft'))?.code).toBe('saved');
@@ -35,6 +88,11 @@ describe('legacy saved draft hydration', () => {
   it('never bypasses an existing canonical revision pointer', async () => {
     mock.row = { code: 'legacy', last_revision_id: 'revision' };
     expect(await loadLegacyDraftContent('project', 'draft')).toBeNull();
+  });
+  it('prefers saved source over declarative template projection', async () => {
+    const sitePlan = planSiteTopology('ecommerce', 'Saved Brand', { selectedTemplateId: 'removed-template' });
+    mock.row = { editor_code: 'authored source', metadata: { sitePlan }, last_revision_id: null };
+    expect((await loadLegacyDraftContent('project', 'draft'))?.code).toBe('authored source');
   });
   it('does not invent content for a missing draft', async () => {
     expect(await loadLegacyDraftContent('project', 'draft')).toBeNull();

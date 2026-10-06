@@ -2760,6 +2760,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
               const imported = importBuilderFiles(files, { replace: true, preferredPath: legacy.activePagePath,
                 adoption: { source: 'hydration', exemptReason: 'legacy-saved-draft-content' } });
               if (!imported) throw new Error('Saved legacy content could not be loaded into the builder.');
+              if (legacy.pageRegistry) creatorPlayground.hydrateCanonicalState({ pageRegistry: legacy.pageRegistry });
               setCanonicalHydrationError(null);
               setEmptyProjectDraft(false);
               // No accepted revision exists yet. Hydration is read-only; future
