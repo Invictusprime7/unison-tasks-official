@@ -62,7 +62,7 @@ class VFSErrorBoundary extends Component<
             )}
             <div className="flex gap-2 justify-center">
               <Button
-                onClick={() => this.setState({ hasError: false, error: null })}
+                onClick={() => window.location.reload()}
                 variant="outline"
                 size="sm"
               >
