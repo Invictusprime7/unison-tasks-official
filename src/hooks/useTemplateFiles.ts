@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import { Json } from "@/integrations/supabase/types";
 import { syncCanonicalComponentGraph } from "@/services/componentGraphPersistence";
 import { findBuilderDraftIdForProject } from "@/services/builderDraftBridge";
-import { migrateFrameworkVfs } from "@/services/frameworkVfsMigration";
+import { resolveLegacyDraftContent } from "@/services/legacyDraftHydration";
 import { commitMutation } from "@/services/vfsCommitService";
 import { legacyFilesToPatchPlan } from "@/types/patchPlan";
 import type { PlaygroundState } from "@/platform/core/playground";
@@ -216,12 +216,8 @@ const buildCanvasData = (code: string, payload?: SaveProjectPayload): TemplateDa
 /** Convert a builder_drafts row to a SavedTemplate envelope. */
 export const draftRowToTemplate = (row: any): SavedTemplate => {
   const meta = (row.metadata || {}) as Record<string, any>;
-  const vfsFiles = (
-    row.vfs_files ||
-    meta.vfsFiles ||
-    (meta.siteBundleSnapshot as { vfsFiles?: Record<string, string> } | undefined)?.vfsFiles ||
-    undefined
-  ) as Record<string, string> | undefined;
+  const savedContent = resolveLegacyDraftContent(row);
+  const vfsFiles = Object.keys(savedContent.files).length ? savedContent.files : undefined;
   return {
     id: row.id,
     name: meta.name || "Untitled Project",
@@ -679,33 +675,9 @@ export function useTemplateFiles() {
       }
 
       if (draft) {
-        const frameworkMigration = migrateFrameworkVfs({
-          vfsFiles: draft.vfs_files as Record<string, string> | null,
-          metadata: draft.metadata as Record<string, unknown> | null,
-        });
-        let hydratedDraft = draft;
-        if (frameworkMigration.changed) {
-          const { data: persistedDraft, error: persistError } = await supabase
-            .from("builder_drafts")
-            .update({
-              vfs_files: frameworkMigration.vfsFiles as unknown as Json,
-              metadata: frameworkMigration.metadata as unknown as Json,
-            })
-            .eq("id", draft.id)
-            .select("*")
-            .maybeSingle();
-          if (persistError) {
-            console.warn('[useTemplateFiles] framework VFS migration persistence failed:', persistError);
-          } else if (persistedDraft) {
-            hydratedDraft = persistedDraft;
-          } else {
-            hydratedDraft = {
-              ...draft,
-              vfs_files: frameworkMigration.vfsFiles as unknown as Json,
-              metadata: frameworkMigration.metadata as unknown as Json,
-            };
-          }
-        }
+        // Opening a saved project is read-only. Framework upgrades must use
+        // commitMutation rather than rewriting draft source during hydration.
+        const hydratedDraft = draft;
         setCurrentDraftId(draft.id);
         const draftProjectId =
           (hydratedDraft as { project_id?: string | null }).project_id ??

@@ -60,7 +60,7 @@ vi.mock('@/integrations/supabase/client', () => ({
   },
 }));
 
-import { useTemplateFiles } from '@/hooks/useTemplateFiles';
+import { useTemplateFiles, draftRowToTemplate } from '@/hooks/useTemplateFiles';
 
 beforeEach(() => {
   responseQueue.length = 0;
@@ -70,6 +70,17 @@ beforeEach(() => {
 });
 
 describe('useTemplateFiles content boundary', () => {
+  it('loads saved VFS from metadata without overwriting the draft during hydration', async () => {
+    const files = { '/src/App.tsx': 'export default function App(){return <h1>Saved site</h1>}' };
+    const row = { id: 'draft-1', project_id: 'project-1', vfs_files: {}, metadata: { vfsFiles: files } };
+    expect(draftRowToTemplate(row).canvas_data.vfsFiles).toEqual(files);
+    responseQueue.push({ data: row, error: null });
+    const { result } = renderHook(() => useTemplateFiles());
+    await act(async () => { expect((await result.current.loadTemplate('draft-1'))?.canvas_data.vfsFiles).toEqual(files); });
+    expect(updateCalls).toEqual([]);
+    expect(insertCalls).toEqual([]);
+    expect(commitMutation).not.toHaveBeenCalled();
+  });
   it.each(['create', 'update'] as const)('returns failure without announcing a saved revision after %s commit rejection', async (mode) => {
     if (mode === 'update') {
       responseQueue.push({ data: { metadata: {}, last_revision_id: 'parent' }, error: null });

@@ -2,16 +2,22 @@ import { supabase } from '@/integrations/supabase/client';
 import type { GeneratedSitePlan } from '@/platform/core/siteTopologyPlanner';
 
 const record = (value: unknown): Record<string, unknown> => value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
-const filesFrom = (value: unknown): Record<string, string> => Object.fromEntries(Object.entries(record(value)).filter(([, source]) => typeof source === 'string')) as Record<string, string>;
+/** Both persisted string maps and Sandpack's { code } file descriptors are VFS input. */
+export const savedVfsFilesFrom = (value: unknown): Record<string, string> => Object.fromEntries(
+  Object.entries(record(value)).flatMap(([path, entry]) => {
+    const source = typeof entry === 'string' ? entry : record(entry).code;
+    return typeof source === 'string' ? [[`/${path.replace(/\\/g, '/').replace(/^\/+/, '')}`, source]] : [];
+  }),
+);
 
 /** Resolve saved source or the historical declarative save format without writing it. */
 export function resolveLegacyDraftContent(row: {
-  code?: unknown; editor_code?: unknown; vfs_files?: unknown; metadata?: unknown;
+  code?: unknown; editor_code?: unknown; vfs_files?: unknown; vfsFiles?: unknown; metadata?: unknown;
 }) {
   const metadata = record(row.metadata);
   const snapshot = record(metadata.siteBundleSnapshot);
-  const candidates = [row.vfs_files, metadata.vfsFiles, snapshot.vfsFiles];
-  const files = candidates.map(filesFrom).find((candidate) => Object.values(candidate).some((source) => source.trim())) ?? {};
+  const candidates = [row.vfs_files, row.vfsFiles, metadata.vfsFiles, snapshot.vfsFiles];
+  const files = candidates.map(savedVfsFilesFrom).find((candidate) => Object.values(candidate).some((source) => source.trim())) ?? {};
   const code = [row.editor_code, row.code].find((source): source is string => typeof source === 'string' && !!source.trim()
     && !source.includes('AI-generated code will appear here')) ?? '';
   const savedPlan = record(metadata.sitePlan);

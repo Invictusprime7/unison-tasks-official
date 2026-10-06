@@ -16,6 +16,7 @@ import { loadLegacyDraftContent, resolveLegacyDraftContent, projectLegacySavedPl
 import { planSiteTopology } from '@/platform/core/siteTopologyPlanner';
 import { build } from 'esbuild';
 import path from 'node:path';
+import { prepareSavedVfsRuntime } from '@/services/savedVfsRuntime';
 
 describe('legacy saved draft hydration', () => {
   beforeEach(() => { mock.row = null; mock.error = null; mock.filters = []; });
@@ -27,6 +28,18 @@ describe('legacy saved draft hydration', () => {
     const files = { '/src/App.tsx': 'saved application' };
     expect(resolveLegacyDraftContent({ vfs_files: {}, metadata: { vfsFiles: files } }).files).toEqual(files);
     expect(resolveLegacyDraftContent({ metadata: { siteBundleSnapshot: { vfsFiles: files } } }).files).toEqual(files);
+  });
+  it('accepts Sandpack descriptors and normalizes saved file paths', () => {
+    expect(resolveLegacyDraftContent({ vfsFiles: { 'src/App.tsx': { code: 'saved app', active: true }, 'src/helper.ts': 'saved helper' } }).files)
+      .toEqual({ '/src/App.tsx': 'saved app', '/src/helper.ts': 'saved helper' });
+  });
+  it('fills platform module dependencies while preserving every saved module', () => {
+    const saved = { '/src/App.tsx': 'authored app', '/src/unison/ui/icons.tsx': 'saved icons', '/src/index.css': 'saved styles' };
+    const files = prepareSavedVfsRuntime(saved, { projectId: 'project', businessId: 'business' });
+    for (const [file, source] of Object.entries(saved)) expect(files[file]).toBe(source);
+    expect(files['/src/unison/publishedRuntime.ts']).toContain('project');
+    expect(files['/src/unison/generatedSiteRuntimeManifest.ts']).toBeTruthy();
+    expect(files['/src/unison/ui/button.tsx']).toBeTruthy();
   });
   it('recognizes truly empty drafts and ignores placeholder code', () => {
     expect(resolveLegacyDraftContent({ code: 'AI-generated code will appear here', vfs_files: { '/src/App.tsx': ' ' } }).hasContent).toBe(false);

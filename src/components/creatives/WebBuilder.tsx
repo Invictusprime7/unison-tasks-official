@@ -136,7 +136,8 @@ import {
 import { applyCapabilityMigration } from '@/services/capabilityMigrationRunner';
 import { applyButtonBinding } from '@/services/aiBindingTool';
 import { upgradeCurrentUserDraftFrameworkVfs } from '@/services/draftFrameworkMigrationService';
-import { loadLegacyDraftContent } from '@/services/legacyDraftHydration';
+import { loadLegacyDraftContent, savedVfsFilesFrom } from '@/services/legacyDraftHydration';
+import { prepareSavedVfsRuntime } from '@/services/savedVfsRuntime';
 
 // Helpers extracted to web-builder/*
 import {
@@ -2553,7 +2554,12 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       const normalizedEntryPoint = options?.entryPoint
         ? (options.entryPoint.startsWith('/') ? options.entryPoint : `/${options.entryPoint}`)
         : undefined;
-      const normalizedFiles = normalizeLauncherFiles({ ...incomingFiles }, {
+      const savedFiles = savedVfsFilesFrom(incomingFiles);
+      const hydrationFiles = !currentSnapshot && options?.adoption?.source?.includes('hydration')
+        ? prepareSavedVfsRuntime(savedFiles, { projectId: resolvedProjectId, businessId,
+          siteId: effectiveRouteState?.siteId, themePresetId: resolvedThemePresetId })
+        : savedFiles;
+      const normalizedFiles = normalizeLauncherFiles({ ...hydrationFiles }, {
         entryPoint: normalizedEntryPoint,
         themePresetId: options?.themePresetId ?? resolvedThemePresetId,
         injectCssIfMissing: !effectiveRouteState?.siteBundleSnapshot,
