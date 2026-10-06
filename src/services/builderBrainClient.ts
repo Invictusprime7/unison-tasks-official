@@ -310,6 +310,29 @@ export function isBuilderSessionError(error: unknown): boolean {
     || /invalid or expired token|session expired|sign in again/i.test(candidate?.message || '');
 }
 
+/**
+ * Preserve the edge function's bounded provider trail for the Builder. The
+ * edge returns a short customer-safe `error` plus a diagnostic `details`
+ * field; previously we discarded the latter and turned an actionable model
+ * error into the indistinguishable "providers failed" message.
+ */
+export function builderEdgeErrorMessage(
+  payload: unknown,
+  status: number,
+): string {
+  const body = payload && typeof payload === 'object'
+    ? payload as { error?: unknown; details?: unknown; errorType?: unknown }
+    : null;
+  const summary = typeof body?.error === 'string' && body.error.trim()
+    ? body.error.trim()
+    : `AI generation failed (${status})`;
+  const details = typeof body?.details === 'string' ? body.details.trim() : '';
+  if (!details || details === summary) return summary;
+  // Edge diagnostics are already server-truncated; retain a compact final
+  // portion so the UI names the failed provider without dumping its response.
+  return `${summary} ${details.slice(0, 360)}`;
+}
+
 
 function sleep(ms: number, signal?: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -441,12 +464,12 @@ export async function runBuilderTurn<TResponse = any>(
     let data: TResponse | null = null;
     try { data = text ? JSON.parse(text) as TResponse : null; } catch { data = null; }
     if (response.ok) return { data, error: null, usedToken: token };
-    const parsedError = data as { error?: string } | null;
+    const message = builderEdgeErrorMessage(data, response.status);
     return {
       data,
       usedToken: token,
       error: Object.assign(
-        new Error(parsedError?.error || `AI generation failed (${response.status})`),
+        new Error(message),
         { context: { status: response.status, body: text } },
       ),
     };

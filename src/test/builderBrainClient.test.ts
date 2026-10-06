@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   MAX_BUILDER_GATEWAY_TIMEOUT_MS,
   clampBuilderGatewayTimeout,
+  builderEdgeErrorMessage,
   getShortRateLimitRetryMs,
   isProviderTimeoutError,
   isRateLimitError,
@@ -9,6 +10,18 @@ import {
 } from '@/services/builderBrainClient';
 
 describe('builder brain rate-limit retry', () => {
+  it('retains the edge provider trail when a provider chain fails', () => {
+    expect(builderEdgeErrorMessage({
+      error: 'AI providers failed to produce a response.',
+      details: 'All AI providers failed. Last errors: Gemini composer: timeout.',
+    }, 500)).toContain('Gemini composer: timeout');
+  });
+
+  it('does not append duplicate edge error detail', () => {
+    expect(builderEdgeErrorMessage({ error: 'AI request failed.', details: 'AI request failed.' }, 500))
+      .toBe('AI request failed.');
+  });
+
   it('uses a short default delay when Lane B does not provide Retry-After', () => {
     expect(getShortRateLimitRetryMs(null)).toBe(750);
   });
