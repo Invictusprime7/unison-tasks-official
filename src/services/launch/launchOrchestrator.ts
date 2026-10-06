@@ -65,6 +65,7 @@ import {
   type ConfirmedLaunchIds,
 } from "@/services/confirmedLaunchProvisioner";
 import { commitMutation } from "@/services/vfsCommitService";
+import { computeBuilderVfsSignature, writeBuilderRecoverySnapshot, markBuilderRecoveryPersisted, type BuilderRecoverySnapshot } from '@/services/builderStateRecovery';
 import { legacyFilesToPatchPlan } from "@/types/patchPlan";
 import { createLaunchState, type LaunchState } from "@/types/launchState";
 import {
@@ -736,6 +737,20 @@ export async function runLaunchPipeline(
       revisionId: "",
       sessionId: `web-builder:${confirmed.draftId}`,
     };
+    const recovery: BuilderRecoverySnapshot = {
+      version: 2,
+      templateId: confirmed.draftId,
+      code: vfsFiles[artifacts.entryPoint] || '',
+      editorCode: vfsFiles[artifacts.entryPoint] || '',
+      savedAt: new Date().toISOString(),
+      vfsSignature: computeBuilderVfsSignature(vfsFiles),
+      vfsFiles,
+      reason: 'navigation_flush',
+      pendingRemote: true,
+    };
+    // A failed first commit must not discard the reviewed App Builder source.
+    // This browser journal is recovery only; it does not create a revision.
+    writeBuilderRecoverySnapshot(recovery);
     const result = await commitMutation({
       source: "wizard-launch",
       identity,
@@ -767,6 +782,7 @@ export async function runLaunchPipeline(
     if (!result.siteBundleSnapshot || !result.runtimeManifest) {
       throw new Error("The canonical commit returned an incomplete launch artifact.");
     }
+    markBuilderRecoveryPersisted(recovery, confirmed.draftId, undefined, result.persistedRevisionId);
     return { confirmed, result };
   }, { timeoutMs: 120_000 });
 
