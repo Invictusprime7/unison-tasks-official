@@ -3,6 +3,8 @@ import { getCorsHeaders, handleCorsPreflightRequest } from '../_shared/cors.ts'
 import { verifyAuth, verifyBusinessAccess, authError } from '../_shared/auth.ts'
 import { errorResponse, secureJsonResponse } from '../_shared/response.ts'
 import { safeParseBody, isValidUUID } from '../_shared/validate.ts'
+import { executeSchemaBatch } from './backendOperations.ts'
+import type { SchemaBackendOp } from '../_shared/backendOperations.ts'
 
 type AgentBinding = {
   agentSlug: string
@@ -12,6 +14,11 @@ type AgentBinding = {
 }
 
 type ReconcileRequest = {
+  mode?: 'backend-operations'
+  draftId?: string
+  baseRevisionId?: string | null
+  runId?: string
+  operations?: SchemaBackendOp[]
   businessId?: string
   projectId?: string
   manifest?: Record<string, unknown>
@@ -61,6 +68,25 @@ Deno.serve(async (req) => {
   const { data: body, error: parseError } = await safeParseBody<ReconcileRequest>(req, 131_072)
   if (parseError || !body || !isValidUUID(body.businessId || '') || !isValidUUID(body.projectId || '')) {
     return errorResponse(parseError || 'Invalid runtime reconciliation request', 400, corsHeaders)
+  }
+  if (body.mode === 'backend-operations') {
+    const access = await verifyBusinessAccess(auth.user.id, body.businessId as string)
+    if (!access.allowed) return authError(access.error || 'Access denied', 403, corsHeaders)
+    const databaseUrl = Deno.env.get('SUPABASE_DB_URL')
+    if (!databaseUrl) return errorResponse('Backend execution is unavailable', 503, corsHeaders)
+    const pg = new PgClient(databaseUrl)
+    try {
+      await pg.connect()
+      const result = await executeSchemaBatch(pg, {
+        projectId: body.projectId as string, businessId: body.businessId as string,
+        draftId: body.draftId as string, userId: auth.user.id, baseRevisionId: body.baseRevisionId,
+        runId: body.runId as string, operations: body.operations as SchemaBackendOp[],
+      })
+      return secureJsonResponse(result, 200, corsHeaders)
+    } catch (error) {
+      console.error('[reconcile-generated-runtime] backend batch failed', error)
+      return errorResponse('Backend batch rejected; schema transaction was rolled back', 409, corsHeaders)
+    } finally { try { await pg.end() } catch { /* no-op */ } }
   }
   if (!body.manifest || typeof body.manifest !== 'object' || Array.isArray(body.manifest)) {
     return errorResponse('Runtime manifest is required', 400, corsHeaders)

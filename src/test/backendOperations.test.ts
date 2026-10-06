@@ -71,4 +71,12 @@ describe('typed backend proposals', () => {
     expect(report.results[0]).toMatchObject({ status: 'ok', runId: 'candidate-1', operationId: 'candidate-1:backend:0' });
     expect(mocks.invoke).toHaveBeenCalledWith('install-system', { body: { systemType: 'saas', businessId: 'business' } });
   });
+  it('sends schema-only batches through the existing edge function and verifies receipts', async () => {
+    mocks.invoke.mockResolvedValue({ data: { success: true, runId: 'candidate-1', results: [{ operationId: 'profiles:create', status: 'ok' }] }, error: null });
+    const report = await executeBackendOps([table], identity, { runId: 'candidate-1' });
+    expect(report.failedCount).toBe(0);
+    expect(mocks.invoke).toHaveBeenCalledWith('reconcile-generated-runtime', expect.objectContaining({ body: expect.objectContaining({ mode: 'backend-operations', projectId: 'project', draftId: 'draft', baseRevisionId: 'revision', runId: 'candidate-1' }) }));
+    mocks.invoke.mockResolvedValue({ data: { success: true, runId: 'wrong', results: [] }, error: null });
+    expect((await executeBackendOps([table], identity, { runId: 'candidate-1' })).failedCount).toBe(1);
+  });
 });

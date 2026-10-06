@@ -27,7 +27,7 @@ import type { BackendOp } from '@/types/patchPlan';
 import type { BuilderIdentity } from '@/types/builderIdentity';
 import type { CapabilityId } from '@/platform/core/capabilityRegistry';
 import { generateAvailabilitySlots, type BusinessHoursWindow } from '@/services/availabilityGeneration';
-import { assertBackendOps } from '@/types/backendOperations';
+import { assertBackendOps, type SchemaBackendOp } from '@/types/backendOperations';
 import { emitAgentEvent } from '@/services/agent-runtime/agentEvents';
 
 export type BackendOpStatus = 'ok' | 'skipped' | 'failed';
@@ -198,7 +198,8 @@ export async function executeBackendOps(
   let invalid: string | undefined;
   try { assertBackendOps(ops, 'backendOpExecutor'); }
   catch (error) { invalid = error instanceof Error ? error.message : String(error); }
-  const unavailable = ops.some((op) => op.type !== 'requireCapability' && op.type !== 'seedCapability');
+  const schemaOps = ops.filter((op): op is SchemaBackendOp => op.type !== 'requireCapability' && op.type !== 'seedCapability');
+  const unavailable = schemaOps.length > 0 && (schemaOps.length !== ops.length || !runId);
   // Gate the whole batch before the first install/seed. An unsupported schema
   // proposal must never silently succeed after partially provisioning a site.
   if (invalid || unavailable) {
@@ -206,10 +207,29 @@ export async function executeBackendOps(
       op, status: 'failed', operationId: op.operationId ?? (runId ? `${runId}:backend:${index}` : undefined), runId,
       code: invalid ? 'invalid-proposal'
         : op.type === 'requireCapability' || op.type === 'seedCapability' ? 'batch-blocked' : 'executor-unavailable',
-      detail: invalid ?? 'Schema execution is unavailable for this project; no backend operations were executed.',
+      detail: invalid ?? 'Schema operations require a candidate identity and a schema-only batch; no backend operations were executed.',
     }));
     emitAgentEvent({ kind: 'error', message: invalid ?? 'Backend batch rejected: schema execution is unavailable.', status: 'failed', runId });
     return { results, failedCount: results.length };
+  }
+  if (schemaOps.length) {
+    emitAgentEvent({ kind: 'tool_call', message: 'Preparing project schema transaction', runId, status: 'running' });
+    try {
+      const { data, error } = await supabase.functions.invoke('reconcile-generated-runtime', {
+        body: { mode: 'backend-operations', businessId: identity.businessId, projectId: identity.projectId,
+          draftId: identity.draftId, baseRevisionId: identity.revisionId || null, runId, operations: schemaOps },
+      });
+      if (error || data?.success !== true || data.runId !== runId || !Array.isArray(data.results)
+        || data.results.length !== schemaOps.length
+        || schemaOps.some((op, index) => data.results[index]?.operationId !== op.operationId
+          || !['ok', 'skipped'].includes(data.results[index]?.status))) throw new Error('Schema transaction was rejected or returned an invalid receipt.');
+      emitAgentEvent({ kind: 'data_change', message: 'Project schema transaction prepared', runId, status: 'ok' });
+      return { results: schemaOps.map((op, index) => ({ op, operationId: op.operationId, runId, status: data.results[index].status })), failedCount: 0 };
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error);
+      emitAgentEvent({ kind: 'error', message: detail, runId, status: 'failed' });
+      return { results: schemaOps.map((op) => ({ op, operationId: op.operationId, runId, status: 'failed', code: 'execution-failed', detail })), failedCount: schemaOps.length };
+    }
   }
   const results: BackendOpResult[] = [];
   for (const [index, op] of ops.entries()) {
