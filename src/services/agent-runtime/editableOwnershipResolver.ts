@@ -1,5 +1,6 @@
 import type { EditableEntity, EditableEntityKind, EditablePropertyOwner, EditableMutationLane } from './editableEntity';
 import type { SystemGraph } from './systemGraph';
+import { getCatalogSurfaceByTable } from '@/platform/core/catalogSurfaceRegistry';
 
 export interface EditableSelection {
   elementId?: string | null;
@@ -61,10 +62,15 @@ export function resolveEditableEntity(input: ResolveEditableEntityInput): Editab
   if (selected.revisionId && selected.revisionId !== input.graph.revision.id) {
     throw new Error(`Selected entity is stale (${selected.revisionId}); current revision is ${input.graph.revision.id}. Re-select it before editing.`);
   }
+  const catalogSurface = selected.sourceTable ? getCatalogSurfaceByTable(selected.sourceTable) : null;
+  if (selected.sourceTable && selected.rowId && !catalogSurface) {
+    throw new Error(`Selected catalog source "${selected.sourceTable}" is not registered for editable data operations.`);
+  }
+  const sourceTable = catalogSurface?.sourceTable ?? selected.sourceTable ?? undefined;
   const intents = Array.from(new Set([...(selected.intents ?? []), ...(selected.primaryIntent ? [selected.primaryIntent] : [])]));
   const resolved = classification(selected, intents);
   const entity: EditableEntity = {
-    id: `entity:${ownerId([selected.sourceTable, selected.rowId, selected.elementId, selected.bindingKey, selected.sectionId, selected.pagePath])}`,
+    id: `entity:${ownerId([sourceTable, selected.rowId, selected.elementId, selected.bindingKey, selected.sectionId, selected.pagePath])}`,
     revisionId: input.graph.revision.id,
     projectId: selected.projectId ?? undefined,
     kind: resolved.kind,
@@ -81,13 +87,13 @@ export function resolveEditableEntity(input: ResolveEditableEntityInput): Editab
     intents,
     permissions: { readable: true, writable: true, destructive: resolved.kind === 'catalog' },
     allowedMutationLanes: resolved.lanes,
-    provenance: { catalogSurface: selected.sourceTable ?? undefined, bindingId: selected.bindingId ?? undefined, registryKey: selected.artifactId ?? undefined },
+    provenance: { catalogSurface: catalogSurface?.surfaceId, bindingId: selected.bindingId ?? undefined, registryKey: selected.artifactId ?? undefined },
     owners: {},
   };
 
-  if (selected.sourceTable && selected.rowId) {
+  if (sourceTable && selected.rowId) {
     const owner: EditablePropertyOwner = {
-      kind: 'catalog-row', table: selected.sourceTable, rowId: selected.rowId,
+      kind: 'catalog-row', table: sourceTable, rowId: selected.rowId,
       field: selected.field ?? undefined, bindingId: selected.bindingId ?? undefined,
     };
     entity.owners[selected.field ?? 'value'] = owner;

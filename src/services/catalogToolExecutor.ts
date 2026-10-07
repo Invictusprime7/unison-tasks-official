@@ -20,7 +20,7 @@ import {
   type CatalogOperationName,
   type CatalogOperationResult,
 } from '@/services/catalogOperations';
-import type { DataOp, CanonicalDataSurface } from '@/types/dataOperations';
+import { CANONICAL_DATA_SURFACES, type DataOp, type CanonicalDataSurface } from '@/types/dataOperations';
 
 const CATALOG_TOOL_NAMES = new Set<CatalogOperationName>(
   CATALOG_OPERATION_TOOLS.map((t) => t.name as CatalogOperationName),
@@ -62,7 +62,7 @@ export interface CatalogToolProposal {
 }
 
 function isSurface(value: unknown): value is CanonicalDataSurface {
-  return typeof value === 'string' && ['products', 'services', 'menu_items', 'pricing_plans', 'testimonials'].includes(value);
+  return typeof value === 'string' && CANONICAL_DATA_SURFACES.includes(value as CanonicalDataSurface);
 }
 
 /** Compile catalog tool calls into PatchPlan proposals; this never writes data. */
@@ -126,7 +126,6 @@ export async function executeCatalogToolCalls(
   // earlier ones (e.g. createCatalogRow → updateSectionBinding).
   const out: CatalogToolExecutionResult[] = [];
   for (const call of calls) {
-    // eslint-disable-next-line no-await-in-loop
     out.push(await executeCatalogToolCall(call));
   }
   return out;

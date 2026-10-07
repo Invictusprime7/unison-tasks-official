@@ -7,7 +7,10 @@ export const CANONICAL_DATA_SURFACES = [
   'services',
   'menu_items',
   'pricing_plans',
+  'featured_offers',
   'testimonials',
+  'portfolio_projects',
+  'availability_slots',
 ] as const;
 
 export type CanonicalDataSurface = (typeof CANONICAL_DATA_SURFACES)[number];

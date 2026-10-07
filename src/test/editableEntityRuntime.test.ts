@@ -29,6 +29,29 @@ describe('canonical editable entity runtime', () => {
     expect(entity.allowedMutationLanes).toEqual(['dataOps']);
   });
 
+  it.each([
+    ['booking', 'services', 'service-1', 'price_cents', 'services'],
+    ['restaurant', 'menu_items', 'menu-1', 'name', 'menu'],
+    ['commerce', 'products', 'product-1', 'price', 'products'],
+    ['contractor', 'services', 'quote-1', 'description', 'services'],
+    ['portfolio', 'portfolio_projects', 'project-1', 'title', 'portfolio'],
+  ])('resolves the %s catalog target through its registered owner', (_industry, sourceTable, rowId, field, surfaceId) => {
+    const graph = buildSystemGraph({ '/src/pages/Home.tsx': 'export default function Home(){ return <main /> }' });
+    const entity = resolveEditableEntity({ graph, selectedElement: { sourceTable, rowId, field } });
+    expect(entity).toMatchObject({
+      kind: 'catalog',
+      provenance: { catalogSurface: surfaceId },
+      owners: { [field]: { kind: 'catalog-row', table: sourceTable, rowId } },
+    });
+    expect(entity.allowedMutationLanes).toEqual(['dataOps']);
+  });
+
+  it('refuses an unregistered catalog table instead of exposing a raw database lane', () => {
+    const graph = buildSystemGraph({ '/src/pages/Home.tsx': 'export default function Home(){ return <main /> }' });
+    expect(() => resolveEditableEntity({ graph, selectedElement: { sourceTable: 'profiles', rowId: 'user-1' } }))
+      .toThrow('is not registered for editable data operations');
+  });
+
   it('classifies topology, behavior, presentation, and content selections into their permitted lanes', () => {
     const graph = buildSystemGraph({ '/src/pages/Home.tsx': 'export default function Home(){ return <main /> }' });
     expect(resolveEditableEntity({ graph, selectedElement: { clickedTag: 'a', targetPath: '/' } }).kind).toBe('topology');
