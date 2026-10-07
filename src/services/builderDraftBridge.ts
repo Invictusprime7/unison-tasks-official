@@ -7,6 +7,56 @@ interface FindBuilderDraftForProjectInput {
   userId?: string | null;
 }
 
+export interface BuilderDraftProjection {
+  draftId: string;
+  revisionId: string;
+  updatedAt: string | null;
+}
+
+/**
+ * Resolve the newest accepted draft projection for a Cloud project.
+ *
+ * A builder_drafts row can be newer than its committed site revision while an
+ * autosave is in flight. Profile entry points must therefore prefer a row with
+ * a durable revision pointer instead of trusting a cached draft id.
+ */
+export async function findLatestBuilderDraftProjectionForProject({
+  projectId,
+  businessId,
+  userId,
+}: Pick<FindBuilderDraftForProjectInput, 'projectId' | 'businessId' | 'userId'>): Promise<BuilderDraftProjection | null> {
+  if (!projectId) return null;
+
+  const resolvedUserId = userId || (await supabase.auth.getUser()).data.user?.id;
+  if (!resolvedUserId) return null;
+
+  let query = supabase
+    .from('builder_drafts')
+    .select('id, last_revision_id, updated_at')
+    .eq('user_id', resolvedUserId)
+    .eq('project_id', projectId)
+    .order('updated_at', { ascending: false })
+    .limit(50);
+  if (businessId) query = query.eq('business_id', businessId);
+
+  const { data, error } = await query;
+  if (error) {
+    console.warn('[builderDraftBridge] Failed to resolve canonical draft projection:', error);
+    return null;
+  }
+
+  const row = (data || []).find((candidate) =>
+    typeof candidate.last_revision_id === 'string' && candidate.last_revision_id.length > 0,
+  );
+  if (!row?.id || !row.last_revision_id) return null;
+
+  return {
+    draftId: row.id,
+    revisionId: row.last_revision_id,
+    updatedAt: row.updated_at || null,
+  };
+}
+
 export async function findBuilderDraftIdForProject({
   projectId,
   projectName,
@@ -18,24 +68,15 @@ export async function findBuilderDraftIdForProject({
     return null;
   }
 
-  // The relational FK is authoritative. Query it first instead of depending
-  // on metadata that may be absent on older/autosaved drafts.
-  if (projectId) {
-    let exactQuery = supabase
-      .from('builder_drafts')
-      .select('id')
-      .eq('user_id', resolvedUserId)
-      .eq('project_id', projectId)
-      .order('updated_at', { ascending: false })
-      .limit(1);
-    if (businessId) exactQuery = exactQuery.eq('business_id', businessId);
-
-    const { data: exactRows, error: exactError } = await exactQuery;
-    if (!exactError && exactRows?.[0]?.id) return exactRows[0].id;
-    if (exactError) {
-      console.warn('[builderDraftBridge] FK lookup failed; checking legacy metadata:', exactError);
-    }
-  }
+  // The relational FK is authoritative. Prefer a committed projection so an
+  // old in-memory card cannot open a predecessor revision after another device
+  // has saved a newer canonical state.
+  const projection = await findLatestBuilderDraftProjectionForProject({
+    projectId,
+    businessId,
+    userId: resolvedUserId,
+  });
+  if (projection) return projection.draftId;
 
   const { data, error } = await supabase
     .from('builder_drafts')

@@ -61,7 +61,7 @@ import {
   listProjectsCompat,
 } from '@/services/projectSchemaCompat';
 import { mergeWorkspaceProjects } from '@/services/cloudProjectDrafts';
-import { findBuilderDraftIdForProject } from '@/services/builderDraftBridge';
+import { findBuilderDraftIdForProject, findLatestBuilderDraftProjectionForProject } from '@/services/builderDraftBridge';
 import { migrateCloudProjects, type CloudMigrationResult } from '@/services/cloudProjectCanonicalMigration';
 import { recoverLegacyCloudProject } from '@/services/legacyCloudProjectRecovery';
 import { repairDraftBusinessLink } from '@/services/draftBusinessLinkRepair';
@@ -120,6 +120,7 @@ interface Project {
   custom_domain?: string;
   settings?: Record<string, any>;
   draft_id?: string | null;
+  revision_id?: string | null;
   draft_only?: boolean;
 }
 
@@ -325,7 +326,7 @@ export function CloudProjects({ userId, businessId: propBusinessId, onProjectSel
         listProjectsCompat({ ownerId: userId }),
         supabase
           .from('builder_drafts')
-          .select('id, project_id, business_id, name, metadata, vfs_files, code, editor_code, created_at, updated_at')
+          .select('id, project_id, business_id, name, metadata, vfs_files, code, editor_code, last_revision_id, created_at, updated_at')
           .eq('user_id', userId)
           .is('business_id', null)
           .order('updated_at', { ascending: false }),
@@ -578,7 +579,7 @@ export function CloudProjects({ userId, businessId: propBusinessId, onProjectSel
         listProjectsCompat({ ownerId: userId, businessId }),
         supabase
           .from('builder_drafts')
-          .select('id, project_id, business_id, name, metadata, created_at, updated_at')
+          .select('id, project_id, business_id, name, metadata, last_revision_id, created_at, updated_at')
           .eq('user_id', userId)
           .eq('business_id', businessId)
           .order('updated_at', { ascending: false }),
@@ -953,7 +954,19 @@ export function CloudProjects({ userId, businessId: propBusinessId, onProjectSel
     // Resolve the matching builder_draft (if any) so the editor opens directly
     // on the user's last saved VFS state instead of a blank canvas.
     let draftId: string | null = project.draft_id || null;
+    let revisionId: string | null = project.revision_id || null;
     try {
+      if (!project.draft_only) {
+        const projection = await findLatestBuilderDraftProjectionForProject({
+          projectId: project.id,
+          businessId: project.business_id || null,
+          userId,
+        });
+        if (projection) {
+          draftId = projection.draftId;
+          revisionId = projection.revisionId;
+        }
+      }
       if (!draftId) {
         draftId = await findBuilderDraftIdForProject({
           projectId: project.draft_only ? null : project.id,
@@ -966,11 +979,12 @@ export function CloudProjects({ userId, businessId: propBusinessId, onProjectSel
       console.warn('[CloudProjects] failed to resolve draft for project', project.id, err);
     }
 
-    if (!project.draft_only) {
+    if (!project.draft_only && !revisionId) {
       try {
         draftId = await recoverLegacyCloudProject(project.id);
         const conversion = await repairDraftBusinessLink({ draftId, projectId: project.id });
         if (!conversion.revisionId) throw new Error(conversion.notes.join(' ') || 'Saved project conversion could not be accepted.');
+        revisionId = conversion.revisionId;
       } catch (error) {
         toast({ title: 'Project recovery needs attention', description: error instanceof Error ? error.message : String(error), variant: 'destructive' });
         return;
@@ -983,6 +997,7 @@ export function CloudProjects({ userId, businessId: propBusinessId, onProjectSel
         projectId: project.draft_only ? undefined : project.id,
         draftId,
         businessId: project.business_id || null,
+        revisionId,
         projectName: project.name,
         projectSlug: project.slug,
         publishStatus: project.publish_status || project.status,

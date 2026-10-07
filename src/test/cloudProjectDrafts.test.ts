@@ -6,13 +6,18 @@ describe('mergeWorkspaceProjects', () => {
     const result = mergeWorkspaceProjects(
       [{ id: 'project-1', name: 'Storefront', created_at: '2026-07-01' }],
       [
-        { id: 'draft-old', project_id: 'project-1', updated_at: '2026-07-02' },
-        { id: 'draft-latest', project_id: 'project-1', updated_at: '2026-07-03' },
+        { id: 'draft-old', project_id: 'project-1', last_revision_id: 'revision-old', updated_at: '2026-07-02' },
+        { id: 'draft-latest', project_id: 'project-1', last_revision_id: 'revision-latest', updated_at: '2026-07-03' },
       ],
     );
 
     expect(result).toHaveLength(1);
-    expect(result[0]).toMatchObject({ id: 'project-1', draft_id: 'draft-latest' });
+    expect(result[0]).toMatchObject({
+      id: 'project-1',
+      draft_id: 'draft-latest',
+      revision_id: 'revision-latest',
+      updated_at: '2026-07-03',
+    });
   });
 
   it('keeps an autosaved draft discoverable while database linkage is repaired', () => {

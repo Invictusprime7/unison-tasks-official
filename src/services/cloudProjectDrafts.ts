@@ -6,6 +6,7 @@ export interface WorkspaceDraftRecord {
   business_id?: string | null;
   name?: string | null;
   metadata?: Record<string, unknown> | null;
+  last_revision_id?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
 }
@@ -13,6 +14,7 @@ export interface WorkspaceDraftRecord {
 export interface WorkspaceProjectRecord extends Omit<ProjectRecord, 'created_at'> {
   created_at: string;
   draft_id?: string | null;
+  revision_id?: string | null;
   draft_only?: boolean;
 }
 
@@ -40,11 +42,20 @@ export function mergeWorkspaceProjects(
   }
 
   const represented = new Set(projects.map((project) => project.id));
-  const result: WorkspaceProjectRecord[] = projects.map((project) => ({
-    ...project,
-    created_at: project.created_at || project.updated_at || new Date(0).toISOString(),
-    draft_id: latestDraftByProject.get(project.id)?.id ?? null,
-  }));
+  const result: WorkspaceProjectRecord[] = projects.map((project) => {
+    const latestDraft = latestDraftByProject.get(project.id);
+    const projectUpdatedAt = String(project.updated_at || project.created_at || '');
+    const draftUpdatedAt = String(latestDraft?.updated_at || '');
+    return {
+      ...project,
+      created_at: project.created_at || project.updated_at || new Date(0).toISOString(),
+      // Draft commits can advance without changing projects.updated_at. Carry
+      // that durable activity into the profile ordering and card freshness.
+      updated_at: draftUpdatedAt > projectUpdatedAt ? latestDraft?.updated_at || null : project.updated_at || null,
+      draft_id: latestDraft?.id ?? null,
+      revision_id: latestDraft?.last_revision_id ?? null,
+    };
+  });
 
   // Defensive visibility for rows awaiting trigger/backfill synchronization.
   for (const draft of drafts) {
@@ -60,6 +71,7 @@ export function mergeWorkspaceProjects(
       created_at: draft.created_at || draft.updated_at || new Date(0).toISOString(),
       updated_at: draft.updated_at || draft.created_at || null,
       draft_id: draft.id,
+      revision_id: draft.last_revision_id ?? null,
       draft_only: !draft.project_id,
     });
   }
