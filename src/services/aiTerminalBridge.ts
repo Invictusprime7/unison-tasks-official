@@ -65,7 +65,7 @@ export class AITerminalBridge {
         // Add handlers for VFS modifications
         onAddDep: (pkg, version) => this.handleDepAdded(pkg, version),
         onRemoveDep: (pkg) => this.handleDepRemoved(pkg),
-        onWriteFile: (path, content) => this.handleFileWritten(path, content),
+        onPatch: (ops) => this.handlePatch(ops),
       });
 
       const duration = Date.now() - startTime;
@@ -144,7 +144,7 @@ export class AITerminalBridge {
           currentDeps: this.currentDeps,
           onAddDep: (pkg, version) => this.handleDepAdded(pkg, version),
           onRemoveDep: (pkg) => this.handleDepRemoved(pkg),
-          onWriteFile: (path, content) => this.handleFileWritten(path, content),
+          onPatch: (ops) => this.handlePatch(ops),
         });
 
         const commandFailed = commandResult.lines.some((line) => line.type === 'error');
@@ -344,6 +344,17 @@ export class AITerminalBridge {
       `Dependency removed: ${pkg}`,
       'observation'
     );
+  }
+
+  /** Mirror terminal ops into this bridge's in-memory node view (not a site save). */
+  private handlePatch(ops: Array<{ type: string; path: string; contents?: string }>): void {
+    for (const op of ops) {
+      if (op.type === 'delete') {
+        this.vfsNodes = this.vfsNodes.filter((n) => !(n.type === 'file' && (n as VirtualFile).path === op.path));
+      } else {
+        this.handleFileWritten(op.path, op.contents ?? '');
+      }
+    }
   }
 
   private handleFileWritten(path: string, content: string): void {
