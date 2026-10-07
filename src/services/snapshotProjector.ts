@@ -37,6 +37,12 @@ export interface SnapshotResolution {
   projectionScope?: string | null;
   /** Accepted revision whose files are carried by `snapshot`. */
   acceptedRevisionId?: string | null;
+  /**
+   * True when `snapshot` was parsed from the live VFS's own
+   * `/.unison/site-bundle-snapshot.json`. Its embedded `vfsFiles` is then a
+   * copy of the same working tree, which only refreshes at some commits.
+   */
+  snapshotFromLiveVfs?: boolean;
 }
 
 const MINIMAL_PREVIEW_FALLBACK_RE = /return\s+<div>\s*Placeholder|return\s+<main>\s*Placeholder|Canonical\s+\w+\s+Stub|Canonical\s+\w+\s+Fallback|Generated\s+Home|Preview recovered|safe fallback was injected|AI-generated code will appear here|Welcome to AI Web Builder|New site preview|Coming soon|fallback keeps the experience polished/i;
@@ -170,7 +176,14 @@ export function resolveSnapshot(
   const acceptedRevisionId = typeof state?.revisionId === 'string' && state.revisionId.trim()
     ? state.revisionId.trim()
     : null;
-  return { snapshot, isWizardDraft, themePresetId: themePresetId ?? null, projectionScope, acceptedRevisionId };
+  return {
+    snapshot,
+    isWizardDraft,
+    themePresetId: themePresetId ?? null,
+    projectionScope,
+    acceptedRevisionId,
+    snapshotFromLiveVfs: Boolean(snapshot && snapshot === snapshotFromVfs),
+  };
 }
 
 
@@ -888,6 +901,21 @@ export function projectSnapshotVfsFiles(
       next[path] = pending.contents;
       preserved.push(path);
       continue;
+    }
+
+    // The snapshot embedded in the live VFS travels in the same file map as
+    // the sources. A committed Builder edit updates the source byte, but the
+    // embedded copy is not rewritten on every save, and the accepted revision
+    // id (from LaunchState) can already acknowledge the pending operation. The
+    // live working byte for a snapshot-owned path is therefore the newest one;
+    // paths outside the snapshot still never leak in (stale legacy routers).
+    if (resolution.snapshotFromLiveVfs) {
+      const live = files[path] ?? files[rawPath] ?? files[path.slice(1)];
+      if (typeof live === 'string' && live !== content) {
+        next[path] = live;
+        preserved.push(path);
+        continue;
+      }
     }
 
     next[path] = content;
