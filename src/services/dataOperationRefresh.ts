@@ -8,7 +8,7 @@ export function refreshDataOperationResources(input: {
   projectId?: string | null;
   businessId?: string | null;
   /** Only status and operation id are read, so commit summaries fit too. */
-  results: ReadonlyArray<{ operationId: string; status: string }>;
+  results: ReadonlyArray<{ operationId: string; status: string; type?: string; message?: string }>;
 }): boolean {
   const applied = input.results.filter((result) => result.status === 'applied');
   if (!applied.length || typeof window === 'undefined') return false;
