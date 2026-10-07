@@ -19,7 +19,7 @@ describe('section actions', () => {
   });
   it('moves a section and keeps button destinations byte-for-byte', () => {
     const r = moveSection('section:/about#hero', 'down', files);
-    if (!r.ok) throw new Error(r.error);
+    if (r.ok === false) throw new Error(r.error);
     expect(sectionSpans(r.contents).map((s) => s.id)).toEqual(['work', 'hero', 'cta']);
     expect(r.contents).toContain('data-ut-path="/contact">Book');
   });
