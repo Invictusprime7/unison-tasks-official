@@ -121,7 +121,7 @@ export function resolveLocalImports(files: Record<string, string>, fromFile: str
   let match: RegExpExecArray | null;
   while ((match = re.exec(source))) {
     const resolved = resolveSpecifier(fromFile, match[1], files);
-    if (resolved && !out.includes(resolved) && !resolved.includes('/unison/ui/')) out.push(resolved);
+    if (resolved && !out.includes(resolved) && !resolved.startsWith('/src/unison/')) out.push(resolved);
   }
   return out;
 }
