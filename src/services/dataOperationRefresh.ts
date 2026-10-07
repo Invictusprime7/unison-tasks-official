@@ -13,10 +13,11 @@ export function refreshDataOperationResources(input: {
   const applied = input.results.filter((result) => result.status === 'applied');
   if (!applied.length || typeof window === 'undefined') return false;
   const detail = {
-    type: 'CATALOG_BINDINGS_CHANGED',
+    type: 'RESOURCE_INVALIDATED',
     projectId: input.projectId ?? null,
     businessId: input.businessId ?? null,
     reason: 'canonical-data-operation',
+    resourceType: 'catalog' as const,
     operationIds: applied.map((result) => result.operationId),
   };
   try {

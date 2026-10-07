@@ -39,6 +39,10 @@ export interface ScopeAncestors {
   surfaceId?: string | null;
   /** Canonical component name (`data-ut-component-type`). */
   componentType?: string | null;
+  componentInstanceId?: string | null;
+  artifactId?: string | null;
+  elementRole?: string | null;
+  entityKind?: string | null;
   /** Persistent site_data_binding row id, when the section is data-bound. */
   bindingId?: string | null;
   /** Stable element key used for VFS/JSX mutation lookup. */

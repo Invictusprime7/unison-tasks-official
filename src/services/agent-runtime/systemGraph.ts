@@ -60,7 +60,7 @@ export interface GraphEditableEntity {
 export interface GraphEdge {
   from: string;
   to: string;
-  kind: 'has_route' | 'uses' | 'emits' | 'binds' | 'resolves_to' | 'requires' | 'reads_from' | 'writes_to' | 'has_policy';
+  kind: 'has_route' | 'uses' | 'emits' | 'binds' | 'resolves_to' | 'requires' | 'reads_from' | 'writes_to' | 'has_policy' | 'renders' | 'data_from' | 'field_from' | 'owned_by' | 'navigates_to';
 }
 
 /** Approved, read-only backend metadata supplied by a project-scoped inspector. */
@@ -276,6 +276,16 @@ export function buildSystemGraph(input: Record<string, string> | SystemGraphInpu
   bindings.forEach((binding) => {
     if (binding.pageId) edges.push({ from: binding.pageId, to: binding.id, kind: 'binds' });
     edges.push({ from: binding.id, to: binding.intentId, kind: 'resolves_to' });
+  });
+  entities.forEach((entity) => {
+    const page = pages.find((candidate) => candidate.path === entity.path);
+    if (page) edges.push({ from: page.id, to: entity.id, kind: 'renders' });
+    if (entity.table) {
+      const tableId = `table:${entity.table}`;
+      edges.push({ from: entity.id, to: tableId, kind: 'data_from' });
+      if (entity.field) edges.push({ from: entity.id, to: `column:${entity.table}.${entity.field}`, kind: 'field_from' });
+    }
+    if (entity.bindingId) edges.push({ from: entity.id, to: `binding:${entity.bindingId}`, kind: 'owned_by' });
   });
   backendActions.forEach((action) => {
     if (action.capabilityId && capabilityIds.has(action.capabilityId)) edges.push({ from: action.id, to: action.capabilityId, kind: 'requires' });

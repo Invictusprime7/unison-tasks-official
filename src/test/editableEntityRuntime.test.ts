@@ -3,6 +3,7 @@ import { compileCatalogToolCalls } from '@/services/catalogToolExecutor';
 import { buildSystemGraph } from '@/services/agent-runtime/systemGraph';
 import { resolveEditableEntity } from '@/services/agent-runtime/editableOwnershipResolver';
 import { verifyEditableEntityChange } from '@/services/agent-runtime/semanticVerification';
+import { refreshDataOperationResources } from '@/services/dataOperationRefresh';
 
 describe('canonical editable entity runtime', () => {
   it('compiles catalog tools into a data proposal without executing it', () => {
@@ -24,13 +25,53 @@ describe('canonical editable entity runtime', () => {
     });
     expect(entity.owners.price).toMatchObject({ kind: 'catalog-row', table: 'products', rowId: 'product-1' });
     expect(entity.owners.source).toBeUndefined();
+    expect(entity.kind).toBe('catalog');
+    expect(entity.allowedMutationLanes).toEqual(['dataOps']);
+  });
+
+  it('classifies topology, behavior, presentation, and content selections into their permitted lanes', () => {
+    const graph = buildSystemGraph({ '/src/pages/Home.tsx': 'export default function Home(){ return <main /> }' });
+    expect(resolveEditableEntity({ graph, selectedElement: { clickedTag: 'a', targetPath: '/' } }).kind).toBe('topology');
+    expect(resolveEditableEntity({ graph, selectedElement: { primaryIntent: 'booking.create' } }).allowedMutationLanes).toEqual(['bindingOps']);
+    expect(resolveEditableEntity({ graph, selectedElement: { clickedTag: 'img' } }).allowedMutationLanes).toEqual(['presentationOps', 'fileOps']);
+    expect(resolveEditableEntity({ graph, selectedElement: { clickedTag: 'h1' } }).kind).toBe('content');
+  });
+
+  it('rejects a stale selected entity rather than targeting a newer revision', () => {
+    const graph = buildSystemGraph({ files: { '/src/pages/Home.tsx': 'export default function Home(){ return <main /> }' }, revisionId: 'revision-new' });
+    expect(() => resolveEditableEntity({ graph, selectedElement: { revisionId: 'revision-old' } }))
+      .toThrow('Selected entity is stale');
+  });
+
+  it('projects provenance entities into ownership graph relationships', () => {
+    const graph = buildSystemGraph({
+      '/src/pages/Home.tsx': '<section data-ut-section-id="featured"><div data-ut-entity-id="product-card" data-ut-source-table="products" data-ut-row-id="p-1" data-ut-field="name" /></section>',
+    });
+    expect(graph.entities).toHaveLength(1);
+    expect(graph.edges).toEqual(expect.arrayContaining([
+      expect.objectContaining({ from: 'product-card', to: 'table:products', kind: 'data_from' }),
+      expect.objectContaining({ from: 'product-card', to: 'column:products.name', kind: 'field_from' }),
+    ]));
   });
 
   it('requires the requested property value after a change', () => {
-    const entity = { id: 'entity:product-1', revisionId: 'r1', intents: [], owners: {} };
+    const entity = { id: 'entity:product-1', kind: 'catalog' as const, revisionId: 'r1', intents: [], owners: {}, permissions: { readable: true, writable: true }, allowedMutationLanes: ['dataOps'] as const, provenance: {} };
     expect(verifyEditableEntityChange({
       beforeEntity: entity, afterEntity: entity,
       expectedChanges: { price: 42 }, actualValues: { price: 42 },
     }).ok).toBe(true);
+  });
+
+  it('emits one typed resource invalidation only for applied data operations', () => {
+    let received: any = null;
+    const listener = (event: Event) => { received = (event as CustomEvent).detail; };
+    window.addEventListener('unison:catalog-data-changed', listener);
+    const refreshed = refreshDataOperationResources({
+      projectId: 'project-1',
+      results: [{ operationId: 'op-1', type: 'updateRow', status: 'applied', message: 'ok' }],
+    });
+    window.removeEventListener('unison:catalog-data-changed', listener);
+    expect(refreshed).toBe(true);
+    expect(received).toMatchObject({ type: 'RESOURCE_INVALIDATED', projectId: 'project-1', resourceType: 'catalog', operationIds: ['op-1'] });
   });
 });

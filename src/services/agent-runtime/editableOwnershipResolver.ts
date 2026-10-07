@@ -1,4 +1,4 @@
-import type { EditableEntity, EditablePropertyOwner } from './editableEntity';
+import type { EditableEntity, EditableEntityKind, EditablePropertyOwner, EditableMutationLane } from './editableEntity';
 import type { SystemGraph } from './systemGraph';
 
 export interface EditableSelection {
@@ -22,6 +22,9 @@ export interface EditableSelection {
   primaryIntent?: string | null;
   componentPath?: string | null;
   editableRange?: { startLine: number; endLine: number } | null;
+  /** Preview selection revision. A stale selection can never target a newer graph. */
+  revisionId?: string | null;
+  projectId?: string | null;
 }
 
 export interface CatalogBindingReference {
@@ -41,16 +44,30 @@ function ownerId(parts: Array<string | null | undefined>): string {
   return parts.filter((part): part is string => Boolean(part)).join(':') || 'unknown';
 }
 
+function classification(selected: EditableSelection, intents: string[]): { kind: EditableEntityKind; lanes: EditableMutationLane[] } {
+  if (selected.sourceTable && selected.rowId) return { kind: 'catalog', lanes: ['dataOps'] };
+  if (selected.clickedTag?.toLowerCase() === 'a' && selected.targetPath) return { kind: 'topology', lanes: ['routeOps'] };
+  if (intents.length || selected.bindingId) return { kind: 'behavior', lanes: ['bindingOps'] };
+  if (selected.field === 'icon' || selected.field === 'image' || selected.clickedTag?.toLowerCase() === 'img') return { kind: 'presentation', lanes: ['presentationOps', 'fileOps'] };
+  return { kind: 'content', lanes: ['fileOps'] };
+}
+
 /**
  * Resolves ownership by provenance first. Source ownership is deliberately
  * last so a live catalog field is never silently rewritten as JSX.
  */
 export function resolveEditableEntity(input: ResolveEditableEntityInput): EditableEntity {
   const selected = input.selectedElement;
+  if (selected.revisionId && selected.revisionId !== input.graph.revision.id) {
+    throw new Error(`Selected entity is stale (${selected.revisionId}); current revision is ${input.graph.revision.id}. Re-select it before editing.`);
+  }
   const intents = Array.from(new Set([...(selected.intents ?? []), ...(selected.primaryIntent ? [selected.primaryIntent] : [])]));
+  const resolved = classification(selected, intents);
   const entity: EditableEntity = {
     id: `entity:${ownerId([selected.sourceTable, selected.rowId, selected.elementId, selected.bindingKey, selected.sectionId, selected.pagePath])}`,
     revisionId: input.graph.revision.id,
+    projectId: selected.projectId ?? undefined,
+    kind: resolved.kind,
     pageId: selected.pageId ?? undefined,
     pagePath: selected.pagePath ?? undefined,
     sectionId: selected.sectionId ?? undefined,
@@ -62,6 +79,9 @@ export function resolveEditableEntity(input: ResolveEditableEntityInput): Editab
     elementRole: selected.clickedTag ?? undefined,
     selector: selected.selector ?? undefined,
     intents,
+    permissions: { readable: true, writable: true, destructive: resolved.kind === 'catalog' },
+    allowedMutationLanes: resolved.lanes,
+    provenance: { catalogSurface: selected.sourceTable ?? undefined, bindingId: selected.bindingId ?? undefined, registryKey: selected.artifactId ?? undefined },
     owners: {},
   };
 

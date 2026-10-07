@@ -1,4 +1,6 @@
 /** Read-only canonical identity for one rendered, editable application item. */
+export type EditableEntityKind = 'catalog' | 'content' | 'presentation' | 'topology' | 'behavior' | 'backend';
+export type EditableMutationLane = 'dataOps' | 'fileOps' | 'presentationOps' | 'routeOps' | 'bindingOps' | 'backendOps';
 export type EditableOwnerKind =
   | 'catalog-row'
   | 'source-file'
@@ -28,7 +30,10 @@ export interface EditablePropertyOwner {
 
 export interface EditableEntity {
   id: string;
+  /** Entity class decides the only permitted mutation lane. */
+  kind: EditableEntityKind;
   revisionId: string;
+  projectId?: string;
   pageId?: string;
   pagePath?: string;
   sectionId?: string;
@@ -40,6 +45,9 @@ export interface EditableEntity {
   elementRole?: string;
   selector?: string;
   intents: string[];
+  permissions: { readable: boolean; writable: boolean; destructive?: boolean };
+  allowedMutationLanes: EditableMutationLane[];
+  provenance: { catalogSurface?: string; registryKey?: string; bindingId?: string; generatedBy?: string };
   /** Each property can have its own canonical owner. */
   owners: Record<string, EditablePropertyOwner>;
 }

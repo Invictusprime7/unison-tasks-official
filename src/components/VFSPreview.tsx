@@ -1054,10 +1054,10 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
 
       // Forward binding-change bumps from the Builder into the preview iframe
       // so mounted sections re-request their live rows.
-      if (data.type === 'CATALOG_BINDINGS_CHANGED') {
+      if (data.type === 'CATALOG_BINDINGS_CHANGED' || data.type === 'RESOURCE_INVALIDATED') {
         try {
           const target = getPreviewWindow();
-          target?.postMessage({ type: 'CATALOG_BINDINGS_CHANGED' }, '*');
+          target?.postMessage({ type: 'CATALOG_BINDINGS_CHANGED', invalidation: data.type === 'RESOURCE_INVALIDATED' ? data : undefined }, '*');
         } catch { /* ignore */ }
         return;
       }
