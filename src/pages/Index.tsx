@@ -118,7 +118,7 @@ const Index = () => {
         // drafts) even though they were still present in Cloud.
         const workspaceProjects = mergeWorkspaceProjects(
           projectResult.error ? [] : projectResult.data || [],
-          rows,
+          rows as any,
         );
         const draftsById = new Map(rows.map((row) => [row.id, row]));
         const revisionIds = workspaceProjects.map((project) => project.revision_id).filter(Boolean);
