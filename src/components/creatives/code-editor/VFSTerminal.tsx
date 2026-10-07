@@ -49,7 +49,8 @@ export interface VFSTerminalProps {
   /** Callback to refresh preview */
   onRefreshPreview?: () => void;
   /** Callback to write a file to VFS */
-  onWriteFile?: (path: string, content: string) => void;
+  onPatch?: (ops: TerminalFileOp[], summary: string) => void;
+  getRevisionInfo?: CommandContext['getRevisionInfo'];
 }
 
 // ============================================================================
@@ -77,7 +78,8 @@ export function VFSTerminal({
   onAddDep,
   onRemoveDep,
   onRefreshPreview,
-  onWriteFile,
+  onPatch,
+  getRevisionInfo,
 }: VFSTerminalProps) {
   const [lines, setLines] = useState<TerminalLine[]>([]);
   const [inputValue, setInputValue] = useState('');
@@ -98,8 +100,9 @@ export function VFSTerminal({
     onAddDep: onAddDep || (() => {}),
     onRemoveDep: onRemoveDep || (() => {}),
     onRefreshPreview,
-    onWriteFile,
-  }), [nodes, customDeps, businessType, onAddDep, onRemoveDep, onRefreshPreview, onWriteFile]);
+    onPatch,
+    getRevisionInfo,
+  }), [nodes, customDeps, businessType, onAddDep, onRemoveDep, onRefreshPreview, onPatch, getRevisionInfo]);
 
   // Append lines helper
   const appendLines = useCallback((newLines: TerminalLine[]) => {
