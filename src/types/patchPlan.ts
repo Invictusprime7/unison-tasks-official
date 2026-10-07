@@ -16,6 +16,7 @@ import { assertBackendOps } from './backendOperations';
 import type { BackendOp } from './backendOperations';
 import { assertDataOps } from './dataOperations';
 import type { DataOp } from './dataOperations';
+import { isCoreIntent } from '@/platform/core/coreIntents';
 export type { BackendOp } from './backendOperations';
 export type { DataOp } from './dataOperations';
 
@@ -186,6 +187,7 @@ export function assertPatchPlan(plan: unknown, context = 'assertPatchPlan'): ass
       throw new Error(`[${context}] invalid PresentationOp: ${JSON.stringify(op)}`);
     }
   }
+  assertBindingOps(p.bindingOps as BindingOp[], context);
   assertDataOps(p.dataOps, context);
   assertBackendOps(p.backendOps, context);
   if (p.routeOps !== undefined) {
@@ -205,6 +207,30 @@ export function assertPatchPlan(plan: unknown, context = 'assertPatchPlan'): ass
       if (op.type === 'rename_page' && op.newRoute !== undefined && !/^\/[A-Za-z0-9/_-]*$/.test(op.newRoute)) {
         throw new Error(`[${context}] rename_page.newRoute must be an absolute route`);
       }
+    }
+  }
+}
+
+/** Binding operations may only target a stable rendered binding identity. */
+export function assertBindingOps(operations: BindingOp[], context = 'assertBindingOps'): void {
+  const addressed = new Set<string>();
+  for (const op of operations) {
+    if (!op || typeof op !== 'object' || (op.type !== 'bindIntent' && op.type !== 'unbindIntent')
+      || typeof op.elementId !== 'string' || !op.elementId.trim()) {
+      throw new Error(`[${context}] invalid BindingOp: ${JSON.stringify(op)}`);
+    }
+    if (addressed.has(op.elementId)) {
+      throw new Error(`[${context}] BindingOps may address an element only once: ${op.elementId}`);
+    }
+    addressed.add(op.elementId);
+    if (op.type === 'bindIntent' && (typeof op.intent !== 'string' || !isCoreIntent(op.intent))) {
+      throw new Error(`[${context}] bindIntent requires a registered intent`);
+    }
+    if (op.type === 'unbindIntent' && op.intent !== undefined) {
+      throw new Error(`[${context}] unbindIntent must not include an intent`);
+    }
+    if (op.payload !== undefined && (!op.payload || typeof op.payload !== 'object' || Array.isArray(op.payload))) {
+      throw new Error(`[${context}] BindingOp.payload must be an object when supplied`);
     }
   }
 }

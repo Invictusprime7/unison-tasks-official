@@ -85,6 +85,11 @@ import {
   type PresentationOp,
 } from '@/types/patchPlan';
 import { applySemanticPresentationOps } from '@/services/builder/semanticPresentationOps';
+import { applyWizardBindingsToVfs } from '@/services/wizardBindingBridge';
+import {
+  applyBindingOperations,
+  stripUnboundBindingAttributes,
+} from '@/services/bindingOperationExecutor';
 import { enforceSiteDesignContract } from '@/services/launch/homepageFirstContract';
 import { recordCommitOutcome } from '@/services/mutationLedger';
 import {
@@ -529,6 +534,18 @@ export async function commitMutation(
 
   let workingPlayground = input.current.playground;
   let workingSnapshot = input.current.siteBundleSnapshot as SiteBundleSnapshot | null | undefined;
+  let bindingOperationResult: ReturnType<typeof applyBindingOperations> | null = null;
+  if (patch.bindingOps.length) {
+    bindingOperationResult = applyBindingOperations(workingPlayground, patch.bindingOps);
+    workingPlayground = bindingOperationResult.playground;
+    // An unbind must not leave a formerly stamped DOM action active while the
+    // canonical compiler projects the updated binding map.
+    Object.assign(workingFiles, stripUnboundBindingAttributes(workingFiles, bindingOperationResult.unboundBindings));
+    log('bindingOps', 'info', `applied ${patch.bindingOps.length} canonical binding operation(s)`, {
+      boundBindingIds: bindingOperationResult.boundBindingIds,
+      unboundBindingIds: bindingOperationResult.unboundBindings.map((binding) => binding.bindingId),
+    });
+  }
   // Page labels can be edited in the Playground without changing the sealed
   // route topology. Keep that metadata in the snapshot fed to the compiler so
   // regenerated descriptors, tabs, and preview titles do not retain an older
@@ -752,6 +769,25 @@ export async function commitMutation(
       : finalizedArtifact ? preserveWizardMetadataFiles(finalizedArtifact.files, workingFiles) : input.source === 'wizard-launch'
       ? mergeWizardLaunchFiles(workingFiles, (snapshot as SiteBundleSnapshot | null) ?? null)
       : ((snapshot as { vfsFiles?: Record<string, string> } | null)?.vfsFiles ?? workingFiles);
+  if (bindingOperationResult?.boundBindingIds.length && snapshot) {
+    // Preserve authored page structure while stamping only the canonical
+    // binding attributes that changed. This is a compiler-owned projection,
+    // never an AI-authored JSX mutation.
+    const application = applyWizardBindingsToVfs(
+      files,
+      snapshot as SiteBundleSnapshot,
+      bindingOperationResult.boundBindingIds,
+    );
+    if (application.missingBindings.length) {
+      throw new Error(
+        `[VFSCommitService] Canonical binding projection could not locate ${application.missingBindings
+          .map((missing) => missing.elementKey || missing.bindingId).join(', ')}.`,
+      );
+    }
+    files = application.files;
+    adoptCanonicalNormalization();
+    log('bindingOps', 'info', `projected ${application.appliedBindings} canonical binding(s) into the accepted VFS`);
+  }
   // Page labels are topology metadata, but they also label the compiler-owned
   // composition sidecars consumed by preview and the editor. Project the
   // accepted registry onto those sidecars after every canonical build.

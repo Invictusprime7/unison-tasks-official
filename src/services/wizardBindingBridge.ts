@@ -601,12 +601,15 @@ export function buildWizardBindingGuide(
 export function applyWizardBindingsToVfs(
   files: Record<string, string>,
   snapshot: SiteBundleSnapshot,
+  bindingIds?: readonly string[],
 ): WizardBindingApplicationResult {
   const nextFiles = { ...files };
   let appliedBindings = 0;
   const missingBindings: WizardBindingApplicationResult['missingBindings'] = [];
 
+  const selectedBindingIds = bindingIds ? new Set(bindingIds) : null;
   for (const binding of Object.values(snapshot.bindings)) {
+    if (selectedBindingIds && !selectedBindingIds.has(binding.bindingId)) continue;
     const page = snapshot.pageRegistry.pages[binding.sourcePageId];
     const filePath = resolveBindingFilePath(nextFiles, page);
     const markers = getSlotMarkers(binding);
