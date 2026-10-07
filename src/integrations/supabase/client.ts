@@ -22,10 +22,8 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
 	global: {
 		fetch: supabaseFetch,
 	},
-	realtime: {
-		// Disable Realtime in development to avoid WebSocket auth errors
-		params: import.meta.env.DEV ? { eventsPerSecond: 0 } : undefined,
-	},
+	// Local and deployed sessions subscribe to the same authenticated Cloud feed.
+	realtime: {},
 });
 
 // Export configuration status flag

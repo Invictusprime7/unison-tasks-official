@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase, isSupabaseConfigured } from "@/integrations/supabase/client";
+import { listProjectsCompat } from "@/services/projectSchemaCompat";
+import { mergeWorkspaceProjects } from "@/services/cloudProjectDrafts";
 import { AlertCircle, Zap } from "lucide-react";
 import { User } from "@supabase/supabase-js";
 import { useToast } from "@/hooks/use-toast";
@@ -79,7 +81,9 @@ const Index = () => {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Load recent projects (saved Web Builder drafts) when authenticated
+  // Use the same merged project + draft projection as Cloud. A project's row
+  // and its linked draft can be updated independently, so drafts alone do not
+  // reliably represent the authenticated profile's newest work.
   useEffect(() => {
     const userId = user?.id;
     if (!userId || !isSupabaseConfigured) return;
@@ -87,65 +91,67 @@ const Index = () => {
     const loadRecentProjects = async () => {
       setLoadingProjects(true);
       try {
-        const { data, error } = await supabase
-          .from('builder_drafts')
-          // The home screen only needs project summaries. Pulling code,
-          // editor_code, and the complete VFS TOAST payload made this four-row
-          // query read megabytes of canonical runtime state and could exceed
-          // PostgREST's statement timeout.
-          .select('id, name, project_id, business_id, last_revision_id, updated_at, created_at, previewCode:metadata->>previewCode, metaName:metadata->>name, metaDescription:metadata->>description')
-          .eq('user_id', userId)
-          .order('updated_at', { ascending: false })
-          // 9 sites + the "New Site" tile fill two rows. A limit of 4 hid
-          // sites saved earlier the same day (e.g. Spark, DreamFashion)
-          // whenever a few newer launches existed.
-          .limit(9);
+        const [projectResult, draftResult] = await Promise.all([
+          listProjectsCompat({ ownerId: userId, limit: 100 }),
+          supabase
+            .from('builder_drafts')
+            // Summary fields only: generated VFS files are loaded by WebBuilder
+            // after the user opens a card.
+            .select('id, name, project_id, business_id, last_revision_id, updated_at, created_at, previewCode:metadata->>previewCode, metaName:metadata->>name, metaDescription:metadata->>description')
+            .eq('user_id', userId)
+            .order('updated_at', { ascending: false })
+            .limit(100),
+        ]);
 
-        if (error) {
-          console.error('Error loading recent projects:', error);
-        } else {
-          // PostgREST normally returns object rows only. Filter defensively so
-          // a transient null row during a migration/session refresh cannot take
-          // down the authenticated home screen.
-          const rows = ((data || []) as any[]).filter((row): row is Record<string, any> =>
-            Boolean(row && typeof row === 'object'),
-          );
-          // Latest saved checkpoint per draft — the real "last saved" time.
-          const revisionIds = rows.map((r) => r.last_revision_id).filter(Boolean);
-          const revisionTimes = new Map<string, string>();
-          if (revisionIds.length) {
-            const { data: revs } = await supabase
-              .from('site_revisions')
-              .select('id, created_at')
-              .in('id', revisionIds);
-            for (const revision of (revs || []) as any[]) {
-              if (revision?.id && revision?.created_at) {
-                revisionTimes.set(revision.id, revision.created_at);
-              }
+        if (projectResult.error && draftResult.error) {
+          console.error('Error loading recent projects:', projectResult.error || draftResult.error);
+          return;
+        }
+
+        // PostgREST normally returns object rows only. Filter defensively so a
+        // transient null row during a migration/session refresh cannot take down
+        // the authenticated home screen.
+        const rows = ((draftResult.data || []) as any[]).filter((row): row is Record<string, any> =>
+          Boolean(row && typeof row === 'object'),
+        );
+        const workspaceProjects = mergeWorkspaceProjects(
+          projectResult.error ? [] : projectResult.data || [],
+          rows,
+        ).slice(0, 9);
+        const draftsById = new Map(rows.map((row) => [row.id, row]));
+        const revisionIds = workspaceProjects.map((project) => project.revision_id).filter(Boolean);
+        const revisionTimes = new Map<string, string>();
+        if (revisionIds.length) {
+          const { data: revisions } = await supabase
+            .from('site_revisions')
+            .select('id, created_at')
+            .in('id', revisionIds);
+          for (const revision of (revisions || []) as any[]) {
+            if (revision?.id && revision?.created_at) {
+              revisionTimes.set(revision.id, revision.created_at);
             }
           }
-          const projects: RecentProject[] = rows.map((row) => {
-            // The legacy previewCode snapshot is written once at launch and
-            // never updated by later saves, so it can lag behind the latest
-            // revision — but it is still the only thumbnail source we have.
-            // Showing it beats a blank "Open to see latest version" tile.
-            const previewCode = typeof row.previewCode === 'string' ? row.previewCode : '';
-            const savedAt = (row.last_revision_id && revisionTimes.get(row.last_revision_id)) || row.updated_at;
-            return {
-              id: row.id,
-              project_id: row.project_id ?? null,
-              business_id: row.business_id ?? null,
-              revision_id: row.last_revision_id ?? null,
-              name: row.name || row.metaName || 'Untitled Project',
-              description: row.metaDescription ?? null,
-              is_public: false,
-              updated_at: [savedAt, row.updated_at].sort().pop() as string,
-              created_at: row.created_at,
-              canvas_data: { previewCode, html: previewCode },
-            };
-          });
-          setRecentProjects(projects);
         }
+
+        const projects: RecentProject[] = workspaceProjects.map((project) => {
+          const draft = project.draft_id ? draftsById.get(project.draft_id) : null;
+          const previewCode = typeof draft?.previewCode === 'string' ? draft.previewCode : '';
+          const savedAt = (project.revision_id && revisionTimes.get(project.revision_id)) || project.updated_at || project.created_at;
+          return {
+            id: project.id,
+            draft_id: project.draft_id ?? null,
+            project_id: project.draft_only ? null : project.id,
+            business_id: project.business_id ?? null,
+            revision_id: project.revision_id ?? null,
+            name: project.name || draft?.name || draft?.metaName || 'Untitled Project',
+            description: project.description ?? draft?.metaDescription ?? null,
+            is_public: false,
+            updated_at: savedAt,
+            created_at: project.created_at,
+            canvas_data: { previewCode, html: previewCode },
+          };
+        });
+        setRecentProjects(projects);
       } catch (err) {
         console.error('Failed to load recent projects:', err);
       } finally {
@@ -153,12 +159,9 @@ const Index = () => {
       }
     };
 
-    loadRecentProjects();
-    // Refresh when the user comes back from the builder in another tab.
+    void loadRecentProjects();
     const onFocus = () => { void loadRecentProjects(); };
     window.addEventListener('focus', onFocus);
-    // A canonical commit updates builder_drafts. Realtime keeps this profile
-    // projection current even while the user stays on the home page.
     const channel = supabase
       .channel(`home-recent-drafts:${userId}`)
       .on('postgres_changes', {
@@ -166,6 +169,12 @@ const Index = () => {
         schema: 'public',
         table: 'builder_drafts',
         filter: `user_id=eq.${userId}`,
+      }, () => { void loadRecentProjects(); })
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'projects',
+        filter: `owner_id=eq.${userId}`,
       }, () => { void loadRecentProjects(); })
       .subscribe();
     return () => {

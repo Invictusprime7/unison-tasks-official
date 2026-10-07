@@ -16,6 +16,7 @@ export interface RecentProject {
   project_id?: string | null;
   business_id?: string | null;
   revision_id?: string | null;
+  draft_id?: string | null;
 }
 
 interface RecentProjectsSectionProps {
@@ -64,9 +65,9 @@ export function RecentProjectsSection({ projects, loading, onStartLauncher }: Re
                 isPublic={project.is_public}
                 updatedAt={project.updated_at}
                 previewHtml={previewHtml}
-                onClick={() => navigate(`/web-builder?id=${project.id}`, {
+                onClick={() => navigate(`/web-builder?id=${project.draft_id || project.id}`, {
                   state: {
-                    draftId: project.id,
+                    draftId: project.draft_id || undefined,
                     projectId: project.project_id || undefined,
                     businessId: project.business_id || undefined,
                     revisionId: project.revision_id || undefined,
