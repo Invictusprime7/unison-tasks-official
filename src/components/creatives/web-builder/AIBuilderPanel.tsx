@@ -71,6 +71,7 @@ import type { BusinessSystemType } from '@/data/templates/types';
 import type { SystemsBuildContext } from '@/types/systemsBuildContext';
 import { generateCanonicalDesignPrompt } from '@/sections/promptContext/canonicalDesignPrompt';
 import { analyzeReactSite, resolveEditTarget } from '@/utils/reactSiteAnalysis';
+import { resolveRouteSourceFile, resolveLocalImports } from './previewRouteTabs';
 import { buildComponentBehaviorMap, formatBehaviorMapForPrompt } from '@/services/aiVFSOrchestrator';
 import { htmlDocToReactComponent as htmlDocToReactComponentFn } from '@/utils/htmlToJsx';
 import { AIGatewayOptions, type GatewayConfig } from './AIGatewayOptions';
