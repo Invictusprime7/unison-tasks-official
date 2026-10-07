@@ -24,6 +24,7 @@ import {
   parseAICommands,
   type TerminalLine,
   type CommandContext,
+  type TerminalFileOp,
 } from '@/services/terminalCommands';
 import type { VirtualNode } from '@/hooks/useVirtualFileSystem';
 

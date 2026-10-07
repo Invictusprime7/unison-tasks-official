@@ -1,3 +1,4 @@
+import type { TerminalFileOp, CommandContext } from '@/services/terminalCommands';
 /**
  * VFSCodeView — IDE-grade Code Editor with event bus, undo/redo, 
  * import graph awareness, and integrated build output.
@@ -270,6 +271,9 @@ export interface VFSCodeViewProps {
   onFileModified?: (fileId: string, content: string) => void;
   onSave?: (fileId: string, content: string) => void;
   onSwitchToCanvas?: () => void;
+  /** Terminal file commands commit through the host's canonical writer. */
+  onTerminalPatch?: (ops: TerminalFileOp[], summary: string) => void;
+  getRevisionInfo?: CommandContext['getRevisionInfo'];
 }
 
 // ---------------------------------------------------------------------------
@@ -311,6 +315,8 @@ export function VFSCodeView({
   onFileModified,
   onSave,
   onSwitchToCanvas,
+  onTerminalPatch,
+  getRevisionInfo,
 }: VFSCodeViewProps) {
   const [showExplorer, setShowExplorer] = useState(true);
   const [terminalCollapsed, setTerminalCollapsed] = useState(true);
@@ -801,8 +807,8 @@ export function VFSCodeView({
           maxHeight="160px"
           onAddDep={handleAddDependency}
           onRemoveDep={handleRemoveDependency}
-          // canonical-vfs-exempt: terminal file write inside the developer workspace
-          onWriteFile={(path, content) => importFiles({ [path]: content })}
+          onPatch={onTerminalPatch}
+          getRevisionInfo={getRevisionInfo}
           onRefreshPreview={() => vfsEventBus.emit('preview:refresh', {})}
         />
 
