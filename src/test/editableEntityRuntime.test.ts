@@ -68,10 +68,16 @@ describe('canonical editable entity runtime', () => {
     window.addEventListener('unison:catalog-data-changed', listener);
     const refreshed = refreshDataOperationResources({
       projectId: 'project-1',
-      results: [{ operationId: 'op-1', type: 'updateRow', status: 'applied', message: 'ok' }],
+      results: [{
+        operationId: 'op-1', type: 'updateRow', status: 'applied', message: 'ok',
+        surfaceId: 'products', sourceTable: 'products', rowId: 'product-1', bindingId: 'binding-1',
+      }],
     });
     window.removeEventListener('unison:catalog-data-changed', listener);
     expect(refreshed).toBe(true);
-    expect(received).toMatchObject({ type: 'RESOURCE_INVALIDATED', projectId: 'project-1', resourceType: 'catalog', operationIds: ['op-1'] });
+    expect(received).toMatchObject({
+      type: 'RESOURCE_INVALIDATED', projectId: 'project-1', resourceType: 'catalog', operationIds: ['op-1'],
+      surfaceIds: ['products'], sourceTables: ['products'], rowIds: ['product-1'], bindingIds: ['binding-1'],
+    });
   });
 });

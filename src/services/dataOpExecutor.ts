@@ -3,11 +3,17 @@ import { applyCatalogOperation } from '@/services/catalogOperations';
 import { getCmsRecord } from '@/services/cmsRecordService';
 import { getCatalogSurface } from '@/platform/core/catalogSurfaceRegistry';
 import type { BuilderIdentity } from '@/types/builderIdentity';
-import type { DataOp } from '@/types/dataOperations';
+import type { CanonicalDataSurface, DataOp } from '@/types/dataOperations';
 
 export interface DataOpExecutionResult {
   operationId: string;
   type: DataOp['type'];
+  surfaceId: CanonicalDataSurface;
+  sourceTable?: string;
+  /** The persisted catalog record affected by the operation, when applicable. */
+  rowId?: string;
+  /** The section binding affected by a binding operation, when applicable. */
+  bindingId?: string;
   status: 'applied' | 'failed';
   message: string;
 }
@@ -72,14 +78,30 @@ export async function executeDataOps(
               : { businessId: identity.businessId, surfaceId: op.surfaceId, rowId: op.rowId, patch: op.patch },
       );
       const verificationError = result.ok ? await verifyPersistedDataOp(op, identity, result) : null;
+      const rowId = op.type === 'createRow'
+        ? (result.data as { id?: unknown } | undefined)?.id
+        : op.type === 'updateBinding' ? undefined : op.rowId;
       results.push({
         operationId: op.operationId,
         type: op.type,
+        surfaceId: op.surfaceId,
+        sourceTable: getCatalogSurface(op.surfaceId)?.sourceTable,
+        ...(typeof rowId === 'string' && rowId ? { rowId } : {}),
+        ...(op.type === 'updateBinding' ? { bindingId: op.bindingId } : {}),
         status: result.ok && !verificationError ? 'applied' : 'failed',
         message: verificationError ?? result.message,
       });
     } catch (error) {
-      results.push({ operationId: op.operationId, type: op.type, status: 'failed', message: error instanceof Error ? error.message : String(error) });
+      results.push({
+        operationId: op.operationId,
+        type: op.type,
+        surfaceId: op.surfaceId,
+        sourceTable: getCatalogSurface(op.surfaceId)?.sourceTable,
+        ...(op.type === 'updateBinding' ? { bindingId: op.bindingId } : {}),
+        ...((op.type === 'updateRow' || op.type === 'archiveRow') ? { rowId: op.rowId } : {}),
+        status: 'failed',
+        message: error instanceof Error ? error.message : String(error),
+      });
     }
   }
   return { results, failedCount: results.filter((result) => result.status === 'failed').length };

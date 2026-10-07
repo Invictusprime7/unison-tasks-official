@@ -7,11 +7,21 @@
 export function refreshDataOperationResources(input: {
   projectId?: string | null;
   businessId?: string | null;
-  /** Only status and operation id are read, so commit summaries fit too. */
-  results: ReadonlyArray<{ operationId: string; status: string; type?: string; message?: string }>;
+  /** Identity-rich execution results let the preview rehydrate only affected bindings. */
+  results: ReadonlyArray<{
+    operationId: string;
+    status: string;
+    type?: string;
+    surfaceId?: string;
+    sourceTable?: string;
+    rowId?: string;
+    bindingId?: string;
+    message?: string;
+  }>;
 }): boolean {
   const applied = input.results.filter((result) => result.status === 'applied');
   if (!applied.length || typeof window === 'undefined') return false;
+  const unique = (values: Array<string | undefined>) => Array.from(new Set(values.filter((value): value is string => Boolean(value))));
   const detail = {
     type: 'RESOURCE_INVALIDATED',
     projectId: input.projectId ?? null,
@@ -19,6 +29,10 @@ export function refreshDataOperationResources(input: {
     reason: 'canonical-data-operation',
     resourceType: 'catalog' as const,
     operationIds: applied.map((result) => result.operationId),
+    surfaceIds: unique(applied.map((result) => result.surfaceId)),
+    sourceTables: unique(applied.map((result) => result.sourceTable)),
+    rowIds: unique(applied.map((result) => result.rowId)),
+    bindingIds: unique(applied.map((result) => result.bindingId)),
   };
   try {
     window.postMessage(detail, '*');

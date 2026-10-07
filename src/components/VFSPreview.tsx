@@ -1029,6 +1029,8 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
                   requestId,
                   rows,
                   cardBinding: result.cardBinding,
+                  bindingId: result.binding?.id ?? null,
+                  sourceTable: result.binding?.sourceTable ?? null,
                   fallback: result.fallback,
                 },
                 '*',

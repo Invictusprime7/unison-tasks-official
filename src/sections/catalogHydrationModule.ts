@@ -50,6 +50,10 @@ export function useSectionData(
   });
   const [bump, setBump] = useState(0);
   const mounted = useRef(true);
+  // This identity comes from the host's canonical binding, never from a
+  // generated component's local state. It lets resource invalidations stay
+  // scoped to the affected live section.
+  const bindingRef = useRef<{ bindingId: string | null; sourceTable: string | null }>({ bindingId: null, sourceTable: null });
 
 
   useEffect(() => {
@@ -130,6 +134,19 @@ export function useSectionData(
       const data: any = event.data;
       if (!data) return;
       if (data.type === 'CATALOG_BINDINGS_CHANGED') {
+        const invalidation = data.invalidation as {
+          bindingIds?: unknown;
+          sourceTables?: unknown;
+        } | undefined;
+        if (invalidation) {
+          const bindingIds = Array.isArray(invalidation.bindingIds) ? invalidation.bindingIds : [];
+          const sourceTables = Array.isArray(invalidation.sourceTables) ? invalidation.sourceTables : [];
+          const bindingMatches = bindingRef.current.bindingId && bindingIds.includes(bindingRef.current.bindingId);
+          const tableMatches = bindingRef.current.sourceTable && sourceTables.includes(bindingRef.current.sourceTable);
+          // A legacy/incomplete invalidation contains neither identity list;
+          // retain the safe broad refresh only for that compatibility case.
+          if (!bindingMatches && !tableMatches && (bindingIds.length || sourceTables.length)) return;
+        }
         // Force a fresh hydration request.
         setState((prev) => ({ ...prev, loading: true }));
         setBump((b) => b + 1);
@@ -138,6 +155,10 @@ export function useSectionData(
       if (data.type !== 'CATALOG_HYDRATE_RESPONSE') return;
       if (data.requestId !== requestId) return;
       if (!mounted.current) return;
+      bindingRef.current = {
+        bindingId: typeof data.bindingId === 'string' ? data.bindingId : null,
+        sourceTable: typeof data.sourceTable === 'string' ? data.sourceTable : null,
+      };
       setState({
         loading: false,
         rows: Array.isArray(data.rows) ? data.rows : null,
