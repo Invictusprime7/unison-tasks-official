@@ -51,16 +51,23 @@ export interface GraphDiagnostic { id: string; level: 'error' | 'warning' | 'inf
 export interface GraphEditableEntity {
   id: string;
   path: string;
+  tagName: string;
   table: string | null;
   rowId: string | null;
   field: string | null;
   bindingId: string | null;
   sectionId: string | null;
+  componentType: string | null;
+  componentInstanceId: string | null;
+  registryKey: string | null;
+  elementRole: string | null;
+  intent: string | null;
+  targetPath: string | null;
 }
 export interface GraphEdge {
   from: string;
   to: string;
-  kind: 'has_route' | 'uses' | 'emits' | 'binds' | 'resolves_to' | 'requires' | 'reads_from' | 'writes_to' | 'has_policy' | 'renders' | 'data_from' | 'field_from' | 'owned_by' | 'navigates_to';
+  kind: 'has_route' | 'uses' | 'instance_of' | 'implements' | 'emits' | 'binds' | 'resolves_to' | 'requires' | 'reads_from' | 'writes_to' | 'has_policy' | 'renders' | 'data_from' | 'field_from' | 'owned_by' | 'navigates_to';
 }
 
 /** Approved, read-only backend metadata supplied by a project-scoped inspector. */
@@ -110,7 +117,7 @@ const INTENT_RE = /<([A-Za-z][\w.]*)\b([^<>]*?data-ut-intent=["']([^"']+)["'][^<
 const TARGET_RE = /data-ut-(?:target-page-id|path|target)=["']([^"']+)["']|\bhref=["']([^"']+)["']|\bto=["']([^"']+)["']/;
 const IMPORT_RE = /import\s+(?:([\w$]+)|\{([^}]+)\})\s+from\s+["']([^"']+)["']/g;
 const ATTR = (attrs: string, name: string) => new RegExp(`${name}=["']([^"']+)["']`).exec(attrs)?.[1];
-const EDITABLE_ENTITY_RE = /<([A-Za-z][\w.]*)\b([^>]*(?:data-ut-(?:source-table|row-id|field|binding-id|entity-id))[^>]*)>/g;
+const EDITABLE_ENTITY_RE = /<([A-Za-z][\w.]*)\b([^>]*(?:data-ut-(?:source-table|row-id|field|binding-id|entity-id|component-type|component-id|component-instance-id|registry-key|role|intent|path)|\b(?:href|to)=)[^>]*)>/g;
 
 function fnv1a(text: string): string {
   let hash = 0x811c9dc5;
@@ -201,9 +208,16 @@ export function buildSystemGraph(input: Record<string, string> | SystemGraphInpu
       const bindingId = ATTR(attrs, 'data-ut-binding-id') ?? null;
       const sectionId = ATTR(attrs, 'data-ut-section-id') ?? null;
       const explicitId = ATTR(attrs, 'data-ut-entity-id');
+      const componentType = ATTR(attrs, 'data-ut-component-type') ?? null;
+      const componentInstanceId = ATTR(attrs, 'data-ut-component-id') ?? ATTR(attrs, 'data-ut-component-instance-id') ?? null;
+      const registryKey = ATTR(attrs, 'data-ut-registry-key') ?? null;
+      const elementRole = ATTR(attrs, 'data-ut-role') ?? null;
+      const intent = ATTR(attrs, 'data-ut-intent') ?? null;
+      const targetPath = ATTR(attrs, 'data-ut-path') ?? ATTR(attrs, 'href') ?? ATTR(attrs, 'to') ?? null;
       entities.push({
         id: explicitId ?? `entity:${path}:${match.index ?? 0}`,
-        path, table, rowId, field, bindingId, sectionId,
+        path, tagName: match[1], table, rowId, field, bindingId, sectionId,
+        componentType, componentInstanceId, registryKey, elementRole, intent, targetPath,
       });
     }
     const starts = [...source.matchAll(SECTION_RE)];
@@ -280,12 +294,31 @@ export function buildSystemGraph(input: Record<string, string> | SystemGraphInpu
   entities.forEach((entity) => {
     const page = pages.find((candidate) => candidate.path === entity.path);
     if (page) edges.push({ from: page.id, to: entity.id, kind: 'renders' });
+    if (entity.componentType) {
+      const componentId = `component:${entity.componentType}`;
+      const existing = components.get(componentId) ?? {
+        id: componentId,
+        name: entity.componentType,
+        sourcePath: null,
+        usedByPageIds: [],
+      };
+      if (page && !existing.usedByPageIds.includes(page.id)) existing.usedByPageIds.push(page.id);
+      components.set(componentId, existing);
+      edges.push({ from: entity.id, to: componentId, kind: 'instance_of' });
+    }
+    if (entity.registryKey) edges.push({ from: entity.id, to: `registry:${entity.registryKey}`, kind: 'implements' });
     if (entity.table) {
       const tableId = `table:${entity.table}`;
       edges.push({ from: entity.id, to: tableId, kind: 'data_from' });
       if (entity.field) edges.push({ from: entity.id, to: `column:${entity.table}.${entity.field}`, kind: 'field_from' });
     }
     if (entity.bindingId) edges.push({ from: entity.id, to: `binding:${entity.bindingId}`, kind: 'owned_by' });
+    if (entity.intent) {
+      const intentId = `intent:${entity.intent}`;
+      allIntents.set(intentId, allIntents.get(intentId) ?? { id: intentId, intent: entity.intent, label: entity.elementRole ?? '', target: entity.targetPath });
+      edges.push({ from: entity.id, to: intentId, kind: 'emits' });
+    }
+    if (entity.targetPath) edges.push({ from: entity.id, to: `route:${entity.targetPath}`, kind: 'navigates_to' });
   });
   backendActions.forEach((action) => {
     if (action.capabilityId && capabilityIds.has(action.capabilityId)) edges.push({ from: action.id, to: action.capabilityId, kind: 'requires' });

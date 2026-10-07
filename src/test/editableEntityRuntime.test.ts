@@ -77,6 +77,22 @@ describe('canonical editable entity runtime', () => {
     ]));
   });
 
+  it('projects component, registry, navigation, and intent ownership for a rendered action', () => {
+    const graph = buildSystemGraph({
+      '/src/pages/Home.tsx': `<section data-ut-section-id="hero"><a data-ut-entity-id="hero-cta" data-ut-component-type="HeroCTA" data-ut-component-id="hero-1" data-ut-registry-key="cta:editorial" data-ut-role="primary-action" data-ut-intent="booking.create" href="/booking">Book now</a></section>`,
+    });
+    expect(graph.entities[0]).toMatchObject({
+      id: 'hero-cta', componentType: 'HeroCTA', componentInstanceId: 'hero-1',
+      registryKey: 'cta:editorial', elementRole: 'primary-action', intent: 'booking.create', targetPath: '/booking',
+    });
+    expect(graph.edges).toEqual(expect.arrayContaining([
+      { from: 'hero-cta', to: 'component:HeroCTA', kind: 'instance_of' },
+      { from: 'hero-cta', to: 'registry:cta:editorial', kind: 'implements' },
+      { from: 'hero-cta', to: 'intent:booking.create', kind: 'emits' },
+      { from: 'hero-cta', to: 'route:/booking', kind: 'navigates_to' },
+    ]));
+  });
+
   it('requires the requested property value after a change', () => {
     const entity = { id: 'entity:product-1', kind: 'catalog' as const, revisionId: 'r1', intents: [], owners: {}, permissions: { readable: true, writable: true }, allowedMutationLanes: ['dataOps' as const], provenance: {} };
     expect(verifyEditableEntityChange({
