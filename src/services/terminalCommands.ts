@@ -22,6 +22,7 @@ import type { VirtualNode, VirtualFile, VirtualFolder } from '@/hooks/useVirtual
 import { vfsToFileMap, getFilePaths } from '@/hooks/useVirtualFileSystem';
 import { buildSystemGraph, renderSystemGraphForPrompt } from '@/services/agent-runtime/systemGraph';
 import { resolveMutableNode } from '@/services/agent-runtime/nodeAddress';
+import { runPreviewProbe, parseProbeArgs, formatProbeReport } from '@/services/agent-runtime/previewProbe';
 import { removeSection, moveSection } from '@/services/agent-runtime/sectionActions';
 import { SANDPACK_DEPENDENCIES, isSandpackAllowedImport } from '@/utils/sandpackDependencies';
 
@@ -307,6 +308,7 @@ function cmdHelp(): CommandResult {
     mkLine('output', '│  begin/diff/commit/abort  Stage several changes as one checkpoint'),
     mkLine('output', '│  revision/routes/intents  Saved version, page routes, button intents'),
     mkLine('output', '│  graph / node <address>  Site map; resolve page:/x, section:/x#id, button:/x#label'),
+    mkLine('output', '│  probe text "X" | selector h1 | intent id  Check what the preview shows'),
     mkLine('output', '│  section rm|up|down <section:/x#id>  Remove or reorder a section'),
       mkLine('output', '│  find <pattern>         Search files by name'),
       mkLine('output', '│  diagnose               Run VFS diagnostics'),
@@ -808,6 +810,14 @@ export async function executeTerminalCommand(
   input: string,
   ctx: CommandContext
 ): Promise<CommandResult> {
+  const probe = /^\s*probe\b(.*)$/.exec(input);
+  if (probe) {
+    const tokens = probe[1].match(/"[^"]*"|'[^']*'|\S+/g) ?? [];
+    const checks = parseProbeArgs(tokens);
+    if (!checks.length) return { lines: [mkLine('error', 'Usage: probe text "Book now" [selector h1] [intent nav.goto]')] };
+    const report = await runPreviewProbe(checks);
+    return { lines: formatProbeReport(report).map((l, i) => mkLine(i === 0 ? 'system' : l.startsWith('✓') ? 'success' : l.startsWith('✗') ? 'error' : 'output', l)) };
+  }
   return processCommand(input, ctx);
 }
 

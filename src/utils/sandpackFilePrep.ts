@@ -859,6 +859,19 @@ const PREVIEW_SELECTION_BRIDGE = `function __initUnisonPreviewSelectionBridge() 
     if (data.type === 'EDIT_MODE_CLEAR_SELECTION') {
       clearSelected();
     }
+    // Read-only verification probe: answers what is actually painted.
+    if (data.type === 'UT_PROBE' && Array.isArray(data.checks)) {
+      const bodyText = (document.body && document.body.innerText) || '';
+      const results = data.checks.map(function (c) {
+        try {
+          if (c.kind === 'text') return { kind: c.kind, value: c.value, ok: bodyText.toLowerCase().indexOf(String(c.value).toLowerCase()) >= 0 };
+          if (c.kind === 'selector') { const n = document.querySelectorAll(String(c.value)).length; return { kind: c.kind, value: c.value, ok: n > 0, count: n }; }
+          if (c.kind === 'intent') { const n = document.querySelectorAll('[data-ut-intent="' + String(c.value).replace(/"/g, '') + '"]').length; return { kind: c.kind, value: c.value, ok: n > 0, count: n }; }
+        } catch (e) { return { kind: c.kind, value: c.value, ok: false, error: String(e) }; }
+        return { kind: c.kind, value: c.value, ok: false, error: 'unknown check' };
+      });
+      window.parent.postMessage({ type: 'UT_PROBE_RESULT', probeId: data.probeId, route: location.hash || location.pathname, results }, '*');
+    }
   });
 
   window.parent.postMessage({ type: 'EDIT_MODE_BRIDGE_READY' }, '*');
