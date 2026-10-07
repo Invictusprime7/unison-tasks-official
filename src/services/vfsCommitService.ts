@@ -61,7 +61,7 @@ import { runExperiencePreflight } from './experiencePreflightGate';
 import { resolvePlaygroundControlPlane } from '@/services/playgroundControlPlaneResolver';
 import { evaluateElementReadiness, type ElementReadinessReport } from '@/services/elementReadinessEvaluator';
 import { executeBackendOps, type BackendOpExecutionReport } from '@/services/backendOpExecutor';
-import { executeDataOps, type DataOpExecutionReport } from '@/services/dataOpExecutor';
+import { executeDataOps, type DataOpExecutionReport, type DataOpExecutionResult } from '@/services/dataOpExecutor';
 import type { GeneratedSiteRuntimeManifest } from '@/services/generatedSiteRuntimeManifest';
 import {
   buildCanonicalLaunchArtifacts,
@@ -188,7 +188,7 @@ export interface CommitMutationResult {
   candidateId: string | null;
   operationIds: string[];
   /** Registry-scoped data mutations acknowledged by this revision. */
-  dataOpsApplied: Array<{ operationId: string; type: string; status: string; message: string }>;
+  dataOpsApplied: DataOpExecutionResult[];
   fileProvenance: FileProvenanceMap;
 }
 
@@ -1710,7 +1710,7 @@ async function finalize(args: {
   publishBlockers: PublishBlockerSummary[];
   vfsHash: string;
   backendOpsApplied: unknown[];
-  dataOpsApplied: Array<{ operationId: string; type: string; status: string; message: string }>;
+  dataOpsApplied: DataOpExecutionResult[];
   diagnostics: CommitDiagnostic[];
   parentRevisionId: string | null;
   rejectMessage: string | null;

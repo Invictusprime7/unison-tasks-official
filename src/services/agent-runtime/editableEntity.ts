@@ -46,7 +46,7 @@ export interface EditableEntity {
   selector?: string;
   intents: string[];
   permissions: { readable: boolean; writable: boolean; destructive?: boolean };
-  allowedMutationLanes: EditableMutationLane[];
+  allowedMutationLanes: readonly EditableMutationLane[];
   provenance: { catalogSurface?: string; registryKey?: string; bindingId?: string; generatedBy?: string };
   /** Each property can have its own canonical owner. */
   owners: Record<string, EditablePropertyOwner>;
