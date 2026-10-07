@@ -23,3 +23,4 @@
 - Save, preflight, scoped-edit and preview-projection rules live in `src/services/AGENTS.md`.
 - Builder save surfaces serialise through `src/services/builder/builderMutationCoordinator.ts` (queue, autosave pause, fingerprint rebase of non-overlapping AI candidates); `aiApplyGate` keeps the strict stale check. Why: concurrent autosaves made AI edits fail as "stale" without one coordinator.
 - Code-terminal file commands emit FileOps to `onPatch` and the host commits them via `commitBuilderFiles` inside `runExclusive('terminal')`; the terminal never writes the VFS itself. Why: the old `onWriteFile` → `importFiles` path bypassed save, checkpoints and the coordinator.
+- Site parts are named with node addresses (`page:/x`, `section:/x#id`, `button:/x#label`, `component:Name`, `file:/path`) resolved read-only by `agent-runtime/nodeAddress.ts` over `buildSystemGraph`. Why: AI, terminal and command menu must agree on which file owns a part.

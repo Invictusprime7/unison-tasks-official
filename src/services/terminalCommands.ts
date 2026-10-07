@@ -177,9 +177,8 @@ function cmdGraph(ctx: CommandContext): CommandResult {
 function cmdNode(args: string[], ctx: CommandContext): CommandResult {
   if (!args[0]) return { lines: [mkLine('error', 'Usage: node <page:/about | section:/about#hero | button:/home#Book | component:SiteNav | file:/src/App.tsx>')] };
   const r = resolveMutableNode(args.join(' '), vfsToFileMap(ctx.nodes));
-  return r.ok === true
-    ? { lines: [mkLine('success', r.label), mkLine('output', `owner: ${r.ownerPath}`)] }
-    : { lines: [mkLine('error', r.error)] };
+  if (r.ok === false) return { lines: [mkLine('error', r.error)] };
+  return { lines: [mkLine('success', r.label), mkLine('output', `owner: ${r.ownerPath}`)] };
 }
 
 function cmdIntents(ctx: CommandContext): CommandResult {

@@ -18,6 +18,6 @@
 ## Milestone: canonical terminal, node mutations, browser verification (2026-10-07)
 - [x] Phase 1: mutation coordinator (queue, autosave pause, safe rebase of stale AI edits, plain stale message)
 - [x] Phase 2: terminal writes through the canonical writer; touch/mv/cp/rm/rename; staged mode; revision/routes/intents commands (graph → Phase 3)
-- [ ] Phase 3: node addressing + typed page/section/component actions
+- [~] Phase 3: node addressing (resolver + terminal graph/node) done; typed page/section actions next
 - [ ] Phase 4A: in-preview browser probe + verification recipes (4B hosted Playwright needs your approval)
 - [ ] Phase 5: tests + zero-bypass lint
