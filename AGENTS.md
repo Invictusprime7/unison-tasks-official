@@ -21,3 +21,4 @@
 - Agent activity and typed operations live in `src/services/agent-runtime/` (events ride `vfsEventBus` as `agent:event`; operations only propose files that go through `runBuilderAiMutation` → `commitMutation`), and every AI commit runs the intent-retarget check first; why: one capability surface for AI and command menu, no second bus or writer, and button destinations stay invariant under UI edits.
 
 - Save, preflight, scoped-edit and preview-projection rules live in `src/services/AGENTS.md`.
+- Builder save surfaces serialise through `src/services/builder/builderMutationCoordinator.ts` (queue, autosave pause, fingerprint rebase of non-overlapping AI candidates); `aiApplyGate` keeps the strict stale check. Why: concurrent autosaves made AI edits fail as "stale" without one coordinator.

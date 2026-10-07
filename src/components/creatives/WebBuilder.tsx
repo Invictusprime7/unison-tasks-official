@@ -1,4 +1,5 @@
 /* cache-bust: 20260309 */
+import { shouldPauseAutosave } from '@/services/builder/builderMutationCoordinator';
 import { buildPreviewRouteTabs, ROUTE_TAB_PREFIX } from '@/components/creatives/web-builder/previewRouteTabs';
 import "./web-builder/obsidian-theme.css";
 import { useEffect, useRef, useState, useCallback, useMemo, lazy, Suspense, Component, type ReactNode, type ErrorInfo } from "react";
@@ -4502,6 +4503,11 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     }
 
 
+    // Interval autosaves yield to an in-flight AI edit (BuilderMutationCoordinator);
+    // the local journal above keeps the work safe and the next interval retries.
+    if (reason === 'interval_autosave' && shouldPauseAutosave()) {
+      return Promise.resolve(false);
+    }
     setAutoSaveStatus('saving');
     const snapshotFromLiveVfs = (() => {
       try {

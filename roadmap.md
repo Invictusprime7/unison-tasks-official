@@ -14,3 +14,10 @@
 - [x] Catalog panel (products/services) on the canonical catalog writer; preview reads live data
 - [x] agentOperations is the sole catalog read/write surface (registry-aware); retire catalogOperations row ops and migrate their callers
 - [x] Move remaining catalog writers (crm-managers, TemplateRuntimeProvider, backendOpExecutor) onto agentOperations
+
+## Milestone: canonical terminal, node mutations, browser verification (2026-10-07)
+- [x] Phase 1: mutation coordinator (queue, autosave pause, safe rebase of stale AI edits, plain stale message)
+- [ ] Phase 2: terminal writes through the canonical writer; touch/mv/cp/rm/rename; staged mode; revision/graph commands
+- [ ] Phase 3: node addressing + typed page/section/component actions
+- [ ] Phase 4A: in-preview browser probe + verification recipes (4B hosted Playwright needs your approval)
+- [ ] Phase 5: tests + zero-bypass lint

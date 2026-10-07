@@ -9,6 +9,7 @@
  * - Debug tab for iframe error handling with Supabase access
  */
 
+import { setAiGenerationActive } from '@/services/builder/builderMutationCoordinator';
 import { buildRenderedSiteDigest } from '@/services/builder/renderedSiteDigest';
 import { computeBuilderVfsSignature } from '@/services/builderStateRecovery';
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
@@ -675,6 +676,11 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
   });
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  useEffect(() => {
+    if (!isLoading) return;
+    setAiGenerationActive(true);
+    return () => setAiGenerationActive(false);
+  }, [isLoading]);
   const [isFixing, setIsFixing] = useState(false);
   const [activeTab, setActiveTab] = useState<'code' | 'debug' | 'backend'>('code');
   const [aiPermissions, setAIPermissions] = useState<AIEditPermissions>(() => loadAIEditPermissions());
