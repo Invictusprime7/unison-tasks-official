@@ -12,6 +12,10 @@ export interface RecentProject {
   updated_at: string;
   created_at: string;
   canvas_data: any;
+  /** Canonical Cloud identity carried from builder_drafts. */
+  project_id?: string | null;
+  business_id?: string | null;
+  revision_id?: string | null;
 }
 
 interface RecentProjectsSectionProps {
@@ -60,7 +64,16 @@ export function RecentProjectsSection({ projects, loading, onStartLauncher }: Re
                 isPublic={project.is_public}
                 updatedAt={project.updated_at}
                 previewHtml={previewHtml}
-                onClick={() => navigate(`/web-builder?id=${project.id}`)}
+                onClick={() => navigate(`/web-builder?id=${project.id}`, {
+                  state: {
+                    draftId: project.id,
+                    projectId: project.project_id || undefined,
+                    businessId: project.business_id || undefined,
+                    revisionId: project.revision_id || undefined,
+                    projectName: project.name,
+                    from: 'Home projects',
+                  },
+                })}
               />
             );
           })}

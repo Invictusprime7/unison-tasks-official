@@ -92,7 +92,7 @@ const Index = () => {
           // editor_code, and the complete VFS TOAST payload made this four-row
           // query read megabytes of canonical runtime state and could exceed
           // PostgREST's statement timeout.
-          .select('id, name, project_id, last_revision_id, updated_at, created_at, previewCode:metadata->>previewCode, metaName:metadata->>name, metaDescription:metadata->>description')
+          .select('id, name, project_id, business_id, last_revision_id, updated_at, created_at, previewCode:metadata->>previewCode, metaName:metadata->>name, metaDescription:metadata->>description')
           .eq('user_id', user.id)
           .order('updated_at', { ascending: false })
           // 9 sites + the "New Site" tile fill two rows. A limit of 4 hid
@@ -123,6 +123,9 @@ const Index = () => {
             const savedAt = (row.last_revision_id && revisionTimes.get(row.last_revision_id)) || row.updated_at;
             return {
               id: row.id,
+              project_id: row.project_id ?? null,
+              business_id: row.business_id ?? null,
+              revision_id: row.last_revision_id ?? null,
               name: row.name || row.metaName || 'Untitled Project',
               description: row.metaDescription ?? null,
               is_public: false,
@@ -144,7 +147,21 @@ const Index = () => {
     // Refresh when the user comes back from the builder in another tab.
     const onFocus = () => { void loadRecentProjects(); };
     window.addEventListener('focus', onFocus);
-    return () => window.removeEventListener('focus', onFocus);
+    // A canonical commit updates builder_drafts. Realtime keeps this profile
+    // projection current even while the user stays on the home page.
+    const channel = supabase
+      .channel(`home-recent-drafts:${user.id}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'builder_drafts',
+        filter: `user_id=eq.${user.id}`,
+      }, () => { void loadRecentProjects(); })
+      .subscribe();
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      void supabase.removeChannel(channel);
+    };
   }, [user]);
 
   // Load connected integrations when user is authenticated
