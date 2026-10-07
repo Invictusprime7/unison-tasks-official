@@ -20,6 +20,8 @@
 
 import type { VirtualNode, VirtualFile, VirtualFolder } from '@/hooks/useVirtualFileSystem';
 import { vfsToFileMap, getFilePaths } from '@/hooks/useVirtualFileSystem';
+import { buildSystemGraph, renderSystemGraphForPrompt } from '@/services/agent-runtime/systemGraph';
+import { resolveMutableNode } from '@/services/agent-runtime/nodeAddress';
 import { SANDPACK_DEPENDENCIES, isSandpackAllowedImport } from '@/utils/sandpackDependencies';
 
 // ============================================================================
@@ -167,6 +169,18 @@ function cmdRoutes(ctx: CommandContext): CommandResult {
   return { lines: routes.map((m) => mkLine('output', `${m[1].padEnd(24)} → ${m[2]}`)) };
 }
 
+function cmdGraph(ctx: CommandContext): CommandResult {
+  const text = renderSystemGraphForPrompt(buildSystemGraph(vfsToFileMap(ctx.nodes)), 6000);
+  return { lines: (text || 'No pages found').split('\n').map((l) => mkLine('output', l)) };
+}
+
+function cmdNode(args: string[], ctx: CommandContext): CommandResult {
+  if (!args[0]) return { lines: [mkLine('error', 'Usage: node <page:/about | section:/about#hero | button:/home#Book | component:SiteNav | file:/src/App.tsx>')] };
+  const r = resolveMutableNode(args.join(' '), vfsToFileMap(ctx.nodes));
+  if (r.ok === false) return { lines: [mkLine('error', r.error)] };
+  return { lines: [mkLine('success', r.label), mkLine('output', `owner: ${r.ownerPath}`)] };
+}
+
 function cmdIntents(ctx: CommandContext): CommandResult {
   const map = vfsToFileMap(ctx.nodes);
   const out: TerminalLine[] = [];
@@ -278,6 +292,7 @@ function cmdHelp(): CommandResult {
     mkLine('output', '│  mv|rename|cp <a> <b>   Move, rename or copy a file'),
     mkLine('output', '│  begin/diff/commit/abort  Stage several changes as one checkpoint'),
     mkLine('output', '│  revision/routes/intents  Saved version, page routes, button intents'),
+    mkLine('output', '│  graph / node <address>  Site map; resolve page:/x, section:/x#id, button:/x#label'),
       mkLine('output', '│  find <pattern>         Search files by name'),
       mkLine('output', '│  diagnose               Run VFS diagnostics'),
       mkLine('output', '│  whoami                 Show business system type'),
@@ -711,6 +726,10 @@ export function processCommand(input: string, ctx: CommandContext): CommandResul
       return cmdRoutes(ctx);
     case 'intents':
       return cmdIntents(ctx);
+    case 'graph':
+      return cmdGraph(ctx);
+    case 'node':
+      return cmdNode(args, ctx);
     case 'deps':
     case 'dependencies':
     case 'packages':
