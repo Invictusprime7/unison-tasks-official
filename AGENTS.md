@@ -22,3 +22,4 @@
 
 - Save, preflight, scoped-edit and preview-projection rules live in `src/services/AGENTS.md`.
 - Builder save surfaces serialise through `src/services/builder/builderMutationCoordinator.ts` (queue, autosave pause, fingerprint rebase of non-overlapping AI candidates); `aiApplyGate` keeps the strict stale check. Why: concurrent autosaves made AI edits fail as "stale" without one coordinator.
+- Code-terminal file commands emit FileOps to `onPatch` and the host commits them via `commitBuilderFiles` inside `runExclusive('terminal')`; the terminal never writes the VFS itself. Why: the old `onWriteFile` → `importFiles` path bypassed save, checkpoints and the coordinator.
