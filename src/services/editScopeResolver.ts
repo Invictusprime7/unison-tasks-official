@@ -43,6 +43,12 @@ export interface ScopeAncestors {
   bindingId?: string | null;
   /** Stable element key used for VFS/JSX mutation lookup. */
   bindingKey?: string | null;
+  /** Runtime provenance for canonical editable data rows. */
+  sourceTable?: string | null;
+  rowId?: string | null;
+  field?: string | null;
+  /** Link destination captured from the selected element. */
+  targetPath?: string | null;
   pageId?: string | null;
   /** Route path of the containing page (`data-ut-page-path`). */
   pagePath?: string | null;

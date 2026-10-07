@@ -47,6 +47,16 @@ export interface GraphPolicy { id: string; name: string; tableId: string; comman
 export interface GraphDatabase { tables: GraphTable[]; policies: GraphPolicy[] }
 export interface GraphDependency { id: string; name: string; version: string | null }
 export interface GraphDiagnostic { id: string; level: 'error' | 'warning' | 'info'; message: string; path?: string }
+/** Read-only provenance stamped into generated source for editable runtime nodes. */
+export interface GraphEditableEntity {
+  id: string;
+  path: string;
+  table: string | null;
+  rowId: string | null;
+  field: string | null;
+  bindingId: string | null;
+  sectionId: string | null;
+}
 export interface GraphEdge {
   from: string;
   to: string;
@@ -89,6 +99,7 @@ export interface SystemGraph {
   database: GraphDatabase;
   dependencies: GraphDependency[];
   diagnostics: GraphDiagnostic[];
+  entities: GraphEditableEntity[];
   edges: GraphEdge[];
   /** Compatibility summary for existing UI consumers. */
   intentCount: number;
@@ -99,6 +110,7 @@ const INTENT_RE = /<([A-Za-z][\w.]*)\b([^<>]*?data-ut-intent=["']([^"']+)["'][^<
 const TARGET_RE = /data-ut-(?:target-page-id|path|target)=["']([^"']+)["']|\bhref=["']([^"']+)["']|\bto=["']([^"']+)["']/;
 const IMPORT_RE = /import\s+(?:([\w$]+)|\{([^}]+)\})\s+from\s+["']([^"']+)["']/g;
 const ATTR = (attrs: string, name: string) => new RegExp(`${name}=["']([^"']+)["']`).exec(attrs)?.[1];
+const EDITABLE_ENTITY_RE = /<([A-Za-z][\w.]*)\b([^>]*(?:data-ut-(?:source-table|row-id|field|binding-id|entity-id))[^>]*)>/g;
 
 function fnv1a(text: string): string {
   let hash = 0x811c9dc5;
@@ -176,10 +188,24 @@ export function buildSystemGraph(input: Record<string, string> | SystemGraphInpu
   const pages: GraphPage[] = [];
   const components = new Map<string, GraphComponent>();
   const allIntents = new Map<string, GraphIntent>();
+  const entities: GraphEditableEntity[] = [];
 
   for (const path of Object.keys(files).sort()) {
     if (!/^\/src\/pages\/.+\.(t|j)sx$/.test(path)) continue;
     const source = files[path] ?? '';
+    for (const match of source.matchAll(EDITABLE_ENTITY_RE)) {
+      const attrs = match[2];
+      const table = ATTR(attrs, 'data-ut-source-table') ?? null;
+      const rowId = ATTR(attrs, 'data-ut-row-id') ?? null;
+      const field = ATTR(attrs, 'data-ut-field') ?? null;
+      const bindingId = ATTR(attrs, 'data-ut-binding-id') ?? null;
+      const sectionId = ATTR(attrs, 'data-ut-section-id') ?? null;
+      const explicitId = ATTR(attrs, 'data-ut-entity-id');
+      entities.push({
+        id: explicitId ?? `entity:${path}:${match.index ?? 0}`,
+        path, table, rowId, field, bindingId, sectionId,
+      });
+    }
     const starts = [...source.matchAll(SECTION_RE)];
     const sections = starts.map((match, index) => {
       const end = starts[index + 1]?.index ?? source.length;
@@ -272,6 +298,7 @@ export function buildSystemGraph(input: Record<string, string> | SystemGraphInpu
     intents: [...allIntents.values()].sort((left, right) => left.id.localeCompare(right.id)),
     bindings, capabilities, backendActions, database, dependencies,
     diagnostics: [...(context.diagnostics ?? [])].sort((left, right) => left.id.localeCompare(right.id)),
+    entities: entities.sort((left, right) => left.id.localeCompare(right.id)),
     edges,
     intentCount: pages.reduce((count, page) => count + page.intents.length, 0),
   };
@@ -292,7 +319,7 @@ export function renderSystemGraphForPrompt(graph: SystemGraph, maxChars = 3000):
 }
 
 export function findGraphNode(graph: SystemGraph, id: string): unknown | null {
-  const collections: unknown[][] = [graph.pages, graph.routes, graph.components, graph.sections, graph.intents, graph.bindings, graph.capabilities, graph.backendActions, graph.database.tables, graph.database.policies, graph.dependencies, graph.diagnostics];
+  const collections: unknown[][] = [graph.pages, graph.routes, graph.components, graph.sections, graph.intents, graph.bindings, graph.capabilities, graph.backendActions, graph.database.tables, graph.database.policies, graph.dependencies, graph.diagnostics, graph.entities];
   for (const collection of collections) {
     const match = collection.find((node) => {
       const entity = node as { id?: string; nodeId?: string };

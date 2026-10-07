@@ -19,6 +19,7 @@ import {
   type SystemGraphInput,
   type SystemGraphSchemaInput,
 } from './systemGraph';
+import { resolveEditableEntity, type EditableSelection } from './editableOwnershipResolver';
 
 export interface AgentContext {
   files: Record<string, string>;
@@ -71,6 +72,10 @@ export const agentOperations = {
   },
   inspect_graph_edges(ctx: AgentContext, id: string) {
     return graphEdgesFor(agentOperations.inspect_system_graph(ctx), id);
+  },
+  /** Resolves a clicked preview node to its property-level canonical owners. */
+  inspect_editable_entity(ctx: AgentContext, selectedElement: EditableSelection) {
+    return resolveEditableEntity({ selectedElement, graph: agentOperations.inspect_system_graph(ctx) });
   },
   inspect_route(ctx: AgentContext, route: string) {
     return agentOperations.inspect_system_graph(ctx).routes.find((candidate) => candidate.path === route) ?? null;

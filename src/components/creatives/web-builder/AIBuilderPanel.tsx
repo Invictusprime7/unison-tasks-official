@@ -102,7 +102,7 @@ import {
   recordRunOutcome,
 } from '@/services/builderEnvelopeRuns';
 import { buildCatalogContext, renderCatalogContextForPrompt } from '@/utils/catalogContext';
-import { executeCatalogToolCalls, type RawToolCall } from '@/services/catalogToolExecutor';
+import { compileCatalogToolCalls, type RawToolCall } from '@/services/catalogToolExecutor';
 import type { GeneratedUiManifest } from '@/platform/core/generatedUiFoundation';
 import type { WizardDesignIntervention } from '@/services/wizardDesignIntervention';
 import { sanitizeGeneratedFiles, sanitizeTsxFile } from '@/utils/tsxSanitizer';
@@ -126,7 +126,7 @@ import {
   shouldUseCanonicalComposer,
 } from '@/services/builder/canonicalAuthoringRequest';
 import type { TopologyChange } from '@/services/pageTopologyOrchestrator';
-import type { AICandidateChangeSet } from '@/services/builder/aiCandidateChangeSet';
+import { buildAICandidateChangeSet, type AICandidateChangeSet } from '@/services/builder/aiCandidateChangeSet';
 import { unisonAppBuilder } from '@/services/app-builder/UnisonAppBuilder';
 import { buildSequentialAiTasks } from '@/services/builder/sequentialAiTasks';
 import { findUnrequestedScopedSideEffects } from '@/services/builder/scopedEditContentGuard';
@@ -2108,19 +2108,22 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
             })
             .filter((v): v is RawToolCall => v !== null);
           if (normalized.length > 0) {
-            const results = await executeCatalogToolCalls(normalized);
-            const applied = results.filter((r) => r.ok && r.isCatalogTool);
-            const failed = results.filter((r) => !r.ok && r.isCatalogTool);
-            if (applied.length > 0) {
-              toast.success(`Applied ${applied.length} catalog change${applied.length === 1 ? '' : 's'}`, {
-                description: applied.map((r) => r.op).join(', '),
-              });
+            const proposal = compileCatalogToolCalls(normalized);
+            if (proposal.dataOps.length > 0) {
+              canonicalCandidate = canonicalCandidate
+                ? { ...canonicalCandidate, dataOps: [...(canonicalCandidate.dataOps ?? []), ...proposal.dataOps] }
+                : buildAICandidateChangeSet({
+                    aiFiles: {},
+                    baseFiles: vfsFiles ?? {},
+                    baseRevisionId: revisionId ?? undefined,
+                    origin: 'builder',
+                    intent: userContent,
+                    dataOps: proposal.dataOps,
+                  }).changeSet;
+              toast.info(`${proposal.dataOps.length} catalog change${proposal.dataOps.length === 1 ? '' : 's'} ready for canonical commit`);
             }
-            if (failed.length > 0) {
-              toast.error(`Catalog operation failed (${failed.length})`, {
-                description: failed[0]?.message ?? 'See console for details.',
-              });
-              console.warn('[AIBuilderPanel] Catalog tool failures:', failed);
+            if (proposal.rejected.length > 0) {
+              console.warn('[AIBuilderPanel] catalog proposals need a target:', proposal.rejected);
             }
           }
         } else if (Array.isArray(rawToolCalls) && rawToolCalls.length > 0) {
@@ -2589,6 +2592,23 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
       ));
 
       // AUTO-APPLY: Push generated code to VFS — prefer orchestrator for dep resolution
+      if (!multiFileOutput && !generatedCode && canonicalCandidate?.dataOps?.length) {
+        markPreviewPending();
+        const dataOutcome = await applyAIBuilderFiles(onApplyToVFS, {}, {
+          prompt: userContent,
+          model: modelUsed,
+          origin: 'catalog-data',
+          candidate: canonicalCandidate,
+          summary: responseMeta?.reviewSummary,
+          actionType: responseMeta?.actionType,
+        });
+        if (dataOutcome.success) {
+          toast.success('Catalog changes saved and synchronized to the live preview');
+          vfsEventBus.emit('ai:apply:complete', { filesWritten: [], source: 'catalog-data' });
+        } else {
+          toast.error('Catalog changes were not applied', { description: dataOutcome.errors?.[0] });
+        }
+      }
       if (generatedCode) {
         // Strip any module.exports / tailwind.config blocks that AI embedded in component code
         generatedCode = stripModuleExportsBlocks(generatedCode);

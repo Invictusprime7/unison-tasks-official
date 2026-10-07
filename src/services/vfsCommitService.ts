@@ -61,6 +61,7 @@ import { runExperiencePreflight } from './experiencePreflightGate';
 import { resolvePlaygroundControlPlane } from '@/services/playgroundControlPlaneResolver';
 import { evaluateElementReadiness, type ElementReadinessReport } from '@/services/elementReadinessEvaluator';
 import { executeBackendOps, type BackendOpExecutionReport } from '@/services/backendOpExecutor';
+import { executeDataOps, type DataOpExecutionReport } from '@/services/dataOpExecutor';
 import type { GeneratedSiteRuntimeManifest } from '@/services/generatedSiteRuntimeManifest';
 import {
   buildCanonicalLaunchArtifacts,
@@ -186,6 +187,8 @@ export interface CommitMutationResult {
   vfsHash: string;
   candidateId: string | null;
   operationIds: string[];
+  /** Registry-scoped data mutations acknowledged by this revision. */
+  dataOpsApplied: Array<{ operationId: string; type: string; status: string; message: string }>;
   fileProvenance: FileProvenanceMap;
 }
 
@@ -718,6 +721,7 @@ export async function commitMutation(
         }],
         vfsHash: await hashVfsFiles(workingFiles),
         backendOpsApplied: [],
+        dataOpsApplied: [],
         diagnostics,
         parentRevisionId: input.identity.revisionId || null,
         rejectMessage: `canonical pipeline threw: ${canonicalError}`,
@@ -1114,6 +1118,21 @@ export async function commitMutation(
   // has survived preview and readiness checks. This is intentionally after
   // the auto-repair decision: a rejected revision must never provision or
   // seed backend data.
+  const dataOps = input.patch.dataOps ?? [];
+  let dataOpsReport: DataOpExecutionReport | undefined;
+  if (status === 'committed' && preExecutionReady && dataOps.length > 0) {
+    dataOpsReport = await executeDataOps(dataOps, input.identity);
+    log(
+      'dataOps',
+      dataOpsReport.failedCount === 0 ? 'info' : 'warn',
+      `executed ${dataOpsReport.results.length} data operation(s) (failed=${dataOpsReport.failedCount})`,
+      dataOpsReport.results,
+    );
+    if (dataOpsReport.failedCount > 0) status = 'rejected';
+  } else if (dataOps.length > 0) {
+    log('dataOps', 'warn', 'skipped data operations because pre-execution gates failed');
+  }
+
   const backendOps = input.patch.backendOps ?? [];
   if (status === 'committed' && preExecutionReady && backendOps.length > 0) {
     try {
@@ -1214,6 +1233,14 @@ export async function commitMutation(
       meta: { failed: backendOpsReport.results.filter((r) => r.status === 'failed') },
     });
   }
+  if (dataOpsReport && dataOpsReport.failedCount > 0) {
+    publishBlockers.push({
+      source: 'backendOps',
+      code: 'data-op-failed',
+      message: `${dataOpsReport.failedCount} data operation(s) failed`,
+      meta: { failed: dataOpsReport.results.filter((result) => result.status === 'failed') },
+    });
+  }
   const publishReady =
     status === 'committed' &&
     publishBlockers.length === 0 &&
@@ -1274,11 +1301,13 @@ export async function commitMutation(
         : {}),
       ...(elementReadiness ? { elementReadiness } : {}),
       ...(backendOpsReport ? { backendOps: backendOpsReport } : {}),
+      ...(dataOpsReport ? { dataOps: dataOpsReport } : {}),
     } as Record<string, unknown>,
     publishReady,
     publishBlockers,
     vfsHash,
     backendOpsApplied: backendOpsReport?.results ?? [],
+    dataOpsApplied: dataOpsReport?.results ?? [],
     diagnostics,
     parentRevisionId: input.identity.revisionId || null,
     rejectMessage:
@@ -1681,6 +1710,7 @@ async function finalize(args: {
   publishBlockers: PublishBlockerSummary[];
   vfsHash: string;
   backendOpsApplied: unknown[];
+  dataOpsApplied: Array<{ operationId: string; type: string; status: string; message: string }>;
   diagnostics: CommitDiagnostic[];
   parentRevisionId: string | null;
   rejectMessage: string | null;
@@ -1697,6 +1727,7 @@ async function finalize(args: {
     publishBlockers,
     vfsHash,
     backendOpsApplied,
+    dataOpsApplied,
     diagnostics,
     parentRevisionId,
     rejectMessage,
@@ -1927,6 +1958,7 @@ async function finalize(args: {
     vfsHash,
     candidateId,
     operationIds,
+    dataOpsApplied,
     fileProvenance,
   };
 

@@ -27,6 +27,7 @@ import type { PatchPlan } from '@/types/patchPlan';
 export interface CandidateOperationInput {
   playgroundOps?: readonly PatchPlan['playgroundOps'][number][];
   bindingOps?: readonly PatchPlan['bindingOps'][number][];
+  dataOps?: readonly PatchPlan['dataOps'][number][];
   backendOps?: readonly PatchPlan['backendOps'][number][];
   presentationOps?: readonly PatchPlan['presentationOps'][number][];
   businessSystem?: PatchPlan['businessSystem'];
@@ -151,6 +152,7 @@ export function buildAICandidateChangeSet(input: BuildCandidateInput): Candidate
   const operations = structuredClone({
     playgroundOps: [...(input.playgroundOps ?? [])],
     bindingOps: [...(input.bindingOps ?? [])],
+    dataOps: [...(input.dataOps ?? [])],
     backendOps: [...(input.backendOps ?? [])],
     presentationOps: [...(input.presentationOps ?? [])],
     businessSystem: input.businessSystem,

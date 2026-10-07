@@ -73,6 +73,7 @@ export function buildAiCandidatePatch(ctx: AiCommitContext): PatchPlan {
       : { ...operation }),
     playgroundOps: structuredClone([...(candidate.playgroundOps ?? [])]),
     bindingOps: structuredClone([...(candidate.bindingOps ?? [])]),
+    dataOps: structuredClone([...(candidate.dataOps ?? [])]),
     backendOps: structuredClone([...(candidate.backendOps ?? [])]),
     presentationOps: structuredClone([...(candidate.presentationOps ?? [])]),
     businessSystem: candidate.businessSystem ? structuredClone(candidate.businessSystem) : undefined,

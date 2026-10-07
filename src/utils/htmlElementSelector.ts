@@ -11,6 +11,7 @@ export interface SelectedElementData {
   xpath: string;
   html: string;
   section?: string;
+  scopeAncestors?: import('@/services/editScopeResolver').ScopeAncestors;
 }
 
 const inferSectionLabel = (element: HTMLElement): string | undefined => {
@@ -192,6 +193,10 @@ export const extractElementAttributes = (element: HTMLElement): Record<string, s
  */
 export const getSelectedElementData = (element: HTMLElement): SelectedElementData => {
   try {
+    const nearest = (attribute: string) => element.closest(`[${attribute}]`)?.getAttribute(attribute) ?? null;
+    const productId = nearest('data-ut-product-id');
+    const intents = Array.from(element.closest('[data-ut-intent]') ? [nearest('data-ut-intent')] : [])
+      .filter((intent): intent is string => Boolean(intent));
     return {
       tagName: element.tagName || 'UNKNOWN',
       textContent: element.textContent || "",
@@ -201,6 +206,18 @@ export const getSelectedElementData = (element: HTMLElement): SelectedElementDat
       xpath: generateXPath(element),
       html: element.outerHTML || '',
       section: inferSectionLabel(element),
+      scopeAncestors: {
+        elementId: nearest('data-ut-element'), slotId: nearest('data-ut-slot'), blockId: nearest('data-ut-block'),
+        sectionId: nearest('data-ut-section-id') ?? nearest('data-ut-section'), sectionType: nearest('data-ut-section-type'),
+        surfaceId: nearest('data-ut-surface'), componentType: nearest('data-ut-component-type'),
+        bindingId: nearest('data-ut-binding-id'), bindingKey: nearest('data-ut-binding-key'),
+        sourceTable: nearest('data-ut-source-table') ?? (productId ? 'products' : null),
+        rowId: nearest('data-ut-row-id') ?? productId,
+        field: nearest('data-ut-field'),
+        pageId: nearest('data-ut-page-id'), pagePath: nearest('data-ut-page-path'),
+        targetPath: element.getAttribute('href') ?? element.getAttribute('data-ut-path'),
+        intents, primaryIntent: element.getAttribute('data-ut-intent'), clickedTag: element.tagName.toLowerCase(),
+      },
     };
   } catch (err) {
     console.error('[htmlElementSelector] Error extracting element data:', err);

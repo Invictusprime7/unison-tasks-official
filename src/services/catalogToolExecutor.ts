@@ -20,6 +20,7 @@ import {
   type CatalogOperationName,
   type CatalogOperationResult,
 } from '@/services/catalogOperations';
+import type { DataOp, CanonicalDataSurface } from '@/types/dataOperations';
 
 const CATALOG_TOOL_NAMES = new Set<CatalogOperationName>(
   CATALOG_OPERATION_TOOLS.map((t) => t.name as CatalogOperationName),
@@ -53,6 +54,43 @@ function parseArgs(raw: RawToolCall['arguments']): Record<string, unknown> {
 
 export function isCatalogToolName(name: string): name is CatalogOperationName {
   return CATALOG_TOOL_NAMES.has(name as CatalogOperationName);
+}
+
+export interface CatalogToolProposal {
+  dataOps: DataOp[];
+  rejected: Array<{ toolCallId?: string; toolName: string; message: string }>;
+}
+
+function isSurface(value: unknown): value is CanonicalDataSurface {
+  return typeof value === 'string' && ['products', 'services', 'menu_items', 'pricing_plans', 'testimonials'].includes(value);
+}
+
+/** Compile catalog tool calls into PatchPlan proposals; this never writes data. */
+export function compileCatalogToolCalls(calls: RawToolCall[]): CatalogToolProposal {
+  const dataOps: DataOp[] = [];
+  const rejected: CatalogToolProposal['rejected'] = [];
+  for (const [index, call] of calls.entries()) {
+    if (!isCatalogToolName(call.name)) continue;
+    const args = parseArgs(call.arguments);
+    const operationId = call.id || `catalog-tool:${index + 1}:${call.name}`;
+    const surfaceId = args.surfaceId;
+    const rowId = typeof args.rowId === 'string' ? args.rowId : typeof args.itemId === 'string' ? args.itemId : undefined;
+    const patch = args.patch;
+    if (!isSurface(surfaceId)) {
+      rejected.push({ toolCallId: call.id, toolName: call.name, message: 'The tool call did not name a supported catalog surface.' });
+    } else if (call.name === 'createCatalogRow' && patch && typeof patch === 'object' && !Array.isArray(patch)) {
+      dataOps.push({ type: 'createRow', operationId, surfaceId, values: patch as Record<string, unknown> });
+    } else if ((call.name === 'updateCatalogRow' || call.name === 'updateCatalogItem') && rowId && patch && typeof patch === 'object' && !Array.isArray(patch)) {
+      dataOps.push({ type: 'updateRow', operationId, surfaceId, rowId, patch: patch as Record<string, unknown> });
+    } else if (call.name === 'deleteCatalogRow' && rowId) {
+      dataOps.push({ type: 'archiveRow', operationId, surfaceId, rowId });
+    } else if (call.name === 'updateSectionBinding' && typeof args.locator === 'object' && args.locator && typeof (args.locator as Record<string, unknown>).bindingId === 'string' && patch && typeof patch === 'object' && !Array.isArray(patch)) {
+      dataOps.push({ type: 'updateBinding', operationId, surfaceId, bindingId: (args.locator as Record<string, string>).bindingId, patch: patch as Record<string, unknown> });
+    } else {
+      rejected.push({ toolCallId: call.id, toolName: call.name, message: 'This tool call needs a concrete row or binding target before it can be committed.' });
+    }
+  }
+  return { dataOps, rejected };
 }
 
 export async function executeCatalogToolCall(

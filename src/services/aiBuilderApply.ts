@@ -44,7 +44,7 @@ export async function applyAIBuilderFiles(
   files: Record<string, string>,
   meta?: AIBuilderApplyMeta,
 ): Promise<AIBuilderApplyOutcome> {
-  if (Object.keys(files).length === 0 && !meta?.deletions?.length) {
+  if (Object.keys(files).length === 0 && !meta?.deletions?.length && !meta?.candidate?.dataOps?.length) {
     return { success: false, errors: ['The AI response did not contain any valid files to apply.'] };
   }
 

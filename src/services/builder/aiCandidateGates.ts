@@ -196,6 +196,7 @@ export async function prepareAICandidate(input: CandidateOperationInput & {
     routeOps: input.routeOps,
     playgroundOps: input.playgroundOps,
     bindingOps: input.bindingOps,
+    dataOps: input.dataOps,
     backendOps: input.backendOps,
     presentationOps: input.presentationOps,
     businessSystem: input.businessSystem,
@@ -221,6 +222,7 @@ export async function prepareAICandidate(input: CandidateOperationInput & {
       routeOps: input.routeOps,
       playgroundOps: input.playgroundOps,
       bindingOps: input.bindingOps,
+      dataOps: input.dataOps,
       backendOps: input.backendOps,
       presentationOps: input.presentationOps,
       businessSystem: input.businessSystem,
@@ -233,6 +235,7 @@ export async function prepareAICandidate(input: CandidateOperationInput & {
   const candidate = build.changeSet;
   const hasChanges = candidate.fileOps.length > 0 || candidate.routeOps.length > 0
     || !!candidate.playgroundOps?.length || !!candidate.bindingOps?.length
+    || !!candidate.dataOps?.length
     || !!candidate.backendOps?.length || !!candidate.presentationOps?.length
     || !!candidate.businessSystem;
   const errors = [

@@ -14,7 +14,10 @@ import type { BusinessSystemState } from '@/platform/core/capabilityRegistry';
 import type { TopologyChange } from '@/services/pageTopologyOrchestrator';
 import { assertBackendOps } from './backendOperations';
 import type { BackendOp } from './backendOperations';
+import { assertDataOps } from './dataOperations';
+import type { DataOp } from './dataOperations';
 export type { BackendOp } from './backendOperations';
+export type { DataOp } from './dataOperations';
 
 export type PatchSource =
   | 'wizard-launch'
@@ -89,6 +92,8 @@ export interface PatchPlan {
   fileOps: FileOp[];
   playgroundOps: PlaygroundOp[];
   bindingOps: BindingOp[];
+  /** Registry-scoped data/binding mutations executed only by commitMutation. */
+  dataOps: DataOp[];
   backendOps: BackendOp[];
   presentationOps: PresentationOp[];
   /** Typed page/route mutations; the compiler owns App.tsx projection. */
@@ -115,6 +120,7 @@ export function emptyPatchPlan(summary = ''): PatchPlan {
     fileOps: [],
     playgroundOps: [],
     bindingOps: [],
+    dataOps: [],
     backendOps: [],
     presentationOps: [],
   };
@@ -140,6 +146,7 @@ export function legacyFilesToPatchPlan(
     fileOps,
     playgroundOps: [],
     bindingOps: [],
+    dataOps: [],
     backendOps: [],
     presentationOps: [],
   };
@@ -151,7 +158,7 @@ export function assertPatchPlan(plan: unknown, context = 'assertPatchPlan'): ass
     throw new Error(`[${context}] PatchPlan must be an object`);
   }
   const p = plan as Partial<PatchPlan>;
-  for (const key of ['fileOps', 'playgroundOps', 'bindingOps', 'backendOps', 'presentationOps'] as const) {
+  for (const key of ['fileOps', 'playgroundOps', 'bindingOps', 'dataOps', 'backendOps', 'presentationOps'] as const) {
     if (!Array.isArray(p[key])) {
       throw new Error(`[${context}] PatchPlan.${key} must be an array`);
     }
@@ -179,6 +186,7 @@ export function assertPatchPlan(plan: unknown, context = 'assertPatchPlan'): ass
       throw new Error(`[${context}] invalid PresentationOp: ${JSON.stringify(op)}`);
     }
   }
+  assertDataOps(p.dataOps, context);
   assertBackendOps(p.backendOps, context);
   if (p.routeOps !== undefined) {
     if (!Array.isArray(p.routeOps)) throw new Error(`[${context}] PatchPlan.routeOps must be an array`);
