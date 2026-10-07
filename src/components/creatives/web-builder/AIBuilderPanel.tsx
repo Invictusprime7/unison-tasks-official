@@ -941,6 +941,9 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
     if ((!input.trim() && droppedFiles.length === 0) || isLoading) return;
     queueMicrotask(() => emitAgentEvent({ kind: 'understanding', message: input.trim().slice(0, 140) || 'Reading your attached files' }));
 
+    // Capture the selected entity before clearing the UI chip; the AI turn
+    // resolves this immutable selection against the same graph revision.
+    const selectedTarget = agentTarget;
     // Build file context suffix
     const targetContext = agentTarget
       ? `\n\n[Target element — apply this request to it only: <${agentTarget.tagName}>${agentTarget.text ? ` "${agentTarget.text}"` : ''}${agentTarget.section ? ` in section "${agentTarget.section}"` : ''}${agentTarget.selector ? ` (selector ${agentTarget.selector})` : ''}${agentTarget.intent ? `; its button action "${agentTarget.intent}" and destination must stay unchanged` : ''}${agentTarget.provenance?.sourceTable && agentTarget.provenance.rowId ? `; canonical data owner ${agentTarget.provenance.sourceTable}/${agentTarget.provenance.rowId}${agentTarget.provenance.field ? ` field ${agentTarget.provenance.field}` : ''}` : ''}${agentTarget.provenance?.bindingId ? `; binding ${agentTarget.provenance.bindingId}` : ''}${agentTarget.provenance?.targetPath ? `; link target ${agentTarget.provenance.targetPath}` : ''}]`
@@ -1797,7 +1800,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
             });
           } catch { /* best-effort */ }
           try {
-            const graphText = renderSystemGraphForPrompt(buildSystemGraph({
+            const graph = buildSystemGraph({
               files: vfsFiles ?? {},
               revisionId,
               diagnostics: iframeErrors.map((error, index) => ({
@@ -1806,8 +1809,33 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
                 message: error.message,
                 path: error.file,
               })),
-            }));
+            });
+            const graphText = renderSystemGraphForPrompt(graph);
             if (graphText) previewSnapshot = `${previewSnapshot ?? ''}\n\n${graphText}`.trim();
+            if (selectedTarget) {
+              const selectedEntity = agentOperations.inspect_editable_entity({
+                files: vfsFiles ?? {}, revisionId,
+              }, {
+                selector: selectedTarget.selector,
+                pagePath: selectedTarget.scopeAncestors?.pagePath,
+                pageId: selectedTarget.scopeAncestors?.pageId,
+                sectionId: selectedTarget.scopeAncestors?.sectionId,
+                sectionType: selectedTarget.scopeAncestors?.sectionType,
+                componentType: selectedTarget.scopeAncestors?.componentType,
+                componentInstanceId: selectedTarget.scopeAncestors?.componentInstanceId,
+                artifactId: selectedTarget.scopeAncestors?.artifactId,
+                elementId: selectedTarget.scopeAncestors?.elementId,
+                clickedTag: selectedTarget.tagName,
+                sourceTable: selectedTarget.provenance?.sourceTable,
+                rowId: selectedTarget.provenance?.rowId,
+                field: selectedTarget.provenance?.field,
+                bindingId: selectedTarget.provenance?.bindingId,
+                targetPath: selectedTarget.provenance?.targetPath,
+                primaryIntent: selectedTarget.intent,
+              });
+              previewSnapshot = `${previewSnapshot ?? ''}\n\nEDITABLE ENTITY: ${JSON.stringify(selectedEntity)}`.trim();
+              emitAgentEvent({ kind: 'discovery', message: `Resolved selected target as ${selectedEntity.kind} via ${selectedEntity.allowedMutationLanes.join(', ')}`, status: 'ok', revisionId });
+            }
             emitAgentEvent({ kind: 'discovery', message: 'Read the current revision graph, page structure, and preview diagnostics', status: 'ok' });
           } catch { /* best-effort */ }
           try {
