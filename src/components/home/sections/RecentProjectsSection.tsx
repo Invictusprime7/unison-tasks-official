@@ -54,20 +54,16 @@ export function RecentProjectsSection({ projects, loading, onStartLauncher }: Re
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState<boolean>(readCollapsedPreference);
 
-  const toggleCollapsed = () => {
-    setCollapsed((prev) => {
-      const next = !prev;
-      writeCollapsedPreference(next);
-      return next;
-    });
+  const applyCollapsed = (next: boolean) => {
+    writeCollapsedPreference(next);
+    setCollapsed(next);
   };
 
   return (
     <section className="container mx-auto px-4 py-8 sm:py-12 border-b border-white/5">
-      <Collapsible open={!collapsed} onOpenChange={(open) => setCollapsed(!open)}>
+      <Collapsible open={!collapsed} onOpenChange={(open) => applyCollapsed(!open)}>
         <div className="flex items-center justify-between mb-4 sm:mb-6">
           <CollapsibleTrigger
-            onClick={toggleCollapsed}
             aria-label={collapsed ? "Expand your projects" : "Collapse your projects"}
             className={cn(
               "group flex items-center gap-2 rounded-md -ml-2 px-2 py-1 text-left",
