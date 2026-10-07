@@ -41,6 +41,7 @@ import { vfsEventBus } from '@/services/vfsEventBus';
 import { vfsSnapshotManager, type DiffSummary } from '@/services/vfsSnapshotManager';
 import { analyzeImportGraph, getAffectedFiles, type AffectedFiles } from '@/services/importGraphAnalyzer';
 import { getDependenciesForSandpack } from '@/utils/dependencyExtractor';
+import { listSnapshots, type EditSnapshot } from '@/services/aiHistoryStore';
 
 // ---------------------------------------------------------------------------
 // Error Boundary
@@ -225,6 +226,8 @@ function AffectedFilesIndicator({ affected, className }: { affected: AffectedFil
 // ---------------------------------------------------------------------------
 
 export interface VFSCodeViewProps {
+  /** Builder draft whose canonical AI snapshots can be reviewed in this VFS. */
+  historyDraftId?: string | null;
   // VFS state
   nodes: VirtualNode[];
   activeFileId: string;
@@ -274,6 +277,7 @@ export interface VFSCodeViewProps {
 // ---------------------------------------------------------------------------
 
 export function VFSCodeView({
+  historyDraftId,
   nodes,
   activeFileId,
   hasFiles,
@@ -310,6 +314,28 @@ export function VFSCodeView({
 }: VFSCodeViewProps) {
   const [showExplorer, setShowExplorer] = useState(true);
   const [terminalCollapsed, setTerminalCollapsed] = useState(true);
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [selectedSnapshotId, setSelectedSnapshotId] = useState<string | null>(null);
+  const [selectedDiffPath, setSelectedDiffPath] = useState<string | null>(null);
+  const snapshots = useMemo(() => listSnapshots(historyDraftId), [historyDraftId, nodes]);
+  const selectedSnapshot = useMemo<EditSnapshot | null>(
+    () => snapshots.find((snapshot) => snapshot.id === selectedSnapshotId) ?? snapshots[0] ?? null,
+    [snapshots, selectedSnapshotId],
+  );
+  const changedReviewPaths = selectedSnapshot?.changedPaths?.filter((path) =>
+    selectedSnapshot.before[path] !== selectedSnapshot.after[path],
+  ) ?? [];
+  const activeReviewPath = selectedDiffPath && changedReviewPaths.includes(selectedDiffPath)
+    ? selectedDiffPath
+    : changedReviewPaths[0] ?? null;
+
+  useEffect(() => {
+    if (!selectedSnapshotId && snapshots[0]) setSelectedSnapshotId(snapshots[0].id);
+  }, [selectedSnapshotId, snapshots]);
+
+  useEffect(() => {
+    if (activeReviewPath !== selectedDiffPath) setSelectedDiffPath(activeReviewPath);
+  }, [activeReviewPath, selectedDiffPath]);
 
   // Derive active file
   const activeFile = useMemo(() => getActiveFile(), [getActiveFile, activeFileId, nodes]);
@@ -496,8 +522,7 @@ export function VFSCodeView({
   return (
     <VFSCodeViewErrorBoundary onFallbackClick={onSwitchToCanvas}>
       <div
-        className="w-full h-full bg-[#0a0a14] rounded-xl overflow-hidden border border-fuchsia-500/20 shadow-2xl shadow-black/50 flex flex-col"
-        style={{ maxHeight: 'calc(100vh - 200px)' }}
+        className="w-full h-full min-h-[calc(100vh-112px)] bg-[#0a0a14] rounded-xl overflow-hidden border border-fuchsia-500/20 shadow-2xl shadow-black/50 flex flex-col"
       >
         {/* ============================================================== */}
         {/* Top Toolbar                                                     */}
@@ -624,6 +649,16 @@ export function VFSCodeView({
 
             <div className="h-4 w-px bg-white/[0.06] mx-0.5" />
 
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setReviewOpen((open) => !open)}
+              className={cn('h-7 px-2.5 text-[11px] gap-1.5', reviewOpen ? 'bg-fuchsia-500/15 text-fuchsia-200' : 'text-white/50 hover:text-white')}
+            >
+              <Code2 className="w-3 h-3" />
+              Changes{snapshots.length ? ` (${snapshots.length})` : ''}
+            </Button>
+
             {/* Canvas switch */}
             {onSwitchToCanvas && (
               <Button
@@ -686,9 +721,44 @@ export function VFSCodeView({
                   aiGeneratedTabs={aiGeneratedFiles}
                 />
 
-                {/* Monaco Editor or Empty State */}
+                {/* Canonical before/after review or Monaco editor */}
                 <div className="flex-1 min-h-0 relative">
-                  {activeFile ? (
+                  {reviewOpen ? (
+                    <div className="h-full min-h-0 flex bg-[#0a0a14]">
+                      <aside className="w-56 shrink-0 border-r border-white/[0.07] overflow-auto p-2 space-y-1">
+                        <div className="px-2 py-1 text-[10px] uppercase tracking-wider text-white/40">Accepted AI edits</div>
+                        {snapshots.length === 0 ? (
+                          <p className="px-2 py-4 text-xs text-white/40">No committed AI edits yet.</p>
+                        ) : snapshots.map((snapshot) => (
+                          <button key={snapshot.id} type="button"
+                            onClick={() => { setSelectedSnapshotId(snapshot.id); setSelectedDiffPath(snapshot.changedPaths?.[0] ?? null); }}
+                            className={cn('w-full rounded-md px-2 py-2 text-left transition-colors', selectedSnapshot?.id === snapshot.id ? 'bg-fuchsia-500/15 text-white' : 'text-white/60 hover:bg-white/[0.05]')}
+                          >
+                            <div className="truncate text-xs font-medium">{snapshot.label}</div>
+                            <div className="mt-1 text-[10px] text-white/35">{new Date(snapshot.timestamp).toLocaleString()} · {snapshot.changedPaths?.length ?? 0} files</div>
+                          </button>
+                        ))}
+                      </aside>
+                      <section className="flex-1 min-w-0 min-h-0 flex flex-col">
+                        <div className="h-10 shrink-0 border-b border-white/[0.07] flex items-center gap-2 px-3 overflow-x-auto">
+                          {changedReviewPaths.map((path) => (
+                            <button key={path} type="button" onClick={() => setSelectedDiffPath(path)}
+                              className={cn('shrink-0 rounded px-2 py-1 text-[11px]', activeReviewPath === path ? 'bg-cyan-500/15 text-cyan-200' : 'text-white/45 hover:bg-white/[0.05]')}>
+                              {path.split('/').pop()}
+                            </button>
+                          ))}
+                        </div>
+                        {selectedSnapshot && activeReviewPath ? (
+                          <div className="grid grid-cols-2 flex-1 min-h-0 divide-x divide-white/[0.07]">
+                            <CodeReviewPane title="Before" tone="removed" value={selectedSnapshot.before[activeReviewPath] ?? '// File created by this edit'} />
+                            <CodeReviewPane title="After" tone="added" value={selectedSnapshot.after[activeReviewPath] ?? '// File deleted by this edit'} />
+                          </div>
+                        ) : (
+                          <div className="flex-1 flex items-center justify-center text-sm text-white/40">Select an accepted edit to review its VFS changes.</div>
+                        )}
+                      </section>
+                    </div>
+                  ) : activeFile ? (
                     <VFSMonacoEditor
                       height="100%"
                       fileName={activeFile.name}
@@ -784,6 +854,17 @@ export function VFSCodeView({
 // ---------------------------------------------------------------------------
 // No File Selected
 // ---------------------------------------------------------------------------
+
+function CodeReviewPane({ title, tone, value }: { title: string; tone: 'added' | 'removed'; value: string }) {
+  return (
+    <div className="min-w-0 min-h-0 flex flex-col">
+      <div className={cn('h-9 shrink-0 px-3 flex items-center border-b border-white/[0.06] text-[11px] font-medium', tone === 'added' ? 'text-emerald-300 bg-emerald-500/[0.06]' : 'text-red-300 bg-red-500/[0.06]')}>
+        {title}
+      </div>
+      <pre className="flex-1 min-h-0 overflow-auto p-3 text-[11px] leading-5 font-mono text-white/75 whitespace-pre-wrap break-words">{value}</pre>
+    </div>
+  );
+}
 
 function NoFileSelected() {
   return (

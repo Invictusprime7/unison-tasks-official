@@ -8256,6 +8256,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
             {viewMode === 'code' && (
               <CodeViewErrorBoundary onFallbackClick={() => setViewMode('canvas')}>
                 <VFSCodeView
+                  historyDraftId={currentDraftId}
                   nodes={virtualFS.nodes}
                   activeFileId={virtualFS.activeFileId}
                   hasFiles={virtualFS.hasFiles}
