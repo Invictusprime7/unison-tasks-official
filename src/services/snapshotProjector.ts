@@ -921,6 +921,20 @@ export function projectSnapshotVfsFiles(
     next[path] = content;
   }
 
+  // Files a committed edit created under `/src/` exist only in the live VFS
+  // until the embedded snapshot copy refreshes. Root-level legacy paths are
+  // still excluded; pending deletions below keep winning.
+  if (resolution.snapshotFromLiveVfs) {
+    for (const [rawPath, content] of Object.entries(files)) {
+      const path = normalizeVfsPath(rawPath);
+      if (!path.startsWith('/src/') || typeof content !== 'string') continue;
+      if (Object.prototype.hasOwnProperty.call(next, path)) continue;
+      if (pendingChanges.get(path)?.type === 'delete') continue;
+      next[path] = content;
+      preserved.push(path);
+    }
+  }
+
   // Pending creates and deletes may have no corresponding stale snapshot path.
   // Replacements already handled above must not be overwritten here by the
   // stale input VFS used during a reload recovery.
