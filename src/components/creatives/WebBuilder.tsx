@@ -1,5 +1,5 @@
 /* cache-bust: 20260309 */
-import { shouldPauseAutosave } from '@/services/builder/builderMutationCoordinator';
+import { shouldPauseAutosave, runExclusive, recordCommit, getLastCommit } from '@/services/builder/builderMutationCoordinator';
 import { buildPreviewRouteTabs, ROUTE_TAB_PREFIX } from '@/components/creatives/web-builder/previewRouteTabs';
 import "./web-builder/obsidian-theme.css";
 import { useEffect, useRef, useState, useCallback, useMemo, lazy, Suspense, Component, type ReactNode, type ErrorInfo } from "react";
@@ -3122,9 +3122,11 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       preferredPath?: string | null;
       entryPoint?: string | null;
       failureMessage?: string;
+      /** Explicit ops (create/replace/delete) — used by the terminal. Overrides `files`. */
+      fileOps?: FileOp[];
     } = {},
   ): Promise<Record<string, string> | null> => {
-    if (!files || Object.keys(files).length === 0) return null;
+    if ((!files || Object.keys(files).length === 0) && !options.fileOps?.length) return null;
 
     const beforeFiles = virtualFSRef.current.getSandpackFiles();
     const snapshot = resolveSnapshot(beforeFiles, effectiveRouteState as any).snapshot
@@ -3151,7 +3153,9 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
         source: options.source ?? 'ai-builder',
         identity: commitIdentity,
         current: buildCanonicalCommitCurrent(beforeFiles, snapshot),
-        patch: legacyFilesToPatchPlan(files, options.summary ?? 'Builder edit'),
+        patch: options.fileOps?.length
+          ? { ...legacyFilesToPatchPlan({}, options.summary ?? 'Builder edit'), fileOps: options.fileOps }
+          : legacyFilesToPatchPlan(files, options.summary ?? 'Builder edit'),
         options: buildCommitOptions(snapshot),
       });
       if (commit.status !== 'committed') {

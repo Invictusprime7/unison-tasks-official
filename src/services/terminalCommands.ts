@@ -40,7 +40,141 @@ export interface CommandContext {
   onAddDep: (pkg: string, version: string) => void;
   onRemoveDep: (pkg: string) => void;
   onRefreshPreview?: () => void;
-  onWriteFile?: (path: string, content: string) => void;
+  /**
+   * Canonical write sink. Every file-changing command builds FileOps and hands
+   * them here; the host commits them through commitMutation (one checkpoint per
+   * call). The terminal never writes files itself.
+   */
+  onPatch?: (ops: TerminalFileOp[], summary: string) => void;
+  /** Optional read-only revision info for the `revision` command. */
+  getRevisionInfo?: () => { revisionId: string | null; lastSurface?: string | null; lastAt?: number | null };
+}
+
+export type TerminalFileOp =
+  | { type: 'create'; path: string; contents: string }
+  | { type: 'replace'; path: string; contents: string }
+  | { type: 'delete'; path: string };
+
+/** Staged mode buffer (begin → … → commit/abort). Null when not staging. */
+let stagedOps: TerminalFileOp[] | null = null;
+
+/** Test hook: reset staged state. */
+export function __resetTerminalStaging(): void { stagedOps = null; }
+
+function submitOps(ops: TerminalFileOp[], summary: string, ctx: CommandContext): string {
+  if (stagedOps) {
+    for (const op of ops) {
+      stagedOps = stagedOps.filter((o) => o.path !== op.path);
+      stagedOps.push(op);
+    }
+    return `staged (${stagedOps.length} pending — "commit" to save)`;
+  }
+  if (!ctx.onPatch) return 'not saved: no site is connected to this terminal';
+  ctx.onPatch(ops, summary);
+  return 'saving as a checkpoint';
+}
+
+function readFile(ctx: CommandContext, path: string): string | undefined {
+  const map = vfsToFileMap(ctx.nodes);
+  if (stagedOps) {
+    const op = [...stagedOps].reverse().find((o) => o.path === path);
+    if (op) return op.type === 'delete' ? undefined : op.contents;
+  }
+  return map[path];
+}
+
+function cmdTouch(args: string[], ctx: CommandContext): CommandResult {
+  const path = normalizeWritablePath(args[0] ?? '');
+  if (!path) return { lines: [mkLine('error', 'Usage: touch <filepath>')] };
+  if (readFile(ctx, path) !== undefined) return { lines: [mkLine('output', `${path} already exists`)] };
+  const msg = submitOps([{ type: 'create', path, contents: '' }], `Terminal: touch ${path}`, ctx);
+  return { lines: [mkLine('success', `✓ ${path} — ${msg}`)], mutated: true };
+}
+
+function cmdCopyOrMove(args: string[], ctx: CommandContext, move: boolean): CommandResult {
+  const verb = move ? 'mv' : 'cp';
+  const from = normalizeWritablePath(args[0] ?? '');
+  const to = normalizeWritablePath(args[1] ?? '');
+  if (!from || !to) return { lines: [mkLine('error', `Usage: ${verb} <from> <to>`)] };
+  const contents = readFile(ctx, from);
+  if (contents === undefined) return { lines: [mkLine('error', `File not found: ${from}`)] };
+  if (readFile(ctx, to) !== undefined) return { lines: [mkLine('error', `${to} already exists`)] };
+  const ops: TerminalFileOp[] = [{ type: 'create', path: to, contents }];
+  if (move) ops.push({ type: 'delete', path: from });
+  const msg = submitOps(ops, `Terminal: ${verb} ${from} ${to}`, ctx);
+  return { lines: [mkLine('success', `✓ ${from} → ${to} — ${msg}`)], mutated: true };
+}
+
+function cmdRm(args: string[], ctx: CommandContext): CommandResult {
+  const path = normalizeWritablePath(args[0] ?? '');
+  if (!path) return { lines: [mkLine('error', 'Usage: rm <filepath>')] };
+  if (readFile(ctx, path) === undefined) return { lines: [mkLine('error', `File not found: ${path}`)] };
+  const msg = submitOps([{ type: 'delete', path }], `Terminal: rm ${path}`, ctx);
+  return { lines: [mkLine('success', `✓ removed ${path} — ${msg}`)], mutated: true };
+}
+
+function cmdBegin(): CommandResult {
+  if (stagedOps) return { lines: [mkLine('output', `Already staging (${stagedOps.length} pending)`)] };
+  stagedOps = [];
+  return { lines: [mkLine('success', 'Staging started — file commands are held until "commit" or "abort"')] };
+}
+
+function cmdDiff(ctx: CommandContext): CommandResult {
+  if (!stagedOps) return { lines: [mkLine('output', 'Not staging. Type "begin" first.')] };
+  if (stagedOps.length === 0) return { lines: [mkLine('output', 'No staged changes')] };
+  const map = vfsToFileMap(ctx.nodes);
+  return {
+    lines: stagedOps.map((op) => {
+      if (op.type === 'delete') return mkLine('warn', `- ${op.path}`);
+      const before = map[op.path];
+      if (before === undefined) return mkLine('success', `+ ${op.path} (${op.contents.length} bytes)`);
+      return mkLine('output', `~ ${op.path} (${before.length} → ${op.contents.length} bytes)`);
+    }),
+  };
+}
+
+function cmdCommitStaged(ctx: CommandContext): CommandResult {
+  if (!stagedOps) return { lines: [mkLine('output', 'Not staging. Type "begin" first.')] };
+  const ops = stagedOps;
+  stagedOps = null;
+  if (ops.length === 0) return { lines: [mkLine('output', 'Nothing to commit')] };
+  if (!ctx.onPatch) return { lines: [mkLine('error', 'Not saved: no site is connected to this terminal')] };
+  ctx.onPatch(ops, `Terminal: ${ops.length} staged change${ops.length === 1 ? '' : 's'}`);
+  return { lines: [mkLine('success', `✓ Saving ${ops.length} change(s) as one checkpoint`)], mutated: true };
+}
+
+function cmdAbort(): CommandResult {
+  const n = stagedOps?.length ?? 0;
+  stagedOps = null;
+  return { lines: [mkLine('output', `Staging cancelled (${n} change(s) discarded)`)] };
+}
+
+function cmdRevision(ctx: CommandContext): CommandResult {
+  const info = ctx.getRevisionInfo?.();
+  const lines = [mkLine('output', `Revision: ${info?.revisionId ?? 'none'}`)];
+  if (info?.lastSurface) {
+    const at = info.lastAt ? new Date(info.lastAt).toLocaleTimeString() : '';
+    lines.push(mkLine('output', `Last save: ${info.lastSurface}${at ? ` at ${at}` : ''}`));
+  }
+  lines.push(mkLine('output', `Staged: ${stagedOps ? stagedOps.length : 'not staging'}`));
+  return { lines };
+}
+
+function cmdRoutes(ctx: CommandContext): CommandResult {
+  const app = vfsToFileMap(ctx.nodes)['/src/App.tsx'] ?? '';
+  const routes = [...app.matchAll(/path=["']([^"']+)["'][^>]*element=\{<\s*(\w+)/g)];
+  if (routes.length === 0) return { lines: [mkLine('output', 'No routes found in /src/App.tsx')] };
+  return { lines: routes.map((m) => mkLine('output', `${m[1].padEnd(24)} → ${m[2]}`)) };
+}
+
+function cmdIntents(ctx: CommandContext): CommandResult {
+  const map = vfsToFileMap(ctx.nodes);
+  const out: TerminalLine[] = [];
+  for (const [path, src] of Object.entries(map)) {
+    if (!/\.(t|j)sx$/.test(path)) continue;
+    for (const m of src.matchAll(/data-ut-intent=["']([^"']+)["']/g)) out.push(mkLine('output', `${path}: ${m[1]}`));
+  }
+  return { lines: out.length ? out.slice(0, 200) : [mkLine('output', 'No intents found')] };
 }
 
 export interface CommandResult {
@@ -140,6 +274,10 @@ function cmdHelp(): CommandResult {
       mkLine('output', '│  cat <file>             Show file contents'),
       mkLine('output', '│  write <path> <text>    Write raw text content to file'),
       mkLine('output', '│  writeb64 <path> <b64>  Write base64-decoded content to file'),
+    mkLine('output', '│  touch/rm <path>        Create or delete a file'),
+    mkLine('output', '│  mv|rename|cp <a> <b>   Move, rename or copy a file'),
+    mkLine('output', '│  begin/diff/commit/abort  Stage several changes as one checkpoint'),
+    mkLine('output', '│  revision/routes/intents  Saved version, page routes, button intents'),
       mkLine('output', '│  find <pattern>         Search files by name'),
       mkLine('output', '│  diagnose               Run VFS diagnostics'),
       mkLine('output', '│  whoami                 Show business system type'),
@@ -173,11 +311,12 @@ function cmdWrite(args: string[], ctx: CommandContext): CommandResult {
   }
 
   const content = args.slice(1).join(' ');
-  ctx.onWriteFile?.(normalizedPath, content);
+  const exists = readFile(ctx, normalizedPath) !== undefined;
+  const msg = submitOps([{ type: exists ? 'replace' : 'create', path: normalizedPath, contents: content }], `Terminal: write ${normalizedPath}`, ctx);
 
   return {
     lines: [
-      mkLine('success', `✓ Wrote ${content.length} bytes to ${normalizedPath}`),
+      mkLine('success', `✓ ${content.length} bytes to ${normalizedPath} — ${msg}`),
     ],
     mutated: true,
   };
@@ -196,10 +335,11 @@ function cmdWriteB64(args: string[], ctx: CommandContext): CommandResult {
   const payload = args.slice(1).join('');
   try {
     const content = decodeURIComponent(escape(atob(payload)));
-    ctx.onWriteFile?.(normalizedPath, content);
+    const exists = readFile(ctx, normalizedPath) !== undefined;
+    const msg = submitOps([{ type: exists ? 'replace' : 'create', path: normalizedPath, contents: content }], `Terminal: writeb64 ${normalizedPath}`, ctx);
     return {
       lines: [
-        mkLine('success', `✓ Wrote ${content.length} bytes to ${normalizedPath} (base64)`),
+        mkLine('success', `✓ ${content.length} bytes to ${normalizedPath} (base64) — ${msg}`),
       ],
       mutated: true,
     };
@@ -543,8 +683,34 @@ export function processCommand(input: string, ctx: CommandContext): CommandResul
       return cmdInstall(args, ctx);
     case 'uninstall':
     case 'remove':
-    case 'rm':
       return cmdUninstall(args, ctx);
+    case 'rm':
+      // Paths delete files; bare package names keep the legacy uninstall alias.
+      return args[0] && (args[0].includes('/') || args[0].includes('.')) && !args[0].startsWith('@')
+        ? cmdRm(args, ctx)
+        : cmdUninstall(args, ctx);
+    case 'touch':
+      return cmdTouch(args, ctx);
+    case 'mv':
+    case 'rename':
+      return cmdCopyOrMove(args, ctx, true);
+    case 'cp':
+      return cmdCopyOrMove(args, ctx, false);
+    case 'begin':
+      return cmdBegin();
+    case 'diff':
+      return cmdDiff(ctx);
+    case 'commit':
+      return cmdCommitStaged(ctx);
+    case 'abort':
+      return cmdAbort();
+    case 'revision':
+    case 'rev':
+      return cmdRevision(ctx);
+    case 'routes':
+      return cmdRoutes(ctx);
+    case 'intents':
+      return cmdIntents(ctx);
     case 'deps':
     case 'dependencies':
     case 'packages':
