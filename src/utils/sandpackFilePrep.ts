@@ -709,6 +709,14 @@ const PREVIEW_SELECTION_BRIDGE = `function __initUnisonPreviewSelectionBridge() 
       cur = cur.parentElement;
       depth++;
     }
+    // Generated pages rarely carry data-ut-page-path; the HashRouter route the
+    // element was clicked on is the authoritative page identity.
+    if (!pagePath) {
+      try {
+        const hashRoute = (window.location.hash || '#/').replace(/^#/, '').split('?')[0];
+        pagePath = hashRoute || '/';
+      } catch (_) { pagePath = '/'; }
+    }
     return {
       elementId,
       slotId,
