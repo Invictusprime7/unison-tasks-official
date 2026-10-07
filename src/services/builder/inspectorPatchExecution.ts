@@ -13,7 +13,7 @@
  *   set-theme-token  → ThemeEdit      (theme lane, VFSCommitService)
  *   set-slot-text    → FileOp on the source that owns the slot
  *   set-slot-asset   → FileOp on the source that owns the slot
- *   set-intent       → FileOp on the source that owns the slot
+ *   set-intent       → BindingOp (canonical Playground binding authority)
  *
  * Source mutations are deterministic attribute/text rewrites scoped to the
  * canonical `data-ut-slot` identity. Anything that cannot be rewritten without
@@ -21,13 +21,15 @@
  */
 
 import type { InspectorPatchOp, InspectorPatchPlan } from './propertyInspectorModel';
-import type { FileOp, PresentationOp } from '@/types/patchPlan';
+import type { BindingOp, FileOp, PresentationOp } from '@/types/patchPlan';
+import type { PlaygroundBinding } from '@/platform/core/playground';
 import type { ThemeEdit } from '@/services/theme/themeEdit';
 import { toCompositionRole } from './semanticPresentationOps';
 
 export type InspectorExecution =
   | { kind: 'presentation'; summary: string; ops: PresentationOp[] }
   | { kind: 'theme'; summary: string; themeEdit: ThemeEdit }
+  | { kind: 'binding'; summary: string; bindingOps: BindingOp[] }
   | { kind: 'source'; summary: string; fileOps: FileOp[] }
   | { kind: 'rejected'; reason: string };
 
@@ -43,6 +45,8 @@ export interface InspectorExecutionContext {
    */
   pageRole?: string | null;
   composedSections?: readonly string[] | null;
+  /** Snapshot-owned bindings keyed by binding id. Intent edits require one. */
+  bindings?: Record<string, PlaygroundBinding> | null;
 }
 
 /** Copy slots the composition plan owns directly. */
@@ -160,15 +164,20 @@ export function planInspectorExecution(
   if (op.type === 'set-intent') {
     const intent = safeAttrValue(op.intent ?? '');
     if (!intent) return { kind: 'rejected', reason: 'That action name cannot be written safely.' };
-    const nextTag = setAttribute(tag, 'data-ut-intent', intent);
+    const bindings = Object.values(context.bindings ?? {}).filter((candidate) => candidate.sourceSlot === op.slotId);
+    if (bindings.length !== 1) {
+      return {
+        kind: 'rejected',
+        reason: bindings.length === 0
+          ? `Slot "${op.slotId}" has no canonical binding record. Refresh the project before rewiring it.`
+          : `Slot "${op.slotId}" maps to multiple bindings. Select the rendered control before rewiring it.`,
+      };
+    }
+    const binding = bindings[0];
     return {
-      kind: 'source',
+      kind: 'binding',
       summary: plan.description,
-      fileOps: [{
-        type: 'replace',
-        path: target.path,
-        contents: replaceFileRange(target.content, target.start, target.end + 1, nextTag),
-      }],
+      bindingOps: [{ type: 'bindIntent', elementId: binding.bindingId, intent }],
     };
   }
 

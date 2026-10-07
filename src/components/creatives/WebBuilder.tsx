@@ -125,7 +125,7 @@ import { listCheckpoints, pickUndoTarget, restoreCheckpoint, type Checkpoint } f
 import CheckpointsPopover from "@/components/web-builder/CheckpointsPopover";
 import { prepareAICandidate } from "@/services/builder/aiCandidateGates";
 import { repairBuilderCandidate } from "@/services/builder/aiRepairLoop";
-import { emptyPatchPlan, legacyFilesToPatchPlan, type FileOp, type PatchSource } from "@/types/patchPlan";
+import { emptyPatchPlan, legacyFilesToPatchPlan, type BindingOp, type FileOp, type PatchSource } from "@/types/patchPlan";
 import type { BuilderIdentity } from "@/types/builderIdentity";
 import { normalizeUnisonRuntimeContext } from "@/platform/core/runtimeManifest";
 import type { BusinessRuntimeContract } from '@/platform/core/businessRuntimeContract';
@@ -3105,6 +3105,45 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     importBuilderFiles,
   ]);
 
+  /** Canonical entry for inspector/AI intent rewiring. Never edits JSX directly. */
+  const commitBindingOps = useCallback(async (
+    bindingOps: BindingOp[],
+    summary: string,
+  ): Promise<boolean> => {
+    if (!businessId || !currentDraftId || bindingOps.length === 0) return false;
+    const beforeFiles = virtualFSRef.current.getSandpackFiles();
+    const snapshot = resolveSnapshot(beforeFiles, effectiveRouteState as any).snapshot
+      ?? effectiveRouteState?.siteBundleSnapshot
+      ?? null;
+    if (!snapshot) return false;
+    try {
+      const { data: { user } } = await supabaseClient.auth.getUser();
+      const identity = buildCommitIdentity({
+        userId: user?.id, businessId, projectId: resolvedProjectId,
+        draftId: currentDraftId, revisionId: currentRevisionIdRef.current,
+      });
+      if (!identity) return false;
+      const patch = emptyPatchPlan(summary);
+      patch.bindingOps.push(...bindingOps);
+      const commit = await commitMutation({
+        source: 'playground-edit', identity,
+        current: buildCanonicalCommitCurrent(beforeFiles, snapshot), patch,
+        options: buildCommitOptions(snapshot),
+      });
+      if (commit.status !== 'committed') throw new CommitRejectedError('binding mutation was rejected', commit);
+      importBuilderFiles(commit.vfsFiles, {
+        replace: true, preferredPath: activePagePath, entryPoint: launchEntryPoint,
+        adoption: commitAdoptionRecord(commit),
+      });
+      if (commit.persistedRevisionId) setCurrentRevisionId(commit.persistedRevisionId);
+      return true;
+    } catch (error) {
+      console.warn('[WebBuilder] binding commit failed:', error);
+      toast.error('Could not save the selected behavior');
+      return false;
+    }
+  }, [businessId, currentDraftId, resolvedProjectId, activePagePath, launchEntryPoint, effectiveRouteState, buildCanonicalCommitCurrent, importBuilderFiles]);
+
   /**
    * Canonical entry for every file-authoring surface in the builder chrome
    * (AI code + patch plans, element edits, template loads, generated pages).
@@ -3396,6 +3435,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       revisionId: currentRevisionIdRef.current || null,
       pageRole,
       composedSections,
+      bindings: snapshot?.bindings ?? null,
     });
 
     if (execution.kind === 'rejected') {
@@ -3408,6 +3448,11 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     if (execution.kind === 'theme') {
       return commitThemeTokenOps([], execution.summary, execution.themeEdit);
     }
+    if (execution.kind === 'binding') {
+      const committed = await commitBindingOps(execution.bindingOps, execution.summary);
+      if (committed) toast.success(execution.summary);
+      return committed;
+    }
 
     const committed = await commitBuilderFiles(
       Object.fromEntries(
@@ -3419,7 +3464,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     );
     if (committed) toast.success(execution.summary);
     return Boolean(committed);
-  }, [effectiveRouteState, commitPresentationOps, commitThemeTokenOps, commitBuilderFiles]);
+  }, [effectiveRouteState, commitPresentationOps, commitThemeTokenOps, commitBindingOps, commitBuilderFiles]);
 
 
   // ── Preview Floating Toolbar → VFSCommitService bridge ───────────────────

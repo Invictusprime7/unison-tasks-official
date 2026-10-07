@@ -76,16 +76,21 @@ describe('inspector patch execution', () => {
     expect(next).toContain('alt="new"');
   });
 
-  it('rewrites a canonical intent attribute', () => {
+  it('routes an intent change through its canonical binding', () => {
     const result = planInspectorExecution(
       plan({ type: 'set-intent', sectionId: 'hero-1', selector: '', slotId: 'hero.primary-cta', intent: 'booking.start' }),
-      { files },
+      { files, bindings: {
+        'bind-hero': {
+          bindingId: 'bind-hero', sourcePageId: 'home', sourceLabel: 'Book',
+          sourceSlot: 'hero.primary-cta', intent: 'calendar.open', targetId: 'calendar', targetType: 'calendar',
+          confidence: 1, source: 'wizard', isValid: true,
+        },
+      } },
     );
-    expect(result.kind).toBe('source');
-    if (result.kind !== 'source') return;
-    const next = result.fileOps[0].type !== 'delete' ? result.fileOps[0].contents : '';
-    expect(next).toContain('data-ut-intent="booking.start"');
-    expect(next).not.toContain('data-ut-intent="nav.goto"');
+    expect(result).toMatchObject({
+      kind: 'binding',
+      bindingOps: [{ type: 'bindIntent', elementId: 'bind-hero', intent: 'booking.start' }],
+    });
   });
 
   it('rejects an unknown slot instead of guessing', () => {
