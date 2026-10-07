@@ -134,8 +134,8 @@ describe('structured AI page composition', () => {
       expect(response.status).toBe(200);
       expect(body).toMatchObject({ task: 'wizard_composition' });
       return { data: { content: body.content }, error: null };
-    }) as typeof runBuilderTurn;
-    const plan = await requestAIPageComposition({ ...selections, requestedPages: ['home'] }, new AbortController().signal, invoke);
+    });
+    const plan = await requestAIPageComposition({ ...selections, requestedPages: ['home'] }, new AbortController().signal, invoke as typeof runBuilderTurn);
     expect(plan).toEqual(candidate);
     expect(invoke.mock.calls[0][1]).toMatchObject({ functionName: 'wizard-site-composer' });
     expect(invoke.mock.calls[0][1]).not.toHaveProperty('timeoutMs');
