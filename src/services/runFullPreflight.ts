@@ -46,6 +46,12 @@ export interface RunFullPreflightOptions {
    * Builder AI edits must pass false. Defaults to true (legacy behaviour).
    */
   allowQuarantine?: boolean;
+  /**
+   * When false, industry-required intent surfaces are not injected. Launch
+   * keeps the default (true); user-driven Builder edits pass false so a style
+   * or copy edit can never grow an unrequested form or CTA on a page.
+   */
+  closeRequiredIntents?: boolean;
 }
 
 export interface RunFullPreflightResult {
@@ -73,7 +79,7 @@ export function runFullPreflight(
   inputFiles: Record<string, string>,
   options: RunFullPreflightOptions = {},
 ): RunFullPreflightResult {
-  const { siteBundleSnapshot = null, industry, brand, mode = 'repair', allowQuarantine } = options;
+  const { siteBundleSnapshot = null, industry, brand, mode = 'repair', allowQuarantine, closeRequiredIntents = true } = options;
   const ctx = { industry, brand };
 
 
@@ -131,7 +137,9 @@ export function runFullPreflight(
 
   // 4) Required-intent closure. This is deterministic and profile-driven so
   // required CTA surfaces never depend solely on AI prompt compliance.
-  const requiredIntentClosure = closeRequiredIndustryIntents(files, resolvedIndustry);
+  const requiredIntentClosure = closeRequiredIntents
+    ? closeRequiredIndustryIntents(files, resolvedIndustry)
+    : { files, injected: [] as string[], missing: [] as string[] };
   files = requiredIntentClosure.files;
   if (requiredIntentClosure.injected.length > 0 || requiredIntentClosure.missing.length > 0) {
     console.info('[runFullPreflight] required intent closure', requiredIntentClosure);

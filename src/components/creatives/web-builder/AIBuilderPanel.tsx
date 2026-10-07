@@ -130,7 +130,7 @@ import type { TopologyChange } from '@/services/pageTopologyOrchestrator';
 import { buildAICandidateChangeSet, type AICandidateChangeSet } from '@/services/builder/aiCandidateChangeSet';
 import { unisonAppBuilder } from '@/services/app-builder/UnisonAppBuilder';
 import { buildSequentialAiTasks } from '@/services/builder/sequentialAiTasks';
-import { findUnrequestedScopedSideEffects } from '@/services/builder/scopedEditContentGuard';
+import { findUnrequestedCopyChanges, findUnrequestedScopedSideEffects } from '@/services/builder/scopedEditContentGuard';
 
 import {
   planBusinessCapabilities,
@@ -269,6 +269,8 @@ function getScopedEditAutoApplyBlockReason(opts: {
   existingFileKeys: string[];
   /** The target came from an element the user clicked in the Live Preview. */
   pinnedBySelection?: boolean;
+  /** Visible text of the clicked element, when there is one. */
+  targetText?: string | null;
 }): string | null {
   const normalizePath = (p: string) => (p.startsWith('/') ? p : `/${p}`);
   const paths = Object.keys(opts.files).map(normalizePath);
@@ -301,6 +303,23 @@ function getScopedEditAutoApplyBlockReason(opts: {
       if (sideEffects.length > 0) {
         return `Scoped edit introduced unrequested side effects: ${sideEffects.join(', ')}.`;
       }
+    }
+  }
+
+  // Collateral copy: a scoped edit may never rewrite visible text the request
+  // did not cover — on the target file or any other existing file it touched.
+  for (const [path, candidate] of Object.entries(opts.files)) {
+    const normalized = normalizePath(path);
+    if (!/\.(tsx|jsx)$/.test(normalized)) continue;
+    const original = opts.originalFiles[normalized] ?? opts.originalFiles[normalized.slice(1)];
+    if (typeof original !== 'string' || original === candidate) continue;
+    const scopedText = opts.resolvedTargetFile && normalizePath(opts.resolvedTargetFile) === normalized
+      ? opts.targetText
+      : opts.pinnedBySelection ? '\u0000' : null;
+    const removedCopy = findUnrequestedCopyChanges(original, candidate, opts.prompt, scopedText);
+    if (removedCopy.length > 0) {
+      const sample = removedCopy.slice(0, 2).map((value) => `"${value}"`).join(', ');
+      return `The AI also changed text you didn't ask about in ${normalized} (${sample}${removedCopy.length > 2 ? ` and ${removedCopy.length - 2} more` : ''}).`;
     }
   }
 
@@ -2458,6 +2477,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
           resolvedTargetFile,
           existingFileKeys: vfsFiles ? Object.keys(vfsFiles) : [],
           pinnedBySelection: Boolean(selectionPinnedFile),
+          targetText: selectionPinnedFile ? (selectedTarget?.text ?? null) : null,
         }) : null;
 
         if (scopeBlockReason) {
