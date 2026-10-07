@@ -239,7 +239,7 @@ export async function persistAiCommit(ctx: AiCommitContext): Promise<CommitMutat
       industry: snapshot?.industry,
     },
   });
-    recordCommit('ai-builder', (result as { revisionId?: string | null }).revisionId ?? null);
+    recordCommit('ai-builder', result.persistedRevisionId);
     return result;
   });
 }
