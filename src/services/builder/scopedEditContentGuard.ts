@@ -69,7 +69,7 @@ export function findUnrequestedScopedSideEffects(
 const JSX_TEXT_PATTERN = />\s*([^<>{}]*[A-Za-z][^<>{}]*?)\s*</g;
 const COPY_PROP_PATTERN = /\b(?:headline|subheadline|title|subtitle|eyebrow|badge|description|label|caption|quote|body|text|cta|ctaLabel|placeholder|alt)\s*[:=]\s*(?:\{\s*)?(["'`])((?:(?!\1)[^\\]|\\.){2,})\1/g;
 
-const COPY_REQUEST_PATTERN = /\b(text|copy|wording|words|reword|rephrase|rewrite|rename|title|headline|heading|tagline|label|caption|say|says|read|reads|shorter|longer|shorten|lengthen|tone|formal|casual|friendly|professional|translate|spelling|typo|grammar|content|message|description|name|replace .* with|change .* to)\b/i;
+const COPY_REQUEST_PATTERN = /\b(text|copy|wording|words|reword|rephrase|rewrite|rename|say|says|read|reads|shorter|longer|shorten|lengthen|concise|tone|formal|casual|friendly|professional|playful|translate|spelling|typo|grammar|replace .* with|change .* to|write)\b/i;
 
 function normalizeCopy(value: string): string {
   return value.replace(/\s+/g, ' ').trim();
