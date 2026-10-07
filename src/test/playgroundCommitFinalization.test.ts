@@ -124,7 +124,7 @@ describe('Playground canonical finalization', () => {
     const initialGalleryComposition = collectResolvedCompositions(launched.files)[gallery.filePath!];
     expect(collectResolvedCompositions(result.vfsFiles)[gallery.filePath!])
       .toMatchObject({
-        templateName: 'Gallery Closure Salon Â· Studio Portfolio',
+        templateName: `Gallery Closure Salon ${String.fromCharCode(0x00B7)} Studio Portfolio`,
         sections: initialGalleryComposition.sections,
         variantOverrides: initialGalleryComposition.variantOverrides,
       });
