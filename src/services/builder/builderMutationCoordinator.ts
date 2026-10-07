@@ -6,7 +6,7 @@
  * through runBuilderAiMutation → commitMutation, and aiApplyGate keeps its
  * strict stale-revision check.
  */
-import type { AICandidateChangeSet } from '@/services/builder/aiCandidateChangeSet';
+import { fnv1a, type AICandidateChangeSet } from '@/services/builder/aiCandidateChangeSet';
 
 export type MutationSurface = 'ai-builder' | 'toolbar-ai' | 'terminal' | 'command-menu' | 'autosave' | 'catalog';
 
@@ -42,20 +42,26 @@ export type RebaseResult =
 
 /**
  * Move a candidate onto `currentRevisionId` when none of the files it touches
- * changed between the candidate's base files and the current files.
+ * changed since the candidate's base (compared by content fingerprint).
+ * Candidates without fingerprints can never be rebased.
  */
 export function rebaseCandidate(
   candidate: AICandidateChangeSet,
-  candidateBaseFiles: Readonly<Record<string, string>>,
   currentFiles: Readonly<Record<string, string>>,
   currentRevisionId: string | null,
 ): RebaseResult {
   if ((candidate.baseRevisionId ?? null) === currentRevisionId) {
     return { ok: true, candidate, rebased: false };
   }
+  const prints = candidate.baseFingerprints;
+  if (!prints) return { ok: false, conflicts: candidate.fileOps.map((op) => op.path) };
   const conflicts = candidate.fileOps
     .map((op) => op.path)
-    .filter((path) => (candidateBaseFiles[path] ?? null) !== (currentFiles[path] ?? null));
+    .filter((path) => {
+      if (!(path in prints)) return true;
+      const now = currentFiles[path];
+      return (now === undefined ? null : fnv1a(now)) !== prints[path];
+    });
   if (conflicts.length > 0) return { ok: false, conflicts };
   return {
     ok: true,

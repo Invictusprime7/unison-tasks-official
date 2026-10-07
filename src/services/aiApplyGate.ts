@@ -26,6 +26,7 @@ import {
   type PublishBlockerSummary,
 } from '@/services/vfsCommitService';
 import { assertPatchPlan, legacyFilesToPatchPlan } from '@/types/patchPlan';
+import { describeStaleCandidate, rebaseCandidate, recordCommit, runExclusive } from '@/services/builder/builderMutationCoordinator';
 import type { BuilderIdentity } from '@/types/builderIdentity';
 import type { SiteBundleSnapshot } from '@/platform/core/canonicalPipeline';
 import type { PlaygroundState } from '@/platform/core/playground';
@@ -54,7 +55,14 @@ export interface AiCommitContext {
 }
 
 export function buildAiCandidatePatch(ctx: AiCommitContext): PatchPlan {
-  const candidate = ctx.candidate;
+  let candidate = ctx.candidate;
+  if (candidate && (candidate.baseRevisionId ?? null) !== (ctx.revisionId ?? null)) {
+    const rebase = rebaseCandidate(candidate, ctx.beforeFiles, ctx.revisionId ?? null);
+    if (!rebase.ok) {
+      throw new Error(`[aiApplyGate] candidate base revision is stale; regenerate from the current revision. ${describeStaleCandidate(rebase.conflicts)}`);
+    }
+    candidate = rebase.candidate;
+  }
   if (!candidate) return legacyFilesToPatchPlan(ctx.nextFiles, 'ai-builder legacy candidate');
   if (!candidate.id.trim()) {
     throw new Error('[aiApplyGate] candidate identity is required.');
@@ -214,7 +222,8 @@ export async function persistAiCommit(ctx: AiCommitContext): Promise<CommitMutat
   }
   const snapshot = canonicalSnapshot(ctx);
   const patch = buildAiCandidatePatch(ctx);
-  return commitMutation({
+  return runExclusive('ai-builder', async () => {
+    const result = await commitMutation({
     source: 'ai-builder',
     identity,
     current: {
@@ -229,5 +238,8 @@ export async function persistAiCommit(ctx: AiCommitContext): Promise<CommitMutat
       requireReadinessPass: false,
       industry: snapshot?.industry,
     },
+  });
+    recordCommit('ai-builder', (result as { revisionId?: string | null }).revisionId ?? null);
+    return result;
   });
 }
