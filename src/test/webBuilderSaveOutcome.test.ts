@@ -129,6 +129,7 @@ describe('WebBuilder save outcome', () => {
     expect(dependencies.vfsReplaceFiles).toHaveBeenCalledWith(files);
     expect(dependencies.lastSavedVfsSignatureRef.current).toBe(JSON.stringify(files));
     expect(dependencies.lastSavedCodeRef.current).toBe('finalized router');
+    expect(dependencies.lastPersistedVfsFilesRef.current).toEqual(files);
   });
 
   it('does not autosave a page switch when the multi-file VFS is unchanged', async () => {

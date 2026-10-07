@@ -22,11 +22,16 @@ vi.mock('@/integrations/supabase/client', () => ({
     functions: { invoke: reconcile },
     rpc: async (name: string, payload: Record<string, unknown>) => {
       expect(name).toBe('commit_canonical_site_revision_v2');
-      const snapshot = payload.p_site_bundle_snapshot as { vfsFiles: Record<string, string> };
-      const runtimeFiles = Object.fromEntries(Object.entries(payload.p_vfs_files as Record<string, string>)
-        .filter(([path]) => !path.startsWith('/.unison/')));
-      expect(snapshot.vfsFiles).toEqual(runtimeFiles);
+      const delta = ((payload.p_patch_json as { _commitMetadata?: { vfsDelta?: { files?: Record<string, string>; deletedPaths?: string[] } } })._commitMetadata?.vfsDelta);
+      const previousFiles = (revisions.at(-1)?.vfs_files ?? {}) as Record<string, string>;
+      const vfsFiles = delta
+        ? Object.fromEntries(Object.entries({ ...previousFiles, ...(delta.files ?? {}) }).filter(([path]) => !delta.deletedPaths?.includes(path)))
+        : payload.p_vfs_files as Record<string, string>;
+      const runtimeFiles = Object.fromEntries(Object.entries(vfsFiles).filter(([path]) => !path.startsWith('/.unison/')));
+      const snapshot = { ...(payload.p_site_bundle_snapshot as Record<string, unknown>), vfsFiles: runtimeFiles };
       const row = Object.fromEntries(Object.entries(payload).map(([key, value]) => [key.replace(/^p_/, ''), value]));
+      row.vfs_files = vfsFiles;
+      row.site_bundle_snapshot = snapshot;
       row.id = `00000000-0000-4000-8000-${String(revisions.length + 1).padStart(12, '0')}`;
       revisions.push(JSON.parse(JSON.stringify(row)));
       return { data: row.id, error: null };
@@ -116,10 +121,12 @@ describe('Playground canonical finalization', () => {
     expect(restored?.siteBundleSnapshot).toEqual(result.siteBundleSnapshot);
     expect(restored?.playground?.pageRegistry.pages[gallery.pageId]).toMatchObject({ title: 'Studio Portfolio', path: '/gallery' });
     expect(result.siteBundleSnapshot?.bindings).toEqual(launched.siteBundleSnapshot?.bindings);
+    const initialGalleryComposition = collectResolvedCompositions(launched.files)[gallery.filePath!];
     expect(collectResolvedCompositions(result.vfsFiles)[gallery.filePath!])
-      .toEqual({
-        ...collectResolvedCompositions(launched.files)[gallery.filePath!],
+      .toMatchObject({
         templateName: 'Gallery Closure Salon · Studio Portfolio',
+        sections: initialGalleryComposition.sections,
+        variantOverrides: initialGalleryComposition.variantOverrides,
       });
     expect(restored?.vfsFiles['/src/components/recipes/Gallery.ts']).toBe(portableRecipes.families.gallery);
     expect(result.vfsFiles['/src/components/recipes/Navbar.ts']).toBe(portableRecipes.families.navbar);

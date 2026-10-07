@@ -42,7 +42,12 @@ describe('restaurant deterministic page grammars', () => {
       const result = compile(role, `restaurant-${index}`);
       const alternative = definition.alternatives.find((item) => item.id === result.descriptor.compositionAlternativeId)!;
       seen.add(alternative.id);
-      expect(result.sections.map((section) => section.sourceSectionId)).toEqual(alternative.sectionIds);
+      // The authored alternative stays intact while the industry-owned menu
+      // contract can supplement it with required route content.
+      expect(result.sections.map((section) => section.sourceSectionId))
+        .toEqual(expect.arrayContaining(alternative.sectionIds));
+      if (role === 'services') expect(result.sections.map((section) => section.type)).toContain('pricing');
+      expect(result.sections.at(-1)?.type).toBe('footer');
       expect(result.sections.find((section) => section.type === 'hero')?.variantId).toBe(alternative.heroVariantId);
       expect(result.files).toEqual(compile(role, `restaurant-${index}`).files);
       expect(findUnresolvedLocalImports(result.files)).toEqual([]);

@@ -489,7 +489,8 @@ export async function commitMutation(
           `[VFSCommitService] ${protection.classification} path cannot be edited directly. ${protection.rationale}`,
         );
       }
-      if (compilerOwnedPaths.has(path)
+      if (path !== customizerPagePath
+        && compilerOwnedPaths.has(path)
         && !builderAuthorable
         && (op.type === 'delete' || op.contents !== input.current.vfsFiles[op.path])) {
         throw new Error('[VFSCommitService] Generated section and recipe modules are compiler-owned. Use a presentation operation or a canonical composition upgrade.');
@@ -528,6 +529,20 @@ export async function commitMutation(
 
   let workingPlayground = input.current.playground;
   let workingSnapshot = input.current.siteBundleSnapshot as SiteBundleSnapshot | null | undefined;
+  // Page labels can be edited in the Playground without changing the sealed
+  // route topology. Keep that metadata in the snapshot fed to the compiler so
+  // regenerated descriptors, tabs, and preview titles do not retain an older
+  // label. Structural route changes still require typed route operations.
+  if (workingPlayground?.pageRegistry && workingSnapshot?.pageRegistry) {
+    const snapshotPages = workingSnapshot.pageRegistry.pages;
+    const playgroundPages = workingPlayground.pageRegistry.pages;
+    const sameTopology = Object.keys(snapshotPages).length === Object.keys(playgroundPages).length
+      && Object.entries(snapshotPages).every(([pageId, page]) => {
+        const candidate = playgroundPages[pageId];
+        return candidate?.path === page.path && candidate?.filePath === page.filePath;
+      });
+    if (sameTopology) workingSnapshot = { ...workingSnapshot, pageRegistry: workingPlayground.pageRegistry };
+  }
   if (patch.routeOps?.length) {
     if (!workingPlayground?.pageRegistry || !workingSnapshot?.pageRegistry) {
       throw new Error('[VFSCommitService] Typed route operations require canonical Playground and snapshot topology.');
@@ -737,6 +752,20 @@ export async function commitMutation(
       : finalizedArtifact ? preserveWizardMetadataFiles(finalizedArtifact.files, workingFiles) : input.source === 'wizard-launch'
       ? mergeWizardLaunchFiles(workingFiles, (snapshot as SiteBundleSnapshot | null) ?? null)
       : ((snapshot as { vfsFiles?: Record<string, string> } | null)?.vfsFiles ?? workingFiles);
+  // Page labels are topology metadata, but they also label the compiler-owned
+  // composition sidecars consumed by preview and the editor. Project the
+  // accepted registry onto those sidecars after every canonical build.
+  const acceptedSnapshot = snapshot as SiteBundleSnapshot | null;
+  for (const page of Object.values(acceptedSnapshot?.pageRegistry?.pages ?? {})) {
+    if (page.isHome || !page.filePath) continue;
+    const descriptorPath = resolvedCompositionPathFor(page.filePath);
+    const composition = collectResolvedCompositions({ [descriptorPath]: files[descriptorPath] })[page.filePath];
+    if (!composition) continue;
+    files[descriptorPath] = serializeResolvedComposition({
+      ...composition,
+      templateName: `${acceptedSnapshot?.businessName || 'Site'} · ${page.title}`,
+    });
+  }
   // A reviewed artifact is already a complete candidate, not a page template.
   // Capture before preflight can mutate even the input map in place. Protect
   // hooks, styles, assets and original components as well as registered pages.

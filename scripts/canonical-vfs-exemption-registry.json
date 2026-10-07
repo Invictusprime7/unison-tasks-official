@@ -36,8 +36,7 @@
     "dependency manifest write, not site content": "runtime-manifest",
     "write-back of canonical Unison runtime files, not user content": "runtime-manifest",
     "optimistic HMR projection; the same mutation is chained through commitMutation below": "optimistic-hmr",
-    "optimistic HMR projection; the edit is persisted through saveDraft below": "optimistic-hmr",
-    "deterministic navigation projection from the page registry": "router-projection"
+    "optimistic HMR projection; the edit is persisted through saveDraft below": "optimistic-hmr"
   },
   "baseline": {
     "src/components/creatives/WebBuilder.tsx": {
@@ -56,8 +55,7 @@
       "local editor redo of a working-set snapshot": 1,
       "optimistic HMR projection; the edit is persisted through saveDraft below": 1,
       "AI edit-history revert of a recorded working-set snapshot": 1,
-      "AI edit-history reapply of a recorded working-set snapshot": 1,
-      "deterministic navigation projection from the page registry": 1
+      "AI edit-history reapply of a recorded working-set snapshot": 1
     },
     "src/components/creatives/code-editor/VFSCodeView.tsx": {
       "dependency manifest write, not site content": 1,

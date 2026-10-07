@@ -293,6 +293,19 @@ export function compilePlayground(
           : options?.designIntervention,
       });
       Object.assign(vfsFiles, fileSet);
+      // A regenerated route must carry the current PageRegistry title into its
+      // resolved composition just like a preserved route. Otherwise a rename
+      // leaves the VFS descriptor (and downstream preview metadata) stale.
+      if (!node.isHome && businessName && node.title) {
+        const descriptor = resolvedCompositionPathFor(fp);
+        const composition = collectResolvedCompositions({ [descriptor]: vfsFiles[descriptor] })[fp];
+        if (composition) {
+          vfsFiles[descriptor] = JSON.stringify({
+            ...composition,
+            templateName: `${businessName} · ${node.title}`,
+          }, null, 2) + '\n';
+        }
+      }
     } catch (err) {
       if (err instanceof PreviewPipelineError) {
         blockedWizardPages.push(fp);

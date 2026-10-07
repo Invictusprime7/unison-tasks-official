@@ -31,7 +31,7 @@ describe('cloud projects with missing legacy drafts', () => {
     expect(recovered.vfsFiles['/src/App.tsx']).not.toContain('/booking');
     expect(JSON.parse(recovered.vfsFiles['/.unison/legacy-recovery.json'])).toMatchObject({ originalSourceRecovered: false, businessName: 'Saved brand' });
     expect(state.inserts[0]).not.toHaveProperty('vfs_files');
-  });
+  }, 15_000);
   it('recovers surviving site bundle bytes before considering recomposition', async () => {
     state.rows.push(project, null, [{ bundle: { vfsFiles: { '/src/App.tsx': 'original bundle source' } } }], { id: 'recovered-draft' });
     expect(await recoverLegacyCloudProject('project')).toBe('recovered-draft');

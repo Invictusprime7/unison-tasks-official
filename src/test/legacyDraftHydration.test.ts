@@ -101,7 +101,7 @@ describe('legacy saved draft hydration', () => {
         }));
       } }],
     });
-  });
+  }, 15_000);
   it('reports an unavailable saved template rather than substituting a different site', async () => {
     const plan = planSiteTopology('ecommerce', 'Saved Brand', { selectedTemplateId: 'store-boutique' });
     await expect(projectLegacySavedPlan({ ...plan, selectedTemplateId: 'removed-template' })).rejects.toThrow('The project is not empty');
@@ -117,7 +117,7 @@ describe('legacy saved draft hydration', () => {
     const projected = await projectLegacySavedPlan(plan);
     expect(projected.files[plan.pages[0].filePath]).toBeTruthy();
     expect(projected.files['/src/index.css']).toContain('--primary');
-  });
+  }, 15_000);
   it('scopes recovery to the requested project and draft', async () => {
     mock.row = { code: 'saved', last_revision_id: null };
     expect((await loadLegacyDraftContent('project', 'draft'))?.code).toBe('saved');

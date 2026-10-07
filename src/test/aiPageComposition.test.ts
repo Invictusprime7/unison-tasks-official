@@ -126,11 +126,14 @@ describe('structured AI page composition', () => {
   it('round-trips the backend lane through client validation and canonical compilation', async () => {
     const invoke = vi.fn(async (input: Parameters<typeof runBuilderTurn>[0], _options?: Parameters<typeof runBuilderTurn>[1]) => {
       const response = await runCompositionLane(String(input.messages[0].content), {}, async messages => {
-        expect(messages[0].content).toBe(COMPOSITION_SYSTEM_PROMPT);
+        expect(messages[0].content.startsWith(COMPOSITION_SYSTEM_PROMPT)).toBe(true);
         expect(messages[0].content).not.toContain('[BUILDER ASSISTANT MODE]');
         return { content: JSON.stringify(candidate) };
       });
-      return { data: await response.json(), error: null };
+      const body = await response.json();
+      expect(response.status).toBe(200);
+      expect(body).toMatchObject({ task: 'wizard_composition' });
+      return { data: { content: body.content }, error: null };
     });
     const plan = await requestAIPageComposition({ ...selections, requestedPages: ['home'] }, new AbortController().signal, invoke);
     expect(plan).toEqual(candidate);

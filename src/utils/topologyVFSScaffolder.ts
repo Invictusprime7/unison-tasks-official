@@ -439,14 +439,14 @@ function buildRoleComposition(
     getIndustryProfile(plan.industry)?.defaultPages.find((spec) => spec.path === page.route)
       ?.expectedSections ?? []
   ) as SectionType[];
-  // An explicit template-authored pool is a deliberate override and stays
-  // authoritative; the industry contract only fills the generic role pool.
+  // The industry matrix is the route contract. A template-authored pool can
+  // enrich that contract, but may not remove declared route sections.
   const authoredPool = template.sectionPool?.[role as TemplatePageRole];
   const rolePool: SectionType[] =
     authoredPool ??
     DEFAULT_ROLE_SECTION_POOL[role] ??
     DEFAULT_ROLE_SECTION_POOL.custom;
-  const rawPool = !authoredPool && contractTypes.length > 0
+  const rawPool = contractTypes.length > 0
     ? [...contractTypes, ...rolePool.filter((type) => !contractTypes.includes(type))]
     : rolePool;
   const hasNavbar = rawPool.includes('navbar');
@@ -523,9 +523,12 @@ function buildRoleComposition(
   // The role pool can declare a section type the Home composition never
   // contains. Provision it from the industry starter registry instead of
   // silently dropping the industry's page contract.
-  if (!definition && !page.isHome) {
+  if (!page.isHome) {
     const presentTypes = new Set(filtered.map((section) => section.type));
-    for (const type of poolList) {
+    // Explicit template compositions retain their authored section order, but
+    // still receive any body family required by the industry route contract.
+    const requiredTypes = definition ? contractTypes : poolList;
+    for (const type of requiredTypes) {
       if (type === 'navbar' || type === 'footer' || presentTypes.has(type)) continue;
       const starter = createIndustryStarterSection(plan.industry, type, {
         businessName: plan.businessName || template.name,
@@ -534,6 +537,12 @@ function buildRoleComposition(
       });
       if (!starter) continue;
       appendSection(starter);
+      // Contract supplements must remain body content. Preserve the explicit
+      // alternative's order while keeping its footer as the terminal section.
+      const appended = filtered.pop();
+      const footerIndex = filtered.findIndex((section) => section.type === 'footer');
+      if (appended && footerIndex >= 0) filtered.splice(footerIndex, 0, appended);
+      else if (appended) filtered.push(appended);
       presentTypes.add(type);
     }
   }

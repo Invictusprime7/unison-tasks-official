@@ -42,11 +42,13 @@ describe('V4 M5 — 21st generation coverage gate', () => {
   it('runs before Stage 4b in the launch orchestrator and only degrades', () => {
     const source = fs.readFileSync('src/services/launch/launchOrchestrator.ts', 'utf8');
     const gateAt = source.indexOf('validateTwentyFirstGenerationCoverage({');
-    const stage4bAt = source.indexOf('await runWizardStage4b({');
+    const appBuildAt = source.indexOf('const appBuild = await run.stage("app-build"');
     expect(gateAt).toBeGreaterThan(-1);
-    expect(gateAt).toBeLessThan(stage4bAt);
-    expect(source).toContain("run.degrade('seed', 'coverage.21st-incomplete'");
-    expect(source.slice(gateAt, stage4bAt)).not.toContain('throw');
+    expect(appBuildAt).toBeGreaterThan(-1);
+    expect(gateAt).toBeLessThan(appBuildAt);
+    expect(source).toContain("run.degrade('contract', 'coverage.21st-incomplete'");
+    const coverageBlockEnd = source.indexOf('return buildCanonicalLaunchPlan', gateAt);
+    expect(source.slice(gateAt, coverageBlockEnd)).not.toContain('throw');
   });
 });
 

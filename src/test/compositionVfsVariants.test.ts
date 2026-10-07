@@ -105,7 +105,11 @@ describe('composition VFS variants', () => {
         ...routePlan(template.id, template.industry, page), selectedThemePresetId: preset.id,
       }, template);
       const sections = readSections(files[page.filePath]);
-      expect(sections.map((section) => section.sourceSectionId), preset.id).toEqual(expected.map((section) => section.id));
+      // The explicit pool is preserved, then the industry route contract may
+      // add required body families for the canonical /gallery route.
+      expect(sections.map((section) => section.sourceSectionId), preset.id)
+        .toEqual(expect.arrayContaining(expected.map((section) => section.id)));
+      expect(sections.at(-1)?.type, preset.id).toBe('footer');
       expect(new Set(sections.map((section) => section.id)).size).toBe(sections.length);
     }
   });
