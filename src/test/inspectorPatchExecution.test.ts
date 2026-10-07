@@ -82,7 +82,7 @@ describe('inspector patch execution', () => {
       { files, bindings: {
         'bind-hero': {
           bindingId: 'bind-hero', sourcePageId: 'home', sourceLabel: 'Book',
-          sourceSlot: 'hero.primary-cta', intent: 'calendar.open', targetId: 'calendar', targetType: 'calendar',
+          sourceSlot: 'hero.primary-cta' as any, intent: 'calendar.open', targetId: 'calendar', targetType: 'calendar',
           confidence: 1, source: 'wizard', isValid: true,
         },
       } },

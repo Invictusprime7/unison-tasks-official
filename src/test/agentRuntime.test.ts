@@ -43,7 +43,7 @@ describe('agent runtime', () => {
     expect(proposal.bindingOps).toEqual([{
       type: 'bindIntent', elementId: 'book', intent: 'booking.start', payload: { campaign: 'fall' },
     }]);
-    expect(ctx.files['/src/pages/Home.tsx']).toContain('booking.create');
+    expect((ctx as any).files['/src/pages/Home.tsx']).toContain('booking.create');
   });
   it('refuses a behavior proposal for an unbound control', () => {
     expect(() => agentOperations.propose_bind_intent({ files: {}, revisionId: 'revision-1' }, {
