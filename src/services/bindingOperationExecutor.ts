@@ -40,6 +40,28 @@ function resolveBinding(bindings: Record<string, PlaygroundBinding>, elementId: 
   return matches[0];
 }
 
+const COMPATIBLE_CORE_INTENTS: Record<PlaygroundBinding['intent'], readonly string[]> = {
+  'nav.goto_page': ['nav.goto', 'nav.anchor'],
+  'funnel.goto_step': ['nav.goto'],
+  'form.open': ['contact.submit', 'quote.request', 'lead.capture', 'newsletter.subscribe'],
+  'popup.open': ['auth.register', 'auth.login', 'nav.anchor'],
+  'calendar.open': ['booking.create'],
+  'checkout.start': ['cart.add', 'cart.checkout', 'pay.checkout', 'donation.start'],
+  'product.view': ['product.view'],
+  'cart.view': ['cart.view'],
+  'external.open': ['nav.external'],
+};
+
+function assertIntentTargetCompatibility(binding: PlaygroundBinding, intent: string): void {
+  const compatible = COMPATIBLE_CORE_INTENTS[binding.intent] ?? [];
+  if (!compatible.includes(intent)) {
+    throw new Error(
+      `[BindingOperation] Intent "${intent}" is incompatible with the selected ${binding.targetType} target. ` +
+      `Create or select a compatible target before changing this behavior.`,
+    );
+  }
+}
+
 /** Apply typed binding operations without writing VFS or persistence directly. */
 export function applyBindingOperations(
   playground: PlaygroundState | undefined,
@@ -67,6 +89,7 @@ export function applyBindingOperations(
     if (!intent) {
       throw new Error(`[BindingOperation] "${operation.intent ?? ''}" is not a registered intent.`);
     }
+    assertIntentTargetCompatibility(binding, intent);
     bindings[binding.bindingId] = {
       ...binding,
       coreIntent: intent,

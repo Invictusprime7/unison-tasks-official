@@ -30,11 +30,11 @@ const playground = (): PlaygroundState => ({
 describe('canonical binding operations', () => {
   it('updates the canonical binding by stable preview binding identity', () => {
     const result = applyBindingOperations(playground(), [{
-      type: 'bindIntent', elementId: 'bind-hero-book', intent: 'quote.request', payload: { campaign: 'fall' },
+      type: 'bindIntent', elementId: 'bind-hero-book', intent: 'booking.start', payload: { campaign: 'fall' },
     }]);
 
     expect(result.playground.bindings['bind-hero-book']).toMatchObject({
-      coreIntent: 'quote.request', source: 'ai', payloadTemplate: { campaign: 'fall' },
+      coreIntent: 'booking.create', source: 'ai', payloadTemplate: { campaign: 'fall' },
     });
     expect(result.boundBindingIds).toEqual(['bind-hero-book']);
   });
@@ -43,8 +43,14 @@ describe('canonical binding operations', () => {
     const state = playground();
     state.bindings['bind-pricing-book'] = { ...binding, bindingId: 'bind-pricing-book', sourcePageId: 'pricing' };
     expect(() => applyBindingOperations(state, [{
-      type: 'bindIntent', elementId: 'primary-cta', intent: 'quote.request',
+      type: 'bindIntent', elementId: 'primary-cta', intent: 'booking.create',
     }])).toThrow('ambiguous');
+  });
+
+  it('rejects an intent whose runtime target cannot fulfill it', () => {
+    expect(() => applyBindingOperations(playground(), [{
+      type: 'bindIntent', elementId: 'bind-hero-book', intent: 'quote.request',
+    }])).toThrow('incompatible');
   });
 
   it('removes only the old binding attributes for an unbound control', () => {
