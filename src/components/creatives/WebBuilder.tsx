@@ -1,4 +1,5 @@
 /* cache-bust: 20260309 */
+import { shouldPauseAutosave } from '@/services/builder/builderMutationCoordinator';
 import { buildPreviewRouteTabs, ROUTE_TAB_PREFIX } from '@/components/creatives/web-builder/previewRouteTabs';
 import "./web-builder/obsidian-theme.css";
 import { useEffect, useRef, useState, useCallback, useMemo, lazy, Suspense, Component, type ReactNode, type ErrorInfo } from "react";
