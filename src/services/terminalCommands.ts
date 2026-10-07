@@ -86,7 +86,7 @@ function readFile(ctx: CommandContext, path: string): string | undefined {
 function cmdTouch(args: string[], ctx: CommandContext): CommandResult {
   const path = normalizeWritablePath(args[0] ?? '');
   if (!path) return { lines: [mkLine('error', 'Usage: touch <filepath>')] };
-  if (readFile(ctx, path) !== undefined) return { lines: [mkLine('info', `${path} already exists`)] };
+  if (readFile(ctx, path) !== undefined) return { lines: [mkLine('output', `${path} already exists`)] };
   const msg = submitOps([{ type: 'create', path, contents: '' }], `Terminal: touch ${path}`, ctx);
   return { lines: [mkLine('success', `✓ ${path} — ${msg}`)], mutated: true };
 }
@@ -114,30 +114,30 @@ function cmdRm(args: string[], ctx: CommandContext): CommandResult {
 }
 
 function cmdBegin(): CommandResult {
-  if (stagedOps) return { lines: [mkLine('info', `Already staging (${stagedOps.length} pending)`)] };
+  if (stagedOps) return { lines: [mkLine('output', `Already staging (${stagedOps.length} pending)`)] };
   stagedOps = [];
   return { lines: [mkLine('success', 'Staging started — file commands are held until "commit" or "abort"')] };
 }
 
 function cmdDiff(ctx: CommandContext): CommandResult {
-  if (!stagedOps) return { lines: [mkLine('info', 'Not staging. Type "begin" first.')] };
-  if (stagedOps.length === 0) return { lines: [mkLine('info', 'No staged changes')] };
+  if (!stagedOps) return { lines: [mkLine('output', 'Not staging. Type "begin" first.')] };
+  if (stagedOps.length === 0) return { lines: [mkLine('output', 'No staged changes')] };
   const map = vfsToFileMap(ctx.nodes);
   return {
     lines: stagedOps.map((op) => {
       if (op.type === 'delete') return mkLine('warn', `- ${op.path}`);
       const before = map[op.path];
       if (before === undefined) return mkLine('success', `+ ${op.path} (${op.contents.length} bytes)`);
-      return mkLine('info', `~ ${op.path} (${before.length} → ${op.contents.length} bytes)`);
+      return mkLine('output', `~ ${op.path} (${before.length} → ${op.contents.length} bytes)`);
     }),
   };
 }
 
 function cmdCommitStaged(ctx: CommandContext): CommandResult {
-  if (!stagedOps) return { lines: [mkLine('info', 'Not staging. Type "begin" first.')] };
+  if (!stagedOps) return { lines: [mkLine('output', 'Not staging. Type "begin" first.')] };
   const ops = stagedOps;
   stagedOps = null;
-  if (ops.length === 0) return { lines: [mkLine('info', 'Nothing to commit')] };
+  if (ops.length === 0) return { lines: [mkLine('output', 'Nothing to commit')] };
   if (!ctx.onPatch) return { lines: [mkLine('error', 'Not saved: no site is connected to this terminal')] };
   ctx.onPatch(ops, `Terminal: ${ops.length} staged change${ops.length === 1 ? '' : 's'}`);
   return { lines: [mkLine('success', `✓ Saving ${ops.length} change(s) as one checkpoint`)], mutated: true };
@@ -146,12 +146,12 @@ function cmdCommitStaged(ctx: CommandContext): CommandResult {
 function cmdAbort(): CommandResult {
   const n = stagedOps?.length ?? 0;
   stagedOps = null;
-  return { lines: [mkLine('info', `Staging cancelled (${n} change(s) discarded)`)] };
+  return { lines: [mkLine('output', `Staging cancelled (${n} change(s) discarded)`)] };
 }
 
 function cmdRevision(ctx: CommandContext): CommandResult {
   const info = ctx.getRevisionInfo?.();
-  const lines = [mkLine('info', `Revision: ${info?.revisionId ?? 'none'}`)];
+  const lines = [mkLine('output', `Revision: ${info?.revisionId ?? 'none'}`)];
   if (info?.lastSurface) {
     const at = info.lastAt ? new Date(info.lastAt).toLocaleTimeString() : '';
     lines.push(mkLine('output', `Last save: ${info.lastSurface}${at ? ` at ${at}` : ''}`));
@@ -163,7 +163,7 @@ function cmdRevision(ctx: CommandContext): CommandResult {
 function cmdRoutes(ctx: CommandContext): CommandResult {
   const app = vfsToFileMap(ctx.nodes)['/src/App.tsx'] ?? '';
   const routes = [...app.matchAll(/path=["']([^"']+)["'][^>]*element=\{<\s*(\w+)/g)];
-  if (routes.length === 0) return { lines: [mkLine('info', 'No routes found in /src/App.tsx')] };
+  if (routes.length === 0) return { lines: [mkLine('output', 'No routes found in /src/App.tsx')] };
   return { lines: routes.map((m) => mkLine('output', `${m[1].padEnd(24)} → ${m[2]}`)) };
 }
 
@@ -174,7 +174,7 @@ function cmdIntents(ctx: CommandContext): CommandResult {
     if (!/\.(t|j)sx$/.test(path)) continue;
     for (const m of src.matchAll(/data-ut-intent=["']([^"']+)["']/g)) out.push(mkLine('output', `${path}: ${m[1]}`));
   }
-  return { lines: out.length ? out.slice(0, 200) : [mkLine('info', 'No intents found')] };
+  return { lines: out.length ? out.slice(0, 200) : [mkLine('output', 'No intents found')] };
 }
 
 export interface CommandResult {
