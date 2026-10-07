@@ -90,6 +90,7 @@ import {
   applyBindingOperations,
   stripUnboundBindingAttributes,
 } from '@/services/bindingOperationExecutor';
+import { verifyBindingProjection } from '@/services/semanticVerification';
 import { enforceSiteDesignContract } from '@/services/launch/homepageFirstContract';
 import { recordCommitOutcome } from '@/services/mutationLedger';
 import {
@@ -843,6 +844,18 @@ export async function commitMutation(
         : undefined
     ),
   );
+  if (bindingOperationResult) {
+    const verification = verifyBindingProjection({
+      snapshot: snapshotForPersistence as SiteBundleSnapshot | null,
+      files,
+      boundBindingIds: bindingOperationResult.boundBindingIds,
+      unboundBindings: bindingOperationResult.unboundBindings,
+    });
+    if (!verification.ok) {
+      throw new Error(`[VFSCommitService] Binding semantic verification failed: ${verification.failures.join(' | ')}`);
+    }
+    log('semanticVerification', 'info', 'verified canonical binding runtime projection', verification);
+  }
 
   // 6b. Site-wide authoring validation --------------------------------------
   // Acceptance may inspect authored presentation but must never normalize it.
