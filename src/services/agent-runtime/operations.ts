@@ -20,6 +20,8 @@ import {
   type SystemGraphSchemaInput,
 } from './systemGraph';
 import { resolveEditableEntity, type EditableSelection } from './editableOwnershipResolver';
+import { isCoreIntent } from '@/platform/core/coreIntents';
+import type { BindingOp } from '@/types/patchPlan';
 
 export interface AgentContext {
   files: Record<string, string>;
@@ -36,6 +38,8 @@ export interface AgentContext {
 }
 
 export type ProposedChange = { files: Record<string, string>; summary: string };
+/** Structured proposals are consumed by the existing AI candidate → PatchPlan path. */
+export type ProposedMutation = { bindingOps: BindingOp[]; summary: string };
 
 const CATALOG_TABLES = ['products', 'menu_items', 'services', 'pricing_plans', 'testimonials'] as const;
 export type CatalogTable = (typeof CATALOG_TABLES)[number];
@@ -103,6 +107,31 @@ export const agentOperations = {
   },
   inspect_preview(ctx: AgentContext) {
     return ctx.previewErrors ?? [];
+  },
+  /**
+   * Propose a canonical intent binding for the exact control selected in
+   * preview. This returns data only; callers still run it through
+   * runBuilderAiMutation → commitMutation.
+   */
+  propose_bind_intent(
+    ctx: AgentContext,
+    selectedElement: EditableSelection,
+    intent: string,
+    payload?: Record<string, unknown>,
+  ): ProposedMutation {
+    if (!isCoreIntent(intent)) throw new Error(`Unknown canonical intent: ${intent}`);
+    const entity = agentOperations.inspect_editable_entity(ctx, selectedElement);
+    if (!entity.allowedMutationLanes.includes('bindingOps')) {
+      throw new Error('The selected entity is not a canonical behavior binding. Select a wired control before changing its intent.');
+    }
+    const bindingId = entity.provenance.bindingId ?? selectedElement.bindingId;
+    if (!bindingId || !ctx.snapshot?.bindings?.[bindingId]) {
+      throw new Error('The selected control has no canonical binding record. It cannot be rewired by source mutation.');
+    }
+    return {
+      bindingOps: [{ type: 'bindIntent', elementId: bindingId, intent, payload }],
+      summary: `Bind ${bindingId} to ${intent}`,
+    };
   },
   /** Project-scoped catalog read through the normal access rules. */
   async inspect_data(ctx: AgentContext, table: CatalogTable, limit = 20): Promise<unknown[]> {

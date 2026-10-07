@@ -27,6 +27,29 @@ describe('agent runtime', () => {
     off();
     expect(seen).toEqual(['plan']);
   });
+  it('proposes a canonical binding operation without mutating preview source', () => {
+    const ctx = {
+      files: { '/src/pages/Home.tsx': '<button data-ut-binding-id="book" data-ut-intent="booking.create">Book</button>' },
+      revisionId: 'revision-1',
+      snapshot: {
+        bindings: {
+          book: { bindingId: 'book', sourcePageId: 'home', sourceLabel: 'Book', intent: 'calendar.open', coreIntent: 'booking.create', targetId: 'calendar', targetType: 'calendar' },
+        },
+      },
+    } as never;
+    const proposal = agentOperations.propose_bind_intent(ctx, {
+      bindingId: 'book', primaryIntent: 'booking.create', revisionId: 'revision-1',
+    }, 'booking.start', { campaign: 'fall' });
+    expect(proposal.bindingOps).toEqual([{
+      type: 'bindIntent', elementId: 'book', intent: 'booking.start', payload: { campaign: 'fall' },
+    }]);
+    expect(ctx.files['/src/pages/Home.tsx']).toContain('booking.create');
+  });
+  it('refuses a behavior proposal for an unbound control', () => {
+    expect(() => agentOperations.propose_bind_intent({ files: {}, revisionId: 'revision-1' }, {
+      bindingId: 'missing', primaryIntent: 'booking.create', revisionId: 'revision-1',
+    }, 'booking.create')).toThrow('no canonical binding');
+  });
   it('reads graph, schema, and backend metadata without changing the caller state', () => {
     const ctx = {
       files: {
