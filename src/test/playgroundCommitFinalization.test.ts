@@ -23,7 +23,7 @@ vi.mock('@/integrations/supabase/client', () => ({
     rpc: async (name: string, payload: Record<string, unknown>) => {
       expect(name).toBe('commit_canonical_site_revision_v2');
       const delta = ((payload.p_patch_json as { _commitMetadata?: { vfsDelta?: { files?: Record<string, string>; deletedPaths?: string[] } } })._commitMetadata?.vfsDelta);
-      const previousFiles = (revisions.at(-1)?.vfs_files ?? {}) as Record<string, string>;
+      const previousFiles = (revisions[revisions.length - 1]?.vfs_files ?? {}) as Record<string, string>;
       const vfsFiles = delta
         ? Object.fromEntries(Object.entries({ ...previousFiles, ...(delta.files ?? {}) }).filter(([path]) => !delta.deletedPaths?.includes(path)))
         : payload.p_vfs_files as Record<string, string>;
@@ -124,7 +124,7 @@ describe('Playground canonical finalization', () => {
     const initialGalleryComposition = collectResolvedCompositions(launched.files)[gallery.filePath!];
     expect(collectResolvedCompositions(result.vfsFiles)[gallery.filePath!])
       .toMatchObject({
-        templateName: 'Gallery Closure Salon · Studio Portfolio',
+        templateName: 'Gallery Closure Salon Â· Studio Portfolio',
         sections: initialGalleryComposition.sections,
         variantOverrides: initialGalleryComposition.variantOverrides,
       });

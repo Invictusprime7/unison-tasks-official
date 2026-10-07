@@ -109,7 +109,7 @@ describe('composition VFS variants', () => {
       // add required body families for the canonical /gallery route.
       expect(sections.map((section) => section.sourceSectionId), preset.id)
         .toEqual(expect.arrayContaining(expected.map((section) => section.id)));
-      expect(sections.at(-1)?.type, preset.id).toBe('footer');
+      expect(sections[sections.length - 1]?.type, preset.id).toBe('footer');
       expect(new Set(sections.map((section) => section.id)).size).toBe(sections.length);
     }
   });
@@ -139,7 +139,7 @@ describe('composition VFS variants', () => {
     const footerProps = footer?.props as Record<string, unknown> | undefined;
 
     expect(source).toContain('Northstar Dental');
-    expect(source).not.toContain('Lumière Studio');
+    expect(source).not.toContain('LumiÃ¨re Studio');
     expect(navbarProps?.brand).toBe('Northstar Dental');
     expect(footerProps?.brand).toBe('Northstar Dental');
     expect(footerProps?.copyright).toContain('Northstar Dental');
@@ -218,7 +218,7 @@ describe('composition VFS variants', () => {
     expect(routeHero?.sourceSectionId).toBe(hero.id);
     expect(routeHero?.variantId).toBe('hero:full-bleed');
     expect(files[page.filePath]).toContain('"variantId": "hero:full-bleed"');
-    // Recovery Phase 2 — variant identity travels as data on the section, not
+    // Recovery Phase 2 â€” variant identity travels as data on the section, not
     // through a generated per-variant wrapper module.
     expect(Object.values(files).some((source) => source.includes('/src/components/variants/'))).toBe(false);
   });

@@ -47,7 +47,7 @@ describe('restaurant deterministic page grammars', () => {
       expect(result.sections.map((section) => section.sourceSectionId))
         .toEqual(expect.arrayContaining(alternative.sectionIds));
       if (role === 'services') expect(result.sections.map((section) => section.type)).toContain('pricing');
-      expect(result.sections.at(-1)?.type).toBe('footer');
+      expect(result.sections[result.sections.length - 1]?.type).toBe('footer');
       expect(result.sections.find((section) => section.type === 'hero')?.variantId).toBe(alternative.heroVariantId);
       expect(result.files).toEqual(compile(role, `restaurant-${index}`).files);
       expect(findUnresolvedLocalImports(result.files)).toEqual([]);
