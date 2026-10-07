@@ -81,9 +81,10 @@ const Index = () => {
 
   // Load recent projects (saved Web Builder drafts) when authenticated
   useEffect(() => {
-    const loadRecentProjects = async () => {
-      if (!user || !isSupabaseConfigured) return;
+    const userId = user?.id;
+    if (!userId || !isSupabaseConfigured) return;
 
+    const loadRecentProjects = async () => {
       setLoadingProjects(true);
       try {
         const { data, error } = await supabase
@@ -93,7 +94,7 @@ const Index = () => {
           // query read megabytes of canonical runtime state and could exceed
           // PostgREST's statement timeout.
           .select('id, name, project_id, business_id, last_revision_id, updated_at, created_at, previewCode:metadata->>previewCode, metaName:metadata->>name, metaDescription:metadata->>description')
-          .eq('user_id', user.id)
+          .eq('user_id', userId)
           .order('updated_at', { ascending: false })
           // 9 sites + the "New Site" tile fill two rows. A limit of 4 hid
           // sites saved earlier the same day (e.g. Spark, DreamFashion)
@@ -103,7 +104,12 @@ const Index = () => {
         if (error) {
           console.error('Error loading recent projects:', error);
         } else {
-          const rows = (data || []) as any[];
+          // PostgREST normally returns object rows only. Filter defensively so
+          // a transient null row during a migration/session refresh cannot take
+          // down the authenticated home screen.
+          const rows = ((data || []) as any[]).filter((row): row is Record<string, any> =>
+            Boolean(row && typeof row === 'object'),
+          );
           // Latest saved checkpoint per draft — the real "last saved" time.
           const revisionIds = rows.map((r) => r.last_revision_id).filter(Boolean);
           const revisionTimes = new Map<string, string>();
@@ -112,7 +118,11 @@ const Index = () => {
               .from('site_revisions')
               .select('id, created_at')
               .in('id', revisionIds);
-            for (const r of (revs || []) as any[]) revisionTimes.set(r.id, r.created_at);
+            for (const revision of (revs || []) as any[]) {
+              if (revision?.id && revision?.created_at) {
+                revisionTimes.set(revision.id, revision.created_at);
+              }
+            }
           }
           const projects: RecentProject[] = rows.map((row) => {
             // The legacy previewCode snapshot is written once at launch and
@@ -150,19 +160,19 @@ const Index = () => {
     // A canonical commit updates builder_drafts. Realtime keeps this profile
     // projection current even while the user stays on the home page.
     const channel = supabase
-      .channel(`home-recent-drafts:${user.id}`)
+      .channel(`home-recent-drafts:${userId}`)
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
         table: 'builder_drafts',
-        filter: `user_id=eq.${user.id}`,
+        filter: `user_id=eq.${userId}`,
       }, () => { void loadRecentProjects(); })
       .subscribe();
     return () => {
       window.removeEventListener('focus', onFocus);
       void supabase.removeChannel(channel);
     };
-  }, [user]);
+  }, [user?.id]);
 
   // Load connected integrations when user is authenticated
   useEffect(() => {
