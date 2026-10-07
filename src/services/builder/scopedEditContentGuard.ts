@@ -65,3 +65,60 @@ export function findUnrequestedScopedSideEffects(
 
   return [...new Set(reasons)];
 }
+
+const JSX_TEXT_PATTERN = />\s*([^<>{}]*[A-Za-z][^<>{}]*?)\s*</g;
+const COPY_PROP_PATTERN = /\b(?:headline|subheadline|title|subtitle|eyebrow|badge|description|label|caption|quote|body|text|cta|ctaLabel|placeholder|alt)\s*[:=]\s*(?:\{\s*)?(["'`])((?:(?!\1)[^\\]|\\.){2,})\1/g;
+
+const COPY_REQUEST_PATTERN = /\b(text|copy|wording|words|reword|rephrase|rewrite|rename|say|says|read|reads|shorter|longer|shorten|lengthen|concise|tone|formal|casual|friendly|professional|playful|translate|spelling|typo|grammar|replace .* with|change .* to|write)\b/i;
+
+function normalizeCopy(value: string): string {
+  return value.replace(/\s+/g, ' ').trim();
+}
+
+function collectCopy(source: string): Map<string, number> {
+  const counts = new Map<string, number>();
+  const add = (raw: string) => {
+    const value = normalizeCopy(raw);
+    if (value.length < 2 || !/[A-Za-z]/.test(value)) return;
+    counts.set(value, (counts.get(value) ?? 0) + 1);
+  };
+  for (const match of source.matchAll(JSX_TEXT_PATTERN)) add(match[1]);
+  for (const match of source.matchAll(COPY_PROP_PATTERN)) add(match[2]);
+  return counts;
+}
+
+/** True when the prompt asks for a wording change rather than a visual one. */
+export function promptRequestsCopyChange(prompt: string): boolean {
+  return COPY_REQUEST_PATTERN.test(prompt);
+}
+
+/**
+ * Detect visible copy the candidate removed or rewrote that the request did
+ * not cover. A style/layout request may not change any copy; a wording request
+ * on a clicked element may only change copy that belongs to that element.
+ * Returns the removed strings (truncated) — empty means no collateral copy.
+ */
+export function findUnrequestedCopyChanges(
+  original: string,
+  candidate: string,
+  prompt: string,
+  targetText?: string | null,
+): string[] {
+  const before = collectCopy(original);
+  const after = collectCopy(candidate);
+  const removed: string[] = [];
+  for (const [value, count] of before) {
+    if ((after.get(value) ?? 0) < count) removed.push(value);
+  }
+  if (removed.length === 0) return [];
+  const wordingRequest = promptRequestsCopyChange(prompt);
+  const target = normalizeCopy(targetText ?? '').toLowerCase();
+  const outOfScope = removed.filter((value) => {
+    if (!wordingRequest) return true;
+    // No clicked element: a wording request may rewrite copy on the target file.
+    if (!target) return false;
+    const lower = value.toLowerCase();
+    return !(target.includes(lower) || lower.includes(target.slice(0, 40)));
+  });
+  return outOfScope.map((value) => (value.length > 60 ? `${value.slice(0, 57)}…` : value));
+}

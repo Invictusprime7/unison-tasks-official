@@ -1,4 +1,3 @@
-import type { DataOpExecutionResult } from '@/services/dataOpExecutor';
 
 /**
  * Notify every mounted preview that canonical catalog/binding data changed.
@@ -8,7 +7,8 @@ import type { DataOpExecutionResult } from '@/services/dataOpExecutor';
 export function refreshDataOperationResources(input: {
   projectId?: string | null;
   businessId?: string | null;
-  results: readonly DataOpExecutionResult[];
+  /** Only status and operation id are read, so commit summaries fit too. */
+  results: ReadonlyArray<{ operationId: string; status: string; type?: string; message?: string }>;
 }): boolean {
   const applied = input.results.filter((result) => result.status === 'applied');
   if (!applied.length || typeof window === 'undefined') return false;

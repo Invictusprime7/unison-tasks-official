@@ -7504,6 +7504,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                       siteBundleSnapshot: snapshotForPreflight,
                       industry: snapshotForPreflight?.industry,
                       allowQuarantine: false,
+                      closeRequiredIntents: false,
                     }).files,
                   });
                   let candidate = firstCandidate;
@@ -7514,7 +7515,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                         baseRevisionId: currentRevisionIdRef.current ?? undefined,
                       prompt: applyMeta?.prompt,
                       routeOps: applyMeta?.routeOps,
-                      preflight: (changed) => runFullPreflight(changed, { siteBundleSnapshot: snapshotForPreflight, industry: snapshotForPreflight?.industry, allowQuarantine: false }).files,
+                      preflight: (changed) => runFullPreflight(changed, { siteBundleSnapshot: snapshotForPreflight, industry: snapshotForPreflight?.industry, allowQuarantine: false, closeRequiredIntents: false }).files,
                     });
                     if (repaired.ok && repaired.prepared) candidate = repaired.prepared;
                   }
@@ -8070,6 +8071,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                     siteBundleSnapshot: snapshotForPreflight,
                     industry: snapshotForPreflight?.industry,
                     allowQuarantine: false,
+                    closeRequiredIntents: false,
                   }).files,
                 });
                 let candidate = firstCandidate;
@@ -8080,7 +8082,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                      baseRevisionId: currentRevisionIdRef.current ?? undefined,
                     prompt: applyMeta?.prompt,
                     routeOps: applyMeta?.routeOps,
-                    preflight: (changed) => runFullPreflight(changed, { siteBundleSnapshot: snapshotForPreflight, industry: snapshotForPreflight?.industry, allowQuarantine: false }).files,
+                    preflight: (changed) => runFullPreflight(changed, { siteBundleSnapshot: snapshotForPreflight, industry: snapshotForPreflight?.industry, allowQuarantine: false, closeRequiredIntents: false }).files,
                   });
                   if (repaired.ok && repaired.prepared) candidate = repaired.prepared;
                 }

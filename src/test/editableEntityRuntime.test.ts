@@ -55,7 +55,7 @@ describe('canonical editable entity runtime', () => {
   });
 
   it('requires the requested property value after a change', () => {
-    const entity = { id: 'entity:product-1', kind: 'catalog' as const, revisionId: 'r1', intents: [], owners: {}, permissions: { readable: true, writable: true }, allowedMutationLanes: ['dataOps'] as const, provenance: {} };
+    const entity = { id: 'entity:product-1', kind: 'catalog' as const, revisionId: 'r1', intents: [], owners: {}, permissions: { readable: true, writable: true }, allowedMutationLanes: ['dataOps' as const], provenance: {} };
     expect(verifyEditableEntityChange({
       beforeEntity: entity, afterEntity: entity,
       expectedChanges: { price: 42 }, actualValues: { price: 42 },

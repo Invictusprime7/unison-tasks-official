@@ -72,6 +72,7 @@ import type { BusinessSystemType } from '@/data/templates/types';
 import type { SystemsBuildContext } from '@/types/systemsBuildContext';
 import { generateCanonicalDesignPrompt } from '@/sections/promptContext/canonicalDesignPrompt';
 import { analyzeReactSite, resolveEditTarget } from '@/utils/reactSiteAnalysis';
+import { resolveRouteSourceFile, resolveLocalImports } from './previewRouteTabs';
 import { buildComponentBehaviorMap, formatBehaviorMapForPrompt } from '@/services/aiVFSOrchestrator';
 import { htmlDocToReactComponent as htmlDocToReactComponentFn } from '@/utils/htmlToJsx';
 import { AIGatewayOptions, type GatewayConfig } from './AIGatewayOptions';
@@ -130,7 +131,7 @@ import type { TopologyChange } from '@/services/pageTopologyOrchestrator';
 import { buildAICandidateChangeSet, type AICandidateChangeSet } from '@/services/builder/aiCandidateChangeSet';
 import { unisonAppBuilder } from '@/services/app-builder/UnisonAppBuilder';
 import { buildSequentialAiTasks } from '@/services/builder/sequentialAiTasks';
-import { findUnrequestedScopedSideEffects } from '@/services/builder/scopedEditContentGuard';
+import { findUnrequestedCopyChanges, findUnrequestedScopedSideEffects } from '@/services/builder/scopedEditContentGuard';
 
 import {
   planBusinessCapabilities,
@@ -267,6 +268,10 @@ function getScopedEditAutoApplyBlockReason(opts: {
   prompt: string;
   resolvedTargetFile: string | null;
   existingFileKeys: string[];
+  /** The target came from an element the user clicked in the Live Preview. */
+  pinnedBySelection?: boolean;
+  /** Visible text of the clicked element, when there is one. */
+  targetText?: string | null;
 }): string | null {
   const normalizePath = (p: string) => (p.startsWith('/') ? p : `/${p}`);
   const paths = Object.keys(opts.files).map(normalizePath);
@@ -279,6 +284,17 @@ function getScopedEditAutoApplyBlockReason(opts: {
     if (!paths.includes(normTarget)) {
       return `Scoped edit resolved to ${normTarget} but the AI returned: ${paths.join(', ') || 'no files'}.`;
     }
+    // A clicked element lives on exactly one page: never rewrite another
+    // existing page while editing it.
+    if (opts.pinnedBySelection) {
+      const otherPages = paths.filter((path) => path !== normTarget
+        && /^\/src\/pages\//.test(path)
+        && opts.existingFileKeys.some((key) => normalizePath(key) === path)
+        && opts.files[path] !== (opts.originalFiles[path] ?? opts.originalFiles[path.slice(1)]));
+      if (otherPages.length > 0) {
+        return `You selected something on ${normTarget}, but the AI also rewrote ${otherPages.join(', ')}.`;
+      }
+    }
 
     const candidatePath = Object.keys(opts.files).find((path) => normalizePath(path) === normTarget);
     const original = opts.originalFiles[normTarget] ?? opts.originalFiles[opts.resolvedTargetFile];
@@ -288,6 +304,23 @@ function getScopedEditAutoApplyBlockReason(opts: {
       if (sideEffects.length > 0) {
         return `Scoped edit introduced unrequested side effects: ${sideEffects.join(', ')}.`;
       }
+    }
+  }
+
+  // Collateral copy: a scoped edit may never rewrite visible text the request
+  // did not cover — on the target file or any other existing file it touched.
+  for (const [path, candidate] of Object.entries(opts.files)) {
+    const normalized = normalizePath(path);
+    if (!/\.(tsx|jsx)$/.test(normalized)) continue;
+    const original = opts.originalFiles[normalized] ?? opts.originalFiles[normalized.slice(1)];
+    if (typeof original !== 'string' || original === candidate) continue;
+    const scopedText = opts.resolvedTargetFile && normalizePath(opts.resolvedTargetFile) === normalized
+      ? opts.targetText
+      : opts.pinnedBySelection ? '\u0000' : null;
+    const removedCopy = findUnrequestedCopyChanges(original, candidate, opts.prompt, scopedText);
+    if (removedCopy.length > 0) {
+      const sample = removedCopy.slice(0, 2).map((value) => `"${value}"`).join(', ');
+      return `The AI also changed text you didn't ask about in ${normalized} (${sample}${removedCopy.length > 2 ? ` and ${removedCopy.length - 2} more` : ''}).`;
     }
   }
 
@@ -947,7 +980,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
     const selectedTarget = agentTarget;
     // Build file context suffix
     const targetContext = agentTarget
-      ? `\n\n[Target element — apply this request to it only: <${agentTarget.tagName}>${agentTarget.text ? ` "${agentTarget.text}"` : ''}${agentTarget.section ? ` in section "${agentTarget.section}"` : ''}${agentTarget.selector ? ` (selector ${agentTarget.selector})` : ''}${agentTarget.intent ? `; its button action "${agentTarget.intent}" and destination must stay unchanged` : ''}${agentTarget.provenance?.sourceTable && agentTarget.provenance.rowId ? `; canonical data owner ${agentTarget.provenance.sourceTable}/${agentTarget.provenance.rowId}${agentTarget.provenance.field ? ` field ${agentTarget.provenance.field}` : ''}` : ''}${agentTarget.provenance?.bindingId ? `; binding ${agentTarget.provenance.bindingId}` : ''}${agentTarget.provenance?.targetPath ? `; link target ${agentTarget.provenance.targetPath}` : ''}]`
+      ? `\n\n[Target element — apply this request to it only: <${agentTarget.tagName}>${agentTarget.text ? ` "${agentTarget.text}"` : ''}${agentTarget.section ? ` in section "${agentTarget.section}"` : ''}${agentTarget.scopeAncestors?.pagePath ? ` on the page at route "${agentTarget.scopeAncestors.pagePath}" (edit only that page's source)` : ''}${agentTarget.selector ? ` (selector ${agentTarget.selector})` : ''}${agentTarget.intent ? `; its button action "${agentTarget.intent}" and destination must stay unchanged` : ''}${agentTarget.provenance?.sourceTable && agentTarget.provenance.rowId ? `; canonical data owner ${agentTarget.provenance.sourceTable}/${agentTarget.provenance.rowId}${agentTarget.provenance.field ? ` field ${agentTarget.provenance.field}` : ''}` : ''}${agentTarget.provenance?.bindingId ? `; binding ${agentTarget.provenance.bindingId}` : ''}${agentTarget.provenance?.targetPath ? `; link target ${agentTarget.provenance.targetPath}` : ''}]`
       : '';
     setAgentTarget(null);
     const fileContext = targetContext + (droppedFiles.length > 0 ? (() => {
@@ -1447,6 +1480,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
       let siteAnalysisContext = '';
       let editTargetContext = '';
       let resolvedTargetFile: string | null = null;
+      let selectionPinnedFile: string | null = null;
       let isReactProject = false;
       if (vfsFiles && Object.keys(vfsFiles).length > 0) {
         // Detect if the VFS project is React-based (has .tsx/.jsx component files)
@@ -1466,6 +1500,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
             selectedSourceFile = contains(pageFile)
               ? pageFile
               : resolveLocalImports(vfsFiles, pageFile).find(contains) ?? pageFile;
+            selectionPinnedFile = selectedSourceFile;
           }
         }
         try {
@@ -2430,7 +2465,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
           responseMeta.warnings?.some(w => w.severity === 'error');
 
         // Client-side scope enforcement for scoped edits
-        const isScopedTask = isSurgicalEdit || isBehavioralEdit;
+        const isScopedTask = isSurgicalEdit || isBehavioralEdit || Boolean(selectionPinnedFile);
         const permissionCategory: AIEditPermissionCategory = isBehavioralEdit
           ? 'behavioral'
           : isSurgicalEdit
@@ -2442,6 +2477,8 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
           prompt: rawInput,
           resolvedTargetFile,
           existingFileKeys: vfsFiles ? Object.keys(vfsFiles) : [],
+          pinnedBySelection: Boolean(selectionPinnedFile),
+          targetText: selectionPinnedFile ? (selectedTarget?.text ?? null) : null,
         }) : null;
 
         if (scopeBlockReason) {

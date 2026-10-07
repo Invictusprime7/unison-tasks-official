@@ -814,7 +814,11 @@ export async function commitMutation(
   const requirePreview = input.options?.requirePreviewPass !== false;
   const requireReadiness = input.options?.requireReadinessPass !== false;
 
+  // User-driven Builder edits are validated, never grown: required industry
+  // surfaces are closed at launch, not injected into a later style/copy edit.
+  const closeRequiredIntents = input.source !== 'ai-builder' && input.source !== 'playground-edit';
   let preflight = runFullPreflight(files, {
+    closeRequiredIntents,
     siteBundleSnapshot: (snapshotForPersistence as { meta?: unknown } | null) as
       | import('@/platform/core/canonicalPipeline').SiteBundleSnapshot
       | null,
@@ -853,6 +857,7 @@ export async function commitMutation(
   // syntax and runtime blockers still fail the second pass.
   if (!previewOk && (input.source === 'ai-builder' || input.source === 'playground-edit')) {
     const repair = runFullPreflight(files, {
+    closeRequiredIntents,
       siteBundleSnapshot: (snapshotForPersistence as { meta?: unknown } | null) as SiteBundleSnapshot | null,
       industry: input.options?.industry,
       brand: input.options?.businessName,
@@ -866,6 +871,7 @@ export async function commitMutation(
       adoptCanonicalNormalization();
       if (snapshotForPersistence) snapshotForPersistence = mergeWizardLaunchSnapshot(snapshotForPersistence as SiteBundleSnapshot, files);
       preflight = runFullPreflight(files, {
+    closeRequiredIntents,
         siteBundleSnapshot: (snapshotForPersistence as { meta?: unknown } | null) as SiteBundleSnapshot | null,
         industry: input.options?.industry,
         brand: input.options?.businessName,
@@ -977,6 +983,7 @@ export async function commitMutation(
     log('repair', 'warn', 'running single auto-repair pass');
     try {
       preflight = runFullPreflight(files, {
+    closeRequiredIntents,
           siteBundleSnapshot: (snapshotForPersistence as { meta?: unknown } | null) as
           | import('@/platform/core/canonicalPipeline').SiteBundleSnapshot
           | null,
@@ -987,6 +994,7 @@ export async function commitMutation(
       });
       if (preflight.stages.earlyRepair !== 'failed' && preflight.stages.finalRepair !== 'failed') {
         preflight = runFullPreflight(preflight.files, {
+    closeRequiredIntents,
           siteBundleSnapshot: (snapshotForPersistence as { meta?: unknown } | null) as
             | import('@/platform/core/canonicalPipeline').SiteBundleSnapshot
             | null,

@@ -120,6 +120,7 @@ describe('WebBuilder save outcome', () => {
       projectCommittedWizardRuntime: vi.fn(() => ({ files })),
       importedRouteStateRef: { current: '' }, vfsReplaceFiles: vi.fn(),
       lastSavedVfsSignatureRef: { current: '' }, lastSavedCodeRef: { current: '' },
+      lastPersistedVfsFilesRef: { current: {} },
       computeBuilderVfsSignature: JSON.stringify,
       syncBuilderFromFiles: vi.fn(() => ({ entrySource: 'finalized router' })),
       launchEntryPoint: '/src/App.tsx',
