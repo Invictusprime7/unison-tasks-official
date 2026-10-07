@@ -129,6 +129,8 @@ const ProductCardView: React.FC<ProductCardViewProps> = ({
     <div
       className={\`group overflow-hidden rounded-xl border border-border bg-card text-card-foreground shadow-sm transition hover:shadow-md \${className ?? ""}\`}
       data-ut-product-id={product.productId}
+      data-ut-source-table="products"
+      data-ut-row-id={product.productId}
     >
       <div className="relative aspect-square bg-muted">
         {product.imageUrl ? (
@@ -178,6 +180,8 @@ const ProductCardView: React.FC<ProductCardViewProps> = ({
               type="button"
               data-ut-intent="commerce.addToCart"
               data-ut-product-id={product.productId}
+              data-ut-source-table="products"
+              data-ut-row-id={product.productId}
               disabled={disabled}
               className="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
             >
