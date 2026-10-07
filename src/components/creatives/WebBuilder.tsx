@@ -747,6 +747,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       tagName: String(el.tagName ?? '').toLowerCase(),
       text: String(el.textContent ?? '').trim().slice(0, 80),
       selector: el.selector,
+      revisionId: el.revisionId,
       section: typeof el.section === 'string' ? el.section : el.section?.id ?? el.section?.label,
       intent: attrs['data-ut-intent'],
       scopeAncestors: el.scopeAncestors,

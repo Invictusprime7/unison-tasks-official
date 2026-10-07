@@ -805,7 +805,7 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
     const send = () => {
       const win = getPreviewWindow();
       if (win) {
-        win.postMessage({ type: 'EDIT_MODE_TOGGLE', enabled, activationKey: key }, '*');
+        win.postMessage({ type: 'EDIT_MODE_TOGGLE', enabled, activationKey: key, revisionId }, '*');
       }
       attempts++;
       if (!bridgeReadyRef.current && attempts < 12) {
@@ -813,7 +813,7 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
       }
     };
     send();
-  }, [getPreviewWindow]);
+  }, [getPreviewWindow, revisionId]);
 
   // Re-push state whenever Edit/Select mode toggles
   useEffect(() => {
@@ -948,6 +948,7 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
               type: 'EDIT_MODE_TOGGLE',
               enabled: enableSelection,
               activationKey: editActivationKeyRef.current,
+              revisionId,
             }, '*');
           }
         }
@@ -956,6 +957,8 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
       if (data.type === 'ELEMENT_SELECTED' && data.element) {
         // Ignore stale selections from a previous activation cycle
         if (typeof data.activationKey === 'number' && data.activationKey !== editActivationKeyRef.current) return;
+        // A selection is only valid for the canonical revision that rendered it.
+        if (revisionId && data.element.revisionId && data.element.revisionId !== revisionId) return;
         clearDirectPreviewSelection();
         onElementSelect?.(data.element);
         return;
@@ -1070,7 +1073,7 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
 
     window.addEventListener('message', handlePreviewMessage);
     return () => window.removeEventListener('message', handlePreviewMessage);
-  }, [builderSession.projectId, builderSession.runtimeContext?.projectId, onNavigate, onIntentTrigger, businessId, siteId, onError, onReady, onElementSelect, enableSelection, getPreviewWindow, clearDirectPreviewSelection]);
+  }, [builderSession.projectId, builderSession.runtimeContext?.projectId, onNavigate, onIntentTrigger, businessId, siteId, revisionId, onError, onReady, onElementSelect, enableSelection, getPreviewWindow, clearDirectPreviewSelection]);
 
 
   

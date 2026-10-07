@@ -777,7 +777,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
 
   // Click-to-target: an element picked in the preview scopes the next message.
   const [agentTarget, setAgentTarget] = useState<{
-    tagName: string; text?: string; selector?: string; section?: string; intent?: string;
+    tagName: string; text?: string; selector?: string; section?: string; intent?: string; revisionId?: string | null;
     scopeAncestors?: import('@/services/editScopeResolver').ScopeAncestors;
     provenance?: { sourceTable?: string | null; rowId?: string | null; field?: string | null; bindingId?: string | null; targetPath?: string | null };
   } | null>(null);
@@ -1876,6 +1876,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
                 files: vfsFiles ?? {}, revisionId,
               }, {
                 selector: selectedTarget.selector,
+                revisionId: selectedTarget.revisionId,
                 pagePath: selectedTarget.scopeAncestors?.pagePath,
                 pageId: selectedTarget.scopeAncestors?.pageId,
                 sectionId: selectedTarget.scopeAncestors?.sectionId,

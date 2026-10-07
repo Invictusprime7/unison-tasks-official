@@ -546,6 +546,7 @@ const PREVIEW_SELECTION_BRIDGE = `function __initUnisonPreviewSelectionBridge() 
 
   let active = false;
   let activationKey = 0;
+  let revisionId: string | null = null;
   let hoverEl: HTMLElement | null = null;
   let selectedEl: HTMLElement | null = null;
 
@@ -665,23 +666,39 @@ const PREVIEW_SELECTION_BRIDGE = `function __initUnisonPreviewSelectionBridge() 
     sectionType: string | null;
     surfaceId: string | null;
     componentType: string | null;
+    componentInstanceId: string | null;
+    artifactId: string | null;
+    elementRole: string | null;
+    entityKind: string | null;
     bindingId: string | null;
     bindingKey: string | null;
+    sourceTable: string | null;
+    rowId: string | null;
+    field: string | null;
+    targetPath: string | null;
     pageId: string | null;
     pagePath: string | null;
     intents: string[];
     primaryIntent: string | null;
     clickedTag: string;
   } {
-    let elementId: string | null = el.getAttribute('data-ut-element') || null;
+    let elementId: string | null = el.getAttribute('data-ut-element-id') || el.getAttribute('data-ut-element') || null;
     let slotId: string | null = null;
     let blockId: string | null = null;
     let sectionId: string | null = null;
     let sectionType: string | null = null;
     let surfaceId: string | null = null;
     let componentType: string | null = null;
+    let componentInstanceId: string | null = null;
+    let artifactId: string | null = null;
+    let elementRole: string | null = null;
+    let entityKind: string | null = null;
     let bindingId: string | null = null;
     let bindingKey: string | null = null;
+    let sourceTable: string | null = null;
+    let rowId: string | null = null;
+    let field: string | null = null;
+    let targetPath: string | null = el.getAttribute('data-ut-path') || el.getAttribute('href') || null;
     let pageId: string | null = null;
     let pagePath: string | null = null;
     const intents: string[] = [];
@@ -689,7 +706,7 @@ const PREVIEW_SELECTION_BRIDGE = `function __initUnisonPreviewSelectionBridge() 
     let cur: Element | null = el;
     let depth = 0;
     while (cur && cur !== document.body && depth < 24) {
-      if (!elementId) elementId = cur.getAttribute('data-ut-element') || elementId;
+      if (!elementId) elementId = cur.getAttribute('data-ut-element-id') || cur.getAttribute('data-ut-element') || elementId;
       if (!slotId) slotId = cur.getAttribute('data-ut-slot');
       if (!blockId) blockId = cur.getAttribute('data-ut-block');
       if (!sectionId) {
@@ -700,8 +717,16 @@ const PREVIEW_SELECTION_BRIDGE = `function __initUnisonPreviewSelectionBridge() 
       if (!sectionType) sectionType = cur.getAttribute('data-ut-section-type');
       if (!surfaceId) surfaceId = cur.getAttribute('data-ut-surface');
       if (!componentType) componentType = cur.getAttribute('data-ut-component-type') || cur.getAttribute('data-component');
+      if (!componentInstanceId) componentInstanceId = cur.getAttribute('data-ut-component-id') || cur.getAttribute('data-ut-component-instance-id');
+      if (!artifactId) artifactId = cur.getAttribute('data-ut-registry-key');
+      if (!elementRole) elementRole = cur.getAttribute('data-ut-role');
+      if (!entityKind) entityKind = cur.getAttribute('data-ut-entity');
       if (!bindingId) bindingId = cur.getAttribute('data-ut-binding-id');
       if (!bindingKey) bindingKey = cur.getAttribute('data-ut-binding-key') || cur.getAttribute('data-element-key');
+      if (!sourceTable) sourceTable = cur.getAttribute('data-ut-source-table');
+      if (!rowId) rowId = cur.getAttribute('data-ut-row-id') || cur.getAttribute('data-ut-product-id');
+      if (!field) field = cur.getAttribute('data-ut-field');
+      if (!targetPath) targetPath = cur.getAttribute('data-ut-path') || cur.getAttribute('href') || cur.getAttribute('data-ut-target-page-id');
       if (!pageId) pageId = cur.getAttribute('data-ut-page');
       if (!pagePath) pagePath = cur.getAttribute('data-ut-page-path') || cur.getAttribute('data-page-path');
       const intent = cur.getAttribute('data-ut-intent');
@@ -725,8 +750,16 @@ const PREVIEW_SELECTION_BRIDGE = `function __initUnisonPreviewSelectionBridge() 
       sectionType,
       surfaceId,
       componentType,
+      componentInstanceId,
+      artifactId,
+      elementRole,
+      entityKind,
       bindingId,
       bindingKey,
+      sourceTable,
+      rowId,
+      field,
+      targetPath,
       pageId,
       pagePath,
       intents,
@@ -816,6 +849,7 @@ const PREVIEW_SELECTION_BRIDGE = `function __initUnisonPreviewSelectionBridge() 
       type: 'ELEMENT_SELECTED',
       activationKey,
       element: {
+        revisionId,
         tagName: t.tagName.toLowerCase(),
         textContent: (t.textContent || '').trim().slice(0, 500),
         selector, html,
@@ -853,6 +887,7 @@ const PREVIEW_SELECTION_BRIDGE = `function __initUnisonPreviewSelectionBridge() 
     if (!data || typeof data !== 'object') return;
     if (data.type === 'EDIT_MODE_TOGGLE') {
       activationKey = typeof data.activationKey === 'number' ? data.activationKey : activationKey + 1;
+      revisionId = typeof data.revisionId === 'string' ? data.revisionId : null;
       if (data.enabled) activate(); else deactivate();
       window.parent.postMessage({ type: 'EDIT_MODE_READY', activationKey, enabled: !!data.enabled }, '*');
     }
