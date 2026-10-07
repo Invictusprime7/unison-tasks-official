@@ -11,7 +11,6 @@
 
 import { buildRenderedSiteDigest } from '@/services/builder/renderedSiteDigest';
 import { computeBuilderVfsSignature } from '@/services/builderStateRecovery';
-import { resolveLocalImports, resolveRouteSourceFile } from './previewRouteTabs';
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
