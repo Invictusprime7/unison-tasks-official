@@ -22,6 +22,7 @@ import type { VirtualNode, VirtualFile, VirtualFolder } from '@/hooks/useVirtual
 import { vfsToFileMap, getFilePaths } from '@/hooks/useVirtualFileSystem';
 import { buildSystemGraph, renderSystemGraphForPrompt } from '@/services/agent-runtime/systemGraph';
 import { resolveMutableNode } from '@/services/agent-runtime/nodeAddress';
+import { removeSection, moveSection } from '@/services/agent-runtime/sectionActions';
 import { SANDPACK_DEPENDENCIES, isSandpackAllowedImport } from '@/utils/sandpackDependencies';
 
 // ============================================================================
@@ -181,6 +182,19 @@ function cmdNode(args: string[], ctx: CommandContext): CommandResult {
   return { lines: [mkLine('success', r.label), mkLine('output', `owner: ${r.ownerPath}`)] };
 }
 
+function cmdSection(args: string[], ctx: CommandContext): CommandResult {
+  const [verb, address] = args;
+  if (!verb || !address || !['rm', 'up', 'down'].includes(verb)) {
+    return { lines: [mkLine('error', 'Usage: section <rm|up|down> section:/page#id')] };
+  }
+  const files = { ...vfsToFileMap(ctx.nodes) };
+  for (const op of stagedOps ?? []) { if (op.type === 'delete') delete files[op.path]; else files[op.path] = op.contents; }
+  const r = verb === 'rm' ? removeSection(address, files) : moveSection(address, verb as 'up' | 'down', files);
+  if (r.ok === false) return { lines: [mkLine('error', r.error)] };
+  const msg = submitOps([{ type: 'replace', path: r.path, contents: r.contents }], `Terminal: ${r.summary}`, ctx);
+  return { lines: [mkLine('success', `✓ ${r.summary} — ${msg}`)], mutated: true };
+}
+
 function cmdIntents(ctx: CommandContext): CommandResult {
   const map = vfsToFileMap(ctx.nodes);
   const out: TerminalLine[] = [];
@@ -293,6 +307,7 @@ function cmdHelp(): CommandResult {
     mkLine('output', '│  begin/diff/commit/abort  Stage several changes as one checkpoint'),
     mkLine('output', '│  revision/routes/intents  Saved version, page routes, button intents'),
     mkLine('output', '│  graph / node <address>  Site map; resolve page:/x, section:/x#id, button:/x#label'),
+    mkLine('output', '│  section rm|up|down <section:/x#id>  Remove or reorder a section'),
       mkLine('output', '│  find <pattern>         Search files by name'),
       mkLine('output', '│  diagnose               Run VFS diagnostics'),
       mkLine('output', '│  whoami                 Show business system type'),
@@ -730,6 +745,8 @@ export function processCommand(input: string, ctx: CommandContext): CommandResul
       return cmdGraph(ctx);
     case 'node':
       return cmdNode(args, ctx);
+    case 'section':
+      return cmdSection(args, ctx);
     case 'deps':
     case 'dependencies':
     case 'packages':
