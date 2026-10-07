@@ -424,7 +424,7 @@ export function buildProviderPlan(
     && Boolean(readEnv('GEMINI_API_KEY') || readEnv('GOOGLE_API_KEY') || readEnv('UNISONGEMINI_API_KEY'));
   const isComposerTask = task.type === "site_page_author" || task.type === "site_page_repair" || task.type === "builder_source_edit";
   if (!hasExplicitModel && isComposerTask) {
-    plan.primaryProvider = Boolean(readEnv('GEMINI_API_KEY') || readEnv('GOOGLE_API_KEY') || readEnv('UNISONGEMINI_API_KEY'))
+    plan.primaryProvider = (readEnv('GEMINI_API_KEY') || readEnv('GOOGLE_API_KEY') || readEnv('UNISONGEMINI_API_KEY'))
       ? 'gemini' : selectPrimaryProvider(routingKey, readEnv);
     plan.gatewayModels = prioritizeProviderModels(plan.gatewayModels, plan.primaryProvider);
     // Hybrid: launch page writing/repair goes to the managed gateway first (the

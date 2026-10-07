@@ -29,7 +29,7 @@ function numericPrice(raw: string | undefined): number | null {
 }
 
 function textAttribute(attributes: string, name: string): string | undefined {
-  return attributes.match(new RegExp(`\\b${name}\\s*=\\s*[\"']([^\"']+)[\"']`, 'i'))?.[1];
+  return attributes.match(new RegExp(`\\b${name}\\s*=\\s*["']([^"']+)["']`, 'i'))?.[1];
 }
 
 /**
@@ -54,7 +54,7 @@ export function discoverGeneratedSiteArtifacts(files: Record<string, string>): G
     // Static generated sites commonly express their product fixture as an
     // object literal. Capture only objects that have a product-like name and a
     // price; arbitrary editorial copy therefore cannot become a catalog item.
-    const productObject = /\{[^{}]{0,180}?(?:name|title)\s*:\s*[\"']([^\"']{2,100})[\"'][^{}]{0,360}?price\s*:\s*[\"']?\$?([\d,.]+)[\"']?[^{}]{0,180}?\}/gi;
+    const productObject = /\{[^{}]{0,180}?(?:name|title)\s*:\s*["']([^"']{2,100})["'][^{}]{0,360}?price\s*:\s*["']?\$?([\d,.]+)["']?[^{}]{0,180}?\}/gi;
     for (const match of source.matchAll(productObject)) {
       if (authoredCatalogItems.length >= MAX_ITEMS) break;
       const name = match[1].trim();
