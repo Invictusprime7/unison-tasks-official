@@ -52,6 +52,8 @@ export interface AICandidateChangeSet extends CandidateOperationInput {
   requestedDependencies?: string[];
   targetPages: string[];
   attempt: number;
+  /** Content fingerprint (fnv1a, null = absent) of each touched path in the base; lets the coordinator rebase safely. */
+  baseFingerprints?: Record<string, string | null>;
 }
 
 export interface BuildCandidateInput extends CandidateOperationInput {
@@ -175,6 +177,10 @@ export function buildAICandidateChangeSet(input: BuildCandidateInput): Candidate
       requestedDependencies,
       targetPages: [...(input.targetPages ?? [])].sort(),
       attempt,
+      baseFingerprints: Object.fromEntries(fileOps.map((op) => [
+        op.path,
+        input.baseFiles[op.path] === undefined ? null : fnv1a(input.baseFiles[op.path]),
+      ])),
     },
     candidateFiles,
     refused,
