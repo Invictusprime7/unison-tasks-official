@@ -23,6 +23,11 @@ export function runExclusive<T>(surface: MutationSurface, task: () => Promise<T>
   return run;
 }
 
+/** Mark an AI generation as in progress (from request start, not just commit). */
+export function setAiGenerationActive(active: boolean): void {
+  activeAiEdits = Math.max(0, activeAiEdits + (active ? 1 : -1));
+}
+
 /** Autosave must skip while an AI edit is generating or committing. */
 export function shouldPauseAutosave(): boolean {
   return activeAiEdits > 0;
