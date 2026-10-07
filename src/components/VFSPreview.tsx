@@ -488,6 +488,7 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
     // before first paint caused the permanent "Preparing preview" loop even
     // though every individual VFS snapshot was renderable.
     pendingCompileRef.current = { key, files, launchState: launchRef.current };
+    console.info('[VFSPreview] compile queued', { key: filesSignature, inFlight: Boolean(inFlightKeyRef.current) });
     setCompileDrainVersion((version) => version + 1);
   }, [files, filesSignature, launchSignature]);
 
@@ -543,6 +544,7 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
           launchState: request.launchState,
         }, { signal: compileController.signal });
 
+        console.info('[VFSPreview] compile finished', { key: compileKey.split('::')[0], stale: isStale() });
         if (!isStale()) {
           compiledKeyRef.current = compileKey;
           setPreviewCompile({
