@@ -21,6 +21,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { vfsEventBus, type BuildLogEvent } from '@/services/vfsEventBus';
 import {
   processCommand,
+  executeTerminalCommand,
   parseAICommands,
   type TerminalLine,
   type CommandContext,
