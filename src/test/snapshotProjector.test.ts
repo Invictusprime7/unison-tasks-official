@@ -285,6 +285,28 @@ describe('snapshot projector', () => {
     expect(projected['/.unison/site-bundle-snapshot.json']).toContain('snapshot-authority-test');
   });
 
+  it('renders a committed Builder edit when the live VFS snapshot copy is older', () => {
+    const snapshot = snapshotWith({
+      '/src/App.tsx': "import About from './pages/About'; export default function App() { return <About />; }",
+      '/src/pages/About.tsx': 'export default function About() { return <h1>Old oversized title</h1>; }',
+    });
+    const liveFiles = {
+      ...snapshot.vfsFiles,
+      '/src/pages/About.tsx': 'export default function About() { return <h1>Smaller title</h1>; }',
+      '/src/components/Badge.tsx': 'export default function Badge() { return null; }',
+      '/pages/Legacy.tsx': 'export default function Legacy() { return <main>Legacy</main>; }',
+      '/.unison/site-bundle-snapshot.json': JSON.stringify(snapshot),
+    };
+    const resolution = resolveSnapshot(liveFiles, { draftId: 'draft-live-vfs', revisionId: 'rev-new' } as never);
+    expect(resolution.snapshotFromLiveVfs).toBe(true);
+
+    const projected = projectSnapshotVfsFiles(liveFiles, resolution);
+
+    expect(projected['/src/pages/About.tsx']).toContain('Smaller title');
+    expect(projected['/src/components/Badge.tsx']).toBeDefined();
+    expect(projected['/pages/Legacy.tsx']).toBeUndefined();
+  });
+
   it('removes stale root runtime files instead of letting them compete after Sandpack flattening', () => {
     const snapshot = snapshotWith({
       '/src/App.tsx': "import Home from './pages/Home'; export default function App() { return <Home />; }",
