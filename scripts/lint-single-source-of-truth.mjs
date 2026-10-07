@@ -20,6 +20,11 @@ const FORBIDDEN_PATTERNS = [
   { pattern: "@/intents/registry", label: "@/intents/registry" },
 ];
 
+// The AI Composer schema is intentionally byte-mirrored between the edge
+// function and this client module. It is the one sanctioned contract mirror;
+// all other client contract imports remain forbidden.
+const CONTRACT_MIRROR_ALLOWLIST = new Set(['@/contracts/aiComposerContract']);
+
 const FORBIDDEN_REGEX_PATTERNS = [
   {
     pattern: /['"]booking\.create['"]\s*:\s*['"](?:intent-exec|intent-router|intent-booking)['"]/,
@@ -73,6 +78,8 @@ function walk(dir) {
       const lines = text.split('\n');
       lines.forEach((line, idx) => {
         const stripped = line.replace(/\/\/.*$/, '');
+        if (CONTRACT_MIRROR_ALLOWLIST.has('@/contracts/aiComposerContract')
+          && stripped.includes('@/contracts/aiComposerContract')) return;
         if (stripped.includes(pattern)) {
           violations.push({
             file: rel,

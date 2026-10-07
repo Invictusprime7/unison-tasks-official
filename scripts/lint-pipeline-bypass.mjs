@@ -146,6 +146,9 @@ const DESIGN_RESOLUTION_SYMBOLS = [
 const DESIGN_RESOLUTION_ALLOWED_PREFIXES = [
   'src/platform/core/',
   'src/sections/',
+  // Imported Loveable design-source bundle: declarative registry vocabulary
+  // only. It cannot write a SiteBundleSnapshot or canonical VFS.
+  'src/design-system/unison-x-loveable-design-d5be96/',
 ];
 const DESIGN_RESOLUTION_ALLOWLIST = new Set([
   // Stage 4b compile + seal surface.
@@ -163,6 +166,9 @@ const DESIGN_RESOLUTION_ALLOWLIST = new Set([
   'src/services/design/equivalenceLedger.ts',
   'src/services/launch/twentyFirstCoverageGate.ts',
   'src/services/requestAIPageComposition.ts',
+  // Read-only launch-context projection. It filters registry metadata for the
+  // composer; it cannot compile or persist a canonical artifact.
+  'src/services/launch/wizardRegistryAggregation.ts',
   // Transitional: swap helper consumed by the compiler paths above.
   'src/utils/sectionSwapper.ts',
 ]);
@@ -263,6 +269,10 @@ const BUILDER_DRAFT_MUTATION_ALLOWLIST = new Map([
   // their owning business; content commits still go through
   // commit_canonical_site_revision (the canonical RPC), not this writer.
   ['src/services/draftBusinessLinkRepair.ts', new Set(['update'])],
+  // Recovery creates the identity row and stores no VFS or revision content;
+  // the reconstructed source stays in the local recovery journal until a
+  // subsequent canonical commitMutation accepts it.
+  ['src/services/legacyCloudProjectRecovery.ts', new Set(['insert'])],
 ]);
 const BUILDER_DRAFT_MUTATION_METHODS = new Set(['insert', 'update', 'upsert', 'delete']);
 
