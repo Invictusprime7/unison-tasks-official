@@ -1,0 +1,67 @@
+/**
+ * Typed section actions over node addresses. Pure: each returns the new owner
+ * file contents (or an error); callers commit them through the canonical
+ * writer. Buttons inside a moved section keep their destinations because the
+ * markup is moved byte-for-byte.
+ */
+import { resolveMutableNode } from './nodeAddress';
+
+export type SectionActionResult =
+  | { ok: true; path: string; contents: string; summary: string }
+  | { ok: false; error: string };
+
+interface Span { id: string; start: number; end: number }
+
+const ATTR = (attrs: string, name: string) => new RegExp(`\\b${name}=["']([^"']+)["']`).exec(attrs)?.[1];
+
+/** Top-level <section> spans (nested sections stay inside their parent). */
+export function sectionSpans(source: string): Span[] {
+  const re = /<section\b([^>]*)>|<\/section\s*>/g;
+  const spans: Span[] = [];
+  let depth = 0; let open: { start: number; attrs: string } | null = null; let index = 0;
+  for (const m of source.matchAll(re)) {
+    if (m[0].startsWith('</')) {
+      depth -= 1;
+      if (depth === 0 && open) {
+        index += 1;
+        const id = ATTR(open.attrs, 'data-ut-section-id') ?? ATTR(open.attrs, 'id') ?? ATTR(open.attrs, 'aria-label') ?? `section-${index}`;
+        spans.push({ id, start: open.start, end: (m.index ?? 0) + m[0].length });
+        open = null;
+      }
+    } else if (!m[0].endsWith('/>')) {
+      if (depth === 0) open = { start: m.index ?? 0, attrs: m[1] };
+      depth += 1;
+    }
+  }
+  return spans;
+}
+
+function locate(address: string, files: Record<string, string>) {
+  const r = resolveMutableNode(address, files);
+  if (r.ok === false) return { error: r.error } as const;
+  if (r.address.kind !== 'section') return { error: 'Expected a section address, e.g. section:/about#hero' } as const;
+  const source = files[r.ownerPath] ?? '';
+  const spans = sectionSpans(source);
+  const i = spans.findIndex((s) => s.id.toLowerCase() === r.address.fragment!.toLowerCase());
+  if (i < 0) return { error: `Section "${r.address.fragment}" is not a top-level section in ${r.ownerPath}` } as const;
+  return { path: r.ownerPath, source, spans, i } as const;
+}
+
+export function removeSection(address: string, files: Record<string, string>): SectionActionResult {
+  const l = locate(address, files);
+  if ('error' in l) return { ok: false, error: l.error! };
+  const s = l.spans[l.i];
+  const contents = l.source.slice(0, s.start) + l.source.slice(s.end).replace(/^[ \t]*\r?\n/, '');
+  return { ok: true, path: l.path, contents, summary: `Removed section ${s.id}` };
+}
+
+export function moveSection(address: string, direction: 'up' | 'down', files: Record<string, string>): SectionActionResult {
+  const l = locate(address, files);
+  if ('error' in l) return { ok: false, error: l.error! };
+  const j = direction === 'up' ? l.i - 1 : l.i + 1;
+  if (j < 0 || j >= l.spans.length) return { ok: false, error: `Section is already at the ${direction === 'up' ? 'top' : 'bottom'}` };
+  const [a, b] = l.i < j ? [l.spans[l.i], l.spans[j]] : [l.spans[j], l.spans[l.i]];
+  const src = l.source;
+  const contents = src.slice(0, a.start) + src.slice(b.start, b.end) + src.slice(a.end, b.start) + src.slice(a.start, a.end) + src.slice(b.end);
+  return { ok: true, path: l.path, contents, summary: `Moved section ${l.spans[l.i].id} ${direction}` };
+}
