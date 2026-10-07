@@ -737,7 +737,11 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
   }, []);
 
   // Click-to-target: an element picked in the preview scopes the next message.
-  const [agentTarget, setAgentTarget] = useState<{ tagName: string; text?: string; selector?: string; section?: string; intent?: string } | null>(null);
+  const [agentTarget, setAgentTarget] = useState<{
+    tagName: string; text?: string; selector?: string; section?: string; intent?: string;
+    scopeAncestors?: import('@/services/editScopeResolver').ScopeAncestors;
+    provenance?: { sourceTable?: string | null; rowId?: string | null; field?: string | null; bindingId?: string | null; targetPath?: string | null };
+  } | null>(null);
   useEffect(() => {
     const onTarget = (event: Event) => {
       const detail = (event as CustomEvent).detail;
@@ -939,7 +943,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
 
     // Build file context suffix
     const targetContext = agentTarget
-      ? `\n\n[Target element — apply this request to it only: <${agentTarget.tagName}>${agentTarget.text ? ` "${agentTarget.text}"` : ''}${agentTarget.section ? ` in section "${agentTarget.section}"` : ''}${agentTarget.selector ? ` (selector ${agentTarget.selector})` : ''}${agentTarget.intent ? `; its button action "${agentTarget.intent}" and destination must stay unchanged` : ''}]`
+      ? `\n\n[Target element — apply this request to it only: <${agentTarget.tagName}>${agentTarget.text ? ` "${agentTarget.text}"` : ''}${agentTarget.section ? ` in section "${agentTarget.section}"` : ''}${agentTarget.selector ? ` (selector ${agentTarget.selector})` : ''}${agentTarget.intent ? `; its button action "${agentTarget.intent}" and destination must stay unchanged` : ''}${agentTarget.provenance?.sourceTable && agentTarget.provenance.rowId ? `; canonical data owner ${agentTarget.provenance.sourceTable}/${agentTarget.provenance.rowId}${agentTarget.provenance.field ? ` field ${agentTarget.provenance.field}` : ''}` : ''}${agentTarget.provenance?.bindingId ? `; binding ${agentTarget.provenance.bindingId}` : ''}${agentTarget.provenance?.targetPath ? `; link target ${agentTarget.provenance.targetPath}` : ''}]`
       : '';
     setAgentTarget(null);
     const fileContext = targetContext + (droppedFiles.length > 0 ? (() => {

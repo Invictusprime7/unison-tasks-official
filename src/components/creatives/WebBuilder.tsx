@@ -748,6 +748,14 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       selector: el.selector,
       section: typeof el.section === 'string' ? el.section : el.section?.id ?? el.section?.label,
       intent: attrs['data-ut-intent'],
+      scopeAncestors: el.scopeAncestors,
+      provenance: {
+        sourceTable: el.scopeAncestors?.sourceTable,
+        rowId: el.scopeAncestors?.rowId,
+        field: el.scopeAncestors?.field,
+        bindingId: el.scopeAncestors?.bindingId,
+        targetPath: el.scopeAncestors?.targetPath,
+      },
     } }));
   }, [setSelectedHTMLElement]);
 
@@ -7577,7 +7585,11 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                    // follow-up sequential task commits against this revision,
                    // not the pre-edit one (avoids the 40001 draft-pointer
                    // conflict when one AI edit spans 3+ files).
-                   if (outcome.revisionId) currentRevisionIdRef.current = outcome.revisionId;
+                  if (outcome.revisionId) currentRevisionIdRef.current = outcome.revisionId;
+                  if (outcome.commit?.dataOpsApplied.length) {
+                    const { refreshDataOperationResources } = await import('@/services/dataOperationRefresh');
+                    refreshDataOperationResources({ projectId: projectIdForCommit, businessId, results: outcome.commit.dataOpsApplied });
+                  }
                    recordPendingVfsMutation({
                     scope: pendingProjectionScope,
                     baseRevisionId: currentRevisionIdRef.current || null,
@@ -8129,7 +8141,11 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                 }
 
                  const mergedFiles = outcome.committedFiles ?? beforeFiles;
-                 if (outcome.revisionId) currentRevisionIdRef.current = outcome.revisionId;
+                if (outcome.revisionId) currentRevisionIdRef.current = outcome.revisionId;
+                if (outcome.commit?.dataOpsApplied.length) {
+                  const { refreshDataOperationResources } = await import('@/services/dataOperationRefresh');
+                  refreshDataOperationResources({ projectId: projectIdForCommit, businessId, results: outcome.commit.dataOpsApplied });
+                }
                  recordPendingVfsMutation({
                   scope: pendingProjectionScope,
                   baseRevisionId: currentRevisionIdRef.current || null,

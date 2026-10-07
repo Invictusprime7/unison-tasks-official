@@ -218,6 +218,14 @@ const InlineAIPanel: React.FC<InlineAIPanelProps> = ({
         selector,
         section: typeof section === 'string' ? section : section?.id ?? section?.label,
         intent: attrs['data-ut-intent'],
+        scopeAncestors: ancestors,
+        provenance: {
+          sourceTable: ancestors.sourceTable,
+          rowId: ancestors.rowId,
+          field: ancestors.field,
+          bindingId: ancestors.bindingId,
+          targetPath: ancestors.targetPath,
+        },
       },
     } }));
     setSuccess(true);
