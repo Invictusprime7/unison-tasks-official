@@ -69,6 +69,12 @@ function createDependencies() {
 const projection = { activePublishedRevisionId: 'published-current', activePagePath: '/src/pages/Home.tsx' };
 
 describe('WebBuilder persisted revision adoption effect', () => {
+  it('advances Builder state and the preview revision after an accepted AI commit', () => {
+    const sourceText = source.getFullText();
+    expect(sourceText).toContain('setCurrentRevisionId(outcome.revisionId);');
+    expect(sourceText).toContain('revisionId={currentRevisionId || null}');
+  });
+
   it('fetches the advanced committed revision even when the draft identity is unchanged', async () => {
     const files = { '/src/App.tsx': 'committed router' };
     const editedFiles = { '/src/App.tsx': 'router after the accepted AI edit' };

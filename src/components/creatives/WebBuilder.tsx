@@ -7596,7 +7596,13 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                    // follow-up sequential task commits against this revision,
                    // not the pre-edit one (avoids the 40001 draft-pointer
                    // conflict when one AI edit spans 3+ files).
-                  if (outcome.revisionId) currentRevisionIdRef.current = outcome.revisionId;
+                  if (outcome.revisionId) {
+                    currentRevisionIdRef.current = outcome.revisionId;
+                    // Keep the rendered Builder state in lockstep with the
+                    // accepted canonical revision. The ref protects sequential
+                    // writes; state advances the preview and all consumers.
+                    setCurrentRevisionId(outcome.revisionId);
+                  }
                   if (outcome.commit?.dataOpsApplied.length) {
                     const { refreshDataOperationResources } = await import('@/services/dataOperationRefresh');
                     refreshDataOperationResources({ projectId: projectIdForCommit, businessId, results: outcome.commit.dataOpsApplied });
@@ -8153,7 +8159,10 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                 }
 
                  const mergedFiles = outcome.committedFiles ?? beforeFiles;
-                if (outcome.revisionId) currentRevisionIdRef.current = outcome.revisionId;
+                if (outcome.revisionId) {
+                  currentRevisionIdRef.current = outcome.revisionId;
+                  setCurrentRevisionId(outcome.revisionId);
+                }
                 if (outcome.commit?.dataOpsApplied.length) {
                   const { refreshDataOperationResources } = await import('@/services/dataOperationRefresh');
                   refreshDataOperationResources({ projectId: projectIdForCommit, businessId, results: outcome.commit.dataOpsApplied });
@@ -8429,6 +8438,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                           }
                         }}
                         businessId={businessId || undefined}
+                        revisionId={currentRevisionId || null}
                         onReady={() => console.log('[WebBuilder] VFSPreview ready')}
                         onError={(err) => {
                           setIframeErrors(prev => {

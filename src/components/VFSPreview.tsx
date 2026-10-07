@@ -119,6 +119,8 @@ export interface VFSPreviewProps {
   businessId?: string;
   /** Site ID for intent context */
   siteId?: string;
+  /** Accepted canonical revision rendered by this preview, when persisted. */
+  revisionId?: string | null;
   /** Device breakpoint for responsive preview */
   device?: 'desktop' | 'tablet' | 'mobile';
   /** Enable element selection (edit mode) */
@@ -348,6 +350,7 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
   onIntentTrigger,
   businessId,
   siteId,
+  revisionId = null,
   device = 'desktop',
   enableSelection = false,
   onElementSelect,
@@ -1330,7 +1333,11 @@ export const VFSPreview = forwardRef<VFSPreviewHandle, VFSPreviewProps>(({
   }
 
   return (
-    <div ref={previewContainerRef} className={cn('flex flex-col h-full bg-background rounded-lg overflow-hidden border border-border', className)}>
+    <div
+      ref={previewContainerRef}
+      data-unison-preview-revision={revisionId ?? undefined}
+      className={cn('flex flex-col h-full bg-background rounded-lg overflow-hidden border border-border', className)}
+    >
       {/* Toolbar */}
       {showToolbar && (
         <div className="flex items-center justify-between px-3 py-2 bg-muted/50 border-b border-border">
