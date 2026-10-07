@@ -816,7 +816,7 @@ export async function executeTerminalCommand(
     const checks = parseProbeArgs(tokens);
     if (!checks.length) return { lines: [mkLine('error', 'Usage: probe text "Book now" [selector h1] [intent nav.goto]')] };
     const report = await runPreviewProbe(checks);
-    return { lines: formatProbeReport(report).map((l, i) => mkLine(i === 0 ? 'info' : l.startsWith('✓') ? 'success' : l.startsWith('✗') ? 'error' : 'output', l)) };
+    return { lines: formatProbeReport(report).map((l, i) => mkLine(i === 0 ? 'system' : l.startsWith('✓') ? 'success' : l.startsWith('✗') ? 'error' : 'output', l)) };
   }
   return processCommand(input, ctx);
 }
