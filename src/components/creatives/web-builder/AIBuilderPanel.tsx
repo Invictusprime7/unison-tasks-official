@@ -1452,17 +1452,35 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
         const vfsPaths = Object.keys(vfsFiles);
         isReactProject = vfsPaths.some(p => /\.(tsx|jsx)$/.test(p) && !/\.d\.ts$/.test(p));
         
+        // A clicked element pins the edit to the page the user actually sees:
+        // its route maps through the canonical router to one source file, then
+        // to the shared component that renders the clicked text, if any.
+        let selectedSourceFile: string | null = null;
+        if (selectedTarget) {
+          const pageRoute = selectedTarget.scopeAncestors?.pagePath ?? null;
+          const pageFile = resolveRouteSourceFile(vfsFiles, pageRoute);
+          if (pageFile) {
+            const needle = (selectedTarget.text ?? '').replace(/\s+/g, ' ').trim().slice(0, 40);
+            const contains = (file: string) => Boolean(needle) && (vfsFiles[file] ?? '').replace(/\s+/g, ' ').includes(needle);
+            selectedSourceFile = contains(pageFile)
+              ? pageFile
+              : resolveLocalImports(vfsFiles, pageFile).find(contains) ?? pageFile;
+          }
+        }
         try {
           const analysis = analyzeReactSite(vfsFiles);
           if (analysis.sectionMap) {
             siteAnalysisContext = analysis.sectionMap;
           }
           // For surgical edits, resolve which component/file the user is targeting
-          if (isSurgicalEdit) {
-            const target = resolveEditTarget(rawInput, analysis, {
+          if (isSurgicalEdit || selectedSourceFile) {
+            const analysedTarget = selectedSourceFile ? null : resolveEditTarget(rawInput, analysis, {
               preferredFile: defaultTargetFile,
               files: vfsFiles,
             });
+            const target = selectedSourceFile
+              ? { file: selectedSourceFile, component: selectedSourceFile.split('/').pop()?.replace(/\.\w+$/, '') ?? selectedSourceFile, section: selectedTarget?.section, confidence: 'high' as const }
+              : analysedTarget;
             if (target) {
               resolvedTargetFile = target.file;
               liveStep('planning', `🎯 Edit target: ${target.component} in ${target.file}`, `Confidence: ${target.confidence}`);
