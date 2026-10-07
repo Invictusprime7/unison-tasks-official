@@ -58,7 +58,7 @@ export function buildAiCandidatePatch(ctx: AiCommitContext): PatchPlan {
   let candidate = ctx.candidate;
   if (candidate && (candidate.baseRevisionId ?? null) !== (ctx.revisionId ?? null)) {
     const rebase = rebaseCandidate(candidate, ctx.beforeFiles, ctx.revisionId ?? null);
-    if (!rebase.ok) {
+    if (rebase.ok === false) {
       throw new Error(`[aiApplyGate] candidate base revision is stale; regenerate from the current revision. ${describeStaleCandidate(rebase.conflicts)}`);
     }
     candidate = rebase.candidate;

@@ -4506,7 +4506,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     // Interval autosaves yield to an in-flight AI edit (BuilderMutationCoordinator);
     // the local journal above keeps the work safe and the next interval retries.
     if (reason === 'interval_autosave' && shouldPauseAutosave()) {
-      return false;
+      return Promise.resolve(false);
     }
     setAutoSaveStatus('saving');
     const snapshotFromLiveVfs = (() => {
