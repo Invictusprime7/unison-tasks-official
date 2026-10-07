@@ -137,10 +137,17 @@ export function VFSTerminal({
     };
 
     setIsProcessing(true);
-    const result = processCommand(trimmed, cmdContext);
-    setIsProcessing(false);
-
-    appendLines([inputLine, ...result.lines]);
+    if (/^probe\b/.test(trimmed)) {
+      // Probe waits for the live preview to answer.
+      appendLines([inputLine]);
+      void executeTerminalCommand(trimmed, cmdContext)
+        .then((r) => appendLines(r.lines))
+        .finally(() => setIsProcessing(false));
+    } else {
+      const result = processCommand(trimmed, cmdContext);
+      setIsProcessing(false);
+      appendLines([inputLine, ...result.lines]);
+    }
 
     // Update history
     setCommandHistory(prev => {
