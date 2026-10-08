@@ -1,5 +1,7 @@
 /* cache-bust: 20260309 */
 import { shouldPauseAutosave, runExclusive, recordCommit, getLastCommit } from '@/services/builder/builderMutationCoordinator';
+import type { TerminalFileOp } from '@/services/terminalCommands';
+import { deriveIntentChecks, verifyCommittedChange } from '@/services/agent-runtime/browserVerification';
 import { buildPreviewRouteTabs, ROUTE_TAB_PREFIX } from '@/components/creatives/web-builder/previewRouteTabs';
 import "./web-builder/obsidian-theme.css";
 import { useEffect, useRef, useState, useCallback, useMemo, lazy, Suspense, Component, type ReactNode, type ErrorInfo } from "react";
@@ -3229,6 +3231,30 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     buildCanonicalCommitCurrent,
     importBuilderFiles,
   ]);
+
+  /** Code-terminal file commands: one canonical commit, queued behind other saves, then browser-verified. */
+  const onTerminalPatch = useCallback((ops: TerminalFileOp[], summary: string) => {
+    void runExclusive('terminal', async () => {
+      const before = virtualFSRef.current.getSandpackFiles();
+      const after = await commitBuilderFiles({}, {
+        source: 'playground-edit', summary, fileOps: ops as FileOp[],
+        failureMessage: 'The terminal change was not saved',
+      });
+      if (!after) return;
+      recordCommit('terminal', currentRevisionIdRef.current);
+      const checks = deriveIntentChecks(before, after, ops.map((op) => op.path));
+      const outcome = await verifyCommittedChange(checks);
+      if (outcome.status === 'verified') toast.success(outcome.message);
+      else toast.warning(outcome.message);
+    });
+  }, [commitBuilderFiles]);
+
+  const getTerminalRevisionInfo = useCallback(() => {
+    const last = getLastCommit();
+    return { revisionId: currentRevisionIdRef.current, lastSurface: last?.surface ?? null, lastAt: last?.at ?? null };
+  }, []);
+
+
 
 
 
