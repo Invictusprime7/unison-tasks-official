@@ -258,7 +258,11 @@ export const LauncherWizard = ({
   useEffect(() => {
     if (!open || !guidedStep || isLaunching || review || guidancePending) return;
     const floor = minNextStepRef.current;
-    const target = floor && stepOrder.indexOf(floor) > stepOrder.indexOf(guidedStep) ? floor : guidedStep;
+    let target = floor && stepOrder.indexOf(floor) > stepOrder.indexOf(guidedStep) ? floor : guidedStep;
+    // Never jump past a step whose answer is still missing — the AI may
+    // skip ahead after a Back + correction, leaving Create site disabled.
+    if (target === "confirm" && stepOrder.includes("aesthetic") && !theme) target = "aesthetic";
+    else if (target === "confirm" && stepOrder.includes("brand") && !businessName.trim()) target = "brand";
     minNextStepRef.current = null;
     setStep(target);
   // eslint-disable-next-line react-hooks/exhaustive-deps
