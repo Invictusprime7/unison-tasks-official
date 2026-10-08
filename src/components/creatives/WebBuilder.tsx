@@ -8351,6 +8351,8 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
               <CodeViewErrorBoundary onFallbackClick={() => setViewMode('canvas')}>
                 <VFSCodeView
                   historyDraftId={currentDraftId}
+                  onTerminalPatch={onTerminalPatch}
+                  getRevisionInfo={getTerminalRevisionInfo}
                   nodes={virtualFS.nodes}
                   activeFileId={virtualFS.activeFileId}
                   hasFiles={virtualFS.hasFiles}
