@@ -1,3 +1,4 @@
+import { generateSiteImage, isImageGenerationRequest, IMAGE_GENERATED_EVENT, type ImageGeneratedDetail } from '@/services/media/generateSiteImage';
 /**
  * AIBuilderPanel - Enhanced AI interface for Web Builder
  * 
@@ -797,6 +798,19 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
       const detail = (event as CustomEvent<{ prompt?: string; target?: typeof agentTarget }>).detail;
       const prompt = detail?.prompt?.trim();
       if (!prompt) return;
+      const t = detail?.target as (typeof agentTarget & { imageKind?: 'img' | 'background'; imageSelector?: string }) | undefined;
+      // A picture request on an image runs the project's image generator, then
+      // saves through the same canonical image-replace path the toolbar uses.
+      if (t?.imageKind && (t.imageSelector || t.selector) && isImageGenerationRequest(prompt)) {
+        const id = toast.loading('Generating image…');
+        void generateSiteImage(prompt)
+          .then((src) => {
+            window.dispatchEvent(new CustomEvent<ImageGeneratedDetail>(IMAGE_GENERATED_EVENT, { detail: { selector: (t.imageSelector || t.selector)!, src, kind: t.imageKind! } }));
+            toast.success('Image generated — saving to your site', { id });
+          })
+          .catch((err) => toast.error('Could not generate the image', { id, description: err instanceof Error ? err.message : String(err) }));
+        return;
+      }
       if (detail?.target?.tagName) setAgentTarget(detail.target);
       pendingPromptRef.current = prompt;
       setInput(prompt);

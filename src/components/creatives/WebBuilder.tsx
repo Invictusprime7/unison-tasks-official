@@ -1,3 +1,4 @@
+import { IMAGE_GENERATED_EVENT, type ImageGeneratedDetail } from '@/services/media/generateSiteImage';
 /* cache-bust: 20260309 */
 import { shouldPauseAutosave, runExclusive, recordCommit, getLastCommit } from '@/services/builder/builderMutationCoordinator';
 import type { TerminalFileOp, TerminalRouteOp } from '@/services/terminalCommands';
@@ -1134,6 +1135,41 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     clearLivePreviewSelection();
     toast.success('Moved down');
   }, [previewCode, clearLivePreviewSelection, recordManualPageEdit]);
+
+  // Toolbar / terminal requests must reach the AI Builder even when its panel is closed:
+  // hold the request, open the panel, and replay it once the panel is listening.
+  const aiPanelOpenRef = useRef(aiPanelOpen);
+  aiPanelOpenRef.current = aiPanelOpen;
+  const heldBuilderSendRef = useRef<unknown>(null);
+  useEffect(() => {
+    const onSend = (event: Event) => {
+      if (aiPanelOpenRef.current) return;
+      event.stopImmediatePropagation();
+      heldBuilderSendRef.current = (event as CustomEvent).detail;
+      setAiPanelOpen(true);
+    };
+    window.addEventListener('unison:builder-send', onSend, { capture: true });
+    return () => window.removeEventListener('unison:builder-send', onSend, { capture: true });
+  }, []);
+  useEffect(() => {
+    if (!aiPanelOpen || !heldBuilderSendRef.current) return;
+    const detail = heldBuilderSendRef.current;
+    heldBuilderSendRef.current = null;
+    const t = window.setTimeout(() => window.dispatchEvent(new CustomEvent('unison:builder-send', { detail })), 120);
+    return () => window.clearTimeout(t);
+  }, [aiPanelOpen]);
+
+  // AI-generated images (toolbar or AI Builder) save through the same canonical image path.
+  useEffect(() => {
+    const onGenerated = (event: Event) => {
+      const d = (event as CustomEvent<ImageGeneratedDetail>).detail;
+      if (!d?.selector || !d.src) return;
+      if (d.kind === 'img') handleFloatingImageReplace(d.selector, d.src);
+      else handleFloatingStyleUpdate(d.selector, { backgroundImage: `url("${d.src.replace(/"/g, '%22')}")` });
+    };
+    window.addEventListener(IMAGE_GENERATED_EVENT, onGenerated);
+    return () => window.removeEventListener(IMAGE_GENERATED_EVENT, onGenerated);
+  }, [handleFloatingImageReplace, handleFloatingStyleUpdate]);
 
   // ── Layout-Intent Fast Path bridge for AIBuilderPanel ────────────────────
   // Bundles the deterministic layout-op handlers (selection-aware class edits,

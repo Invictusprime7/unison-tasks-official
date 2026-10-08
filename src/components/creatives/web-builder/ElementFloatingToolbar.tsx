@@ -1,3 +1,4 @@
+import { generateSiteImage } from '@/services/media/generateSiteImage';
 /**
  * ElementFloatingToolbar - Context-Sensitive Toolbar for Element-Level Editing
  *
@@ -218,6 +219,8 @@ const InlineAIPanel: React.FC<InlineAIPanelProps> = ({
         selector,
         section: typeof section === 'string' ? section : section?.id ?? section?.label,
         intent: attrs['data-ut-intent'],
+        imageKind: element.imageTarget?.kind === 'img' || String(element.tagName).toLowerCase() === 'img' ? 'img' : element.imageTarget ? 'background' : undefined,
+        imageSelector: element.imageTarget?.selector || selector,
         scopeAncestors: ancestors,
         provenance: {
           sourceTable: ancestors.sourceTable,
@@ -384,6 +387,8 @@ export const ElementFloatingToolbar: React.FC<ElementFloatingToolbarProps> = ({
   const [isAIOpen, setIsAIOpen] = useState(false);
   const [attributeDraft, setAttributeDraft] = useState<Record<string, string>>({});
   const [imageUrlDraft, setImageUrlDraft] = useState('');
+  const [imagePrompt, setImagePrompt] = useState('');
+  const [imageGenerating, setImageGenerating] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -449,6 +454,20 @@ export const ElementFloatingToolbar: React.FC<ElementFloatingToolbarProps> = ({
     const reader = new FileReader();
     reader.onload = () => replaceImage(reader.result as string);
     reader.readAsDataURL(file);
+  };
+
+  const handleImageGenerate = async () => {
+    const p = imagePrompt.trim();
+    if (!p || imageGenerating) return;
+    setImageGenerating(true);
+    try {
+      replaceImage(await generateSiteImage(p));
+      setImagePrompt('');
+    } catch (err) {
+      toast.error('Could not generate the image', { description: err instanceof Error ? err.message : String(err) });
+    } finally {
+      setImageGenerating(false);
+    }
   };
 
   const handleImageUrlApply = () => {
@@ -649,6 +668,21 @@ export const ElementFloatingToolbar: React.FC<ElementFloatingToolbarProps> = ({
                       Apply
                     </Button>
                   </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground block">Generate with AI</Label>
+                  <Textarea
+                    value={imagePrompt}
+                    onChange={(e) => setImagePrompt(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void handleImageGenerate(); } }}
+                    className="min-h-[56px] text-xs"
+                    placeholder="Describe the picture, e.g. warm studio interior at golden hour"
+                    disabled={imageGenerating}
+                  />
+                  <Button size="sm" className="h-8 w-full text-xs gap-1" onClick={() => void handleImageGenerate()} disabled={!imagePrompt.trim() || imageGenerating}>
+                    {imageGenerating ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                    {imageGenerating ? 'Generating…' : 'Generate and use'}
+                  </Button>
                 </div>
                 <div className="rounded-md border border-white/10 bg-white/[0.04] px-2 py-1.5 text-[10px] text-muted-foreground">
                   Target: {imageTarget?.kind === 'img' ? 'image source' : 'background image'}

@@ -9,6 +9,27 @@ import { verifyAuth, authError } from "../_shared/auth.ts";
 import { errorResponse, secureJsonResponse } from "../_shared/response.ts";
 import { safeParseBody, sanitizeString } from "../_shared/validate.ts";
 import { createImageGeneration, isImageGenerationConfigured } from "../_shared/ai/providerClient.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+/** Store a generated image and return a long-lived link, so site source never carries megabytes of base64. */
+async function storeGeneratedImage(userId: string, dataUrl: string): Promise<string | null> {
+  try {
+    const url = Deno.env.get("SUPABASE_URL");
+    const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!url || !key) return null;
+    const b64 = dataUrl.slice(dataUrl.indexOf(",") + 1);
+    const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+    const admin = createClient(url, key);
+    const path = `generated/${userId}/${crypto.randomUUID()}.png`;
+    const up = await admin.storage.from("user-files").upload(path, bytes, { contentType: "image/png" });
+    if (up.error) { console.warn("[Generate-Image] store failed:", up.error.message); return null; }
+    const signed = await admin.storage.from("user-files").createSignedUrl(path, 60 * 60 * 24 * 365 * 10);
+    return signed.data?.signedUrl ?? null;
+  } catch (err) {
+    console.warn("[Generate-Image] store error:", err);
+    return null;
+  }
+}
 
 interface ImageGenerationRequest {
   prompt: string;
@@ -115,7 +136,9 @@ serve(async (req: Request) => {
 
     const result = await response.json();
     const generated = result.data?.[0];
-    const imageData = generated?.b64_json ? `data:image/png;base64,${generated.b64_json}` : generated?.url;
+    const inline = generated?.b64_json ? `data:image/png;base64,${generated.b64_json}` : generated?.url;
+    const stored = inline?.startsWith("data:") ? await storeGeneratedImage(auth.user.id, inline) : null;
+    const imageData = stored ?? inline;
 
     if (!imageData) {
       throw new Error("No image generated");
