@@ -16,6 +16,7 @@ export const themeEditSchema = z.object({
   set: z.record(z.string(), z.string()).default({}), reset: z.array(z.string()).default([]),
 }).strict();
 export type ThemeEdit = z.infer<typeof themeEditSchema>;
+export const THEME_FONT_CHOICES: string[] = [...new Set(THEME_PRESETS.flatMap(p => [p.typography.headingFont, p.typography.bodyFont]))];
 
 export function isThemeOnlyRequest(prompt: string): boolean {
   prompt = prompt.replace(/\b(?:keep|preserve|leave|without changing)\b[^.!?]*(?=[.!?]|$)/gi, '');
@@ -50,7 +51,7 @@ export function prepareThemeEdit(files: Record<string, string>, snapshot: SiteBu
     if (!contract.tokenNames.includes(name) || !isEditableThemeToken(name)) throw new Error('Unknown theme token: ' + name);
     delete overrides[name];
   }
-  const knownFonts = [...new Set(THEME_PRESETS.flatMap(p => [p.typography.headingFont, p.typography.bodyFont]))];
+  const knownFonts = THEME_FONT_CHOICES;
   for (const [name, raw] of Object.entries(edit.set)) {
     let value = raw;
     if (name === '--font-heading' || name === '--font-body') {
