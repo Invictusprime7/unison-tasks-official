@@ -1686,6 +1686,294 @@ export type Database = {
           },
         ]
       }
+      content_entries: {
+        Row: {
+          archived_at: string | null
+          business_id: string
+          content_type_id: string
+          created_at: string
+          created_by: string | null
+          data: Json
+          id: string
+          locale: string
+          published_at: string | null
+          scheduled_publish_at: string | null
+          site_id: string | null
+          slug: string | null
+          status: string
+          title: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          archived_at?: string | null
+          business_id: string
+          content_type_id: string
+          created_at?: string
+          created_by?: string | null
+          data?: Json
+          id?: string
+          locale?: string
+          published_at?: string | null
+          scheduled_publish_at?: string | null
+          site_id?: string | null
+          slug?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          archived_at?: string | null
+          business_id?: string
+          content_type_id?: string
+          created_at?: string
+          created_by?: string | null
+          data?: Json
+          id?: string
+          locale?: string
+          published_at?: string | null
+          scheduled_publish_at?: string | null
+          site_id?: string | null
+          slug?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_entries_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "business_storefronts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_entries_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_entries_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_entries_content_type_id_fkey"
+            columns: ["content_type_id"]
+            isOneToOne: false
+            referencedRelation: "content_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_entries_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      content_entry_revisions: {
+        Row: {
+          business_id: string
+          change_summary: string | null
+          created_at: string
+          created_by: string | null
+          entry_id: string
+          id: string
+          revision_number: number
+          snapshot: Json
+        }
+        Insert: {
+          business_id: string
+          change_summary?: string | null
+          created_at?: string
+          created_by?: string | null
+          entry_id: string
+          id?: string
+          revision_number: number
+          snapshot: Json
+        }
+        Update: {
+          business_id?: string
+          change_summary?: string | null
+          created_at?: string
+          created_by?: string | null
+          entry_id?: string
+          id?: string
+          revision_number?: number
+          snapshot?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_entry_revisions_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "business_storefronts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_entry_revisions_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_entry_revisions_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_entry_revisions_entry_id_fkey"
+            columns: ["entry_id"]
+            isOneToOne: false
+            referencedRelation: "content_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      content_publish_events: {
+        Row: {
+          actor_id: string | null
+          business_id: string
+          created_at: string
+          entry_id: string
+          event_type: string
+          id: string
+          metadata: Json
+          revision_id: string | null
+        }
+        Insert: {
+          actor_id?: string | null
+          business_id: string
+          created_at?: string
+          entry_id: string
+          event_type: string
+          id?: string
+          metadata?: Json
+          revision_id?: string | null
+        }
+        Update: {
+          actor_id?: string | null
+          business_id?: string
+          created_at?: string
+          entry_id?: string
+          event_type?: string
+          id?: string
+          metadata?: Json
+          revision_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_publish_events_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "business_storefronts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_publish_events_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_publish_events_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_publish_events_entry_id_fkey"
+            columns: ["entry_id"]
+            isOneToOne: false
+            referencedRelation: "content_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_publish_events_revision_id_fkey"
+            columns: ["revision_id"]
+            isOneToOne: false
+            referencedRelation: "content_entry_revisions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      content_types: {
+        Row: {
+          api_key: string
+          business_id: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          display_name: string
+          field_schema: Json
+          id: string
+          updated_at: string
+          updated_by: string | null
+          workflow: Json
+        }
+        Insert: {
+          api_key: string
+          business_id: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          display_name: string
+          field_schema?: Json
+          id?: string
+          updated_at?: string
+          updated_by?: string | null
+          workflow?: Json
+        }
+        Update: {
+          api_key?: string
+          business_id?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          display_name?: string
+          field_schema?: Json
+          id?: string
+          updated_at?: string
+          updated_by?: string | null
+          workflow?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_types_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "business_storefronts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_types_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_types_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       crm_activities: {
         Row: {
           activity_type: string
@@ -5141,6 +5429,46 @@ export type Database = {
       business_has_permission: {
         Args: { p_business_id: string; p_permission: string }
         Returns: boolean
+      }
+      cms_apply_content_entry_command: {
+        Args: {
+          p_action: string
+          p_actor_id: string
+          p_business_id: string
+          p_change_summary?: string
+          p_content_type_id?: string
+          p_data?: Json
+          p_entry_id?: string
+          p_locale?: string
+          p_site_id?: string
+          p_slug?: string
+          p_target_status?: string
+          p_title?: string
+        }
+        Returns: {
+          archived_at: string | null
+          business_id: string
+          content_type_id: string
+          created_at: string
+          created_by: string | null
+          data: Json
+          id: string
+          locale: string
+          published_at: string | null
+          scheduled_publish_at: string | null
+          site_id: string | null
+          slug: string | null
+          status: string
+          title: string
+          updated_at: string
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "content_entries"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       commit_canonical_site_revision_v2: {
         Args: {

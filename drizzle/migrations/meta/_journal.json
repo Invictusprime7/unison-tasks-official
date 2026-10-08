@@ -50,6 +50,13 @@
       "when": 1791187081091,
       "tag": "0006_add_business_has_permission",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791481132611,
+      "tag": "0007_add_content_storage",
+      "breakpoints": true
     }
   ]
 }
