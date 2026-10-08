@@ -66,8 +66,12 @@ export function BusinessCenterPanel({ businessId, onClose }: BusinessCenterPanel
   async function handleSave() {
     if (Object.keys(patch).length === 0) return;
     setSaving(true);
-    const next = await saveBusinessProfile(businessId, patch);
+    const next = await saveBusinessProfile(businessId, patch).catch((e: unknown) => {
+      toast.error(e instanceof Error ? e.message : 'Could not save business profile.');
+      return undefined;
+    });
     setSaving(false);
+    if (next === undefined) return;
     if (!next) {
       toast.error('Could not save business profile.');
       return;

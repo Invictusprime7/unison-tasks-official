@@ -33,4 +33,5 @@
 - [x] P0.9 provenance: AI-written pages and product cards tag records; click reports the record
 - [x] P0.5–8: live record rows carry their record tag (useSectionData is the shared connection; no new hook file per project rule)
 - [x] P0.13 live rehydration: record saves now reach preview sections bound to that table
-- [ ] P0.12, 14–18: profile writes via command gateway, verification, schema-driven WYSIWYG, AI tools on ResourceRuntime
+- [x] P0.12: profile writes via business_apply_profile_command gateway
+- [ ] P0.14–18: verification, schema-driven WYSIWYG, AI tools on ResourceRuntime
