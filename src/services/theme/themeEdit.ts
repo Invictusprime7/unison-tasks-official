@@ -50,7 +50,17 @@ export function prepareThemeEdit(files: Record<string, string>, snapshot: SiteBu
     if (!contract.tokenNames.includes(name) || !isEditableThemeToken(name)) throw new Error('Unknown theme token: ' + name);
     delete overrides[name];
   }
-  for (const [name, value] of Object.entries(edit.set)) {
+  const knownFonts = [...new Set(THEME_PRESETS.flatMap(p => [p.typography.headingFont, p.typography.bodyFont]))];
+  for (const [name, raw] of Object.entries(edit.set)) {
+    let value = raw;
+    if (name === '--font-heading' || name === '--font-body') {
+      // Models often send a full stack ("'Playfair Display', serif") or a
+      // differently-cased name; map it onto the supported font list.
+      const families = raw.split(',').map(f => f.trim().replace(/^['"]|['"]$/g, '').toLowerCase());
+      const match = families.map(f => knownFonts.find(k => k.toLowerCase() === f)).find(Boolean);
+      if (!match) throw new Error(`That font isn't available for ${name === '--font-heading' ? 'headings' : 'body text'}. Choose one of: ${knownFonts.join(', ')}.`);
+      value = match;
+    }
     if (!contract.tokenNames.includes(name) || !isLegalThemeTokenValue(name, value, contract)) throw new Error('Invalid theme value for ' + name + '. Use the supplied token type and bounds.');
     overrides[name] = value.trim();
   }
