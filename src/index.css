@@ -437,3 +437,28 @@ All colors MUST be HSL.
 .arcade-scrollbar::-webkit-scrollbar-thumb:hover {
   background: rgba(0, 255, 255, 0.5);
 }
+/* Sleek invisible scrollbar — hidden until hover, token-tinted */
+.sleek-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+.sleek-scrollbar:hover {
+  scrollbar-color: hsl(var(--foreground) / 0.18) transparent;
+}
+.sleek-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.sleek-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.sleek-scrollbar::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 9999px;
+}
+.sleek-scrollbar:hover::-webkit-scrollbar-thumb {
+  background: hsl(var(--foreground) / 0.18);
+}
+.sleek-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--foreground) / 0.32);
+}

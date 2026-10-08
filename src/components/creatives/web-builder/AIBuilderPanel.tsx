@@ -3301,7 +3301,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
         {/* Chat Tab */}
         <TabsContent value="code" className="flex-1 flex flex-col m-0 min-h-0 data-[state=inactive]:hidden">
           {/* Messages or Welcome */}
-          <ScrollArea className="flex-1" ref={scrollRef}>
+          <ScrollArea className="flex-1 sleek-scrollbar" ref={scrollRef}>
             <div className="py-3 px-3">
               {pendingPermissionAction && (
                 <div className="mb-3 min-w-0 max-w-full overflow-hidden border-l-2 border-amber-500/60 py-1 pl-3">
