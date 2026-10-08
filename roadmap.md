@@ -25,3 +25,10 @@
 - [x] Revised P0.9: `page rename` (typed route op through the canonical writer)
 - [x] Revised P0.9: swap a section variant from the terminal (`section variant`)
 - [ ] Revised P0.1–P0.3/P0.11: hosted Playwright worker + candidate preview (needs your approval of an outside host)
+
+## Milestone: Unified Resource Runtime (2026-10-08)
+- [x] P0.1–4: resource types, registry above catalogSurfaceRegistry, catalog/content/profile adapters, runtime reads/writes
+- [x] P0.10–11, 13: ResourceEntityRef on EditableEntity, ResourceDataOp, RESOURCE_INVALIDATED (event bus + preview postMessage)
+- [ ] Content tables not in database yet (content_types/entries migration never applied) — needs user yes
+- [ ] P0.5–9: ResourceBinding over site_data_bindings, useResourceBinding() in generated sites, data-ut-resource provenance in generated components
+- [ ] P0.12, 14–18: profile writes via command gateway, live rehydration + verification, schema-driven WYSIWYG, AI tools on ResourceRuntime
