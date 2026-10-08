@@ -20,6 +20,9 @@ import {
   type SystemGraphSchemaInput,
 } from './systemGraph';
 import { resolveEditableEntity, type EditableSelection } from './editableOwnershipResolver';
+import { listResources, getResource } from '@/services/resources/resourceRegistry';
+import { getResourceRecord, applyResourceOp, parseResourceProvenance } from '@/services/resources/resourceRuntime';
+import type { ResourceRecord } from '@/services/resources/resourceTypes';
 import { isCoreIntent } from '@/platform/core/coreIntents';
 import type { BindingOp } from '@/types/patchPlan';
 
@@ -208,6 +211,32 @@ export const agentOperations = {
     const what = patch.price != null ? `price $${patch.price}` : patch.image_url ? 'new photo' : patch.active === false ? 'hidden' : 'updated';
     const summary = `${after.name}: ${what} saved`;
     return { change: Object.keys(files).length ? { files, summary } : null, summary, item: after };
+  },
+  /** Every editable record type (catalog, content, business details) and its editable fields. */
+  list_resources(): Array<{ key: string; label: string; kind: string; fields: string[] }> {
+    return listResources().map((d) => ({ key: d.key, label: d.label, kind: d.kind, fields: d.schema.filter((f) => f.editable).map((f) => f.key) }));
+  },
+  /** Read the record behind a `data-ut-resource` mark (builder mode: drafts visible). */
+  async read_resource(ctx: AgentContext, provenance: string): Promise<ResourceRecord | null> {
+    if (!ctx.businessId) throw new Error('No business is linked to this site.');
+    const ref = parseResourceProvenance(provenance);
+    if (!ref) throw new Error(`Unknown record mark "${provenance}".`);
+    return getResourceRecord(ref.resourceKey, { businessId: ctx.businessId, projectId: ctx.projectId, mode: 'builder' }, ref.recordId);
+  },
+  /**
+   * Change one field of the record behind a `data-ut-resource` mark. Writes go
+   * through ResourceRuntime (validated, editable-only, invalidates the preview);
+   * no page file changes, so button destinations are untouched.
+   */
+  async update_resource_field(ctx: AgentContext, provenance: string, value: unknown, field?: string): Promise<{ summary: string; record: ResourceRecord | null }> {
+    if (!ctx.businessId) throw new Error('No business is linked to this site.');
+    const ref = parseResourceProvenance(provenance);
+    if (!ref) throw new Error(`Unknown record mark "${provenance}".`);
+    const key = field ?? ref.field;
+    if (!key) throw new Error('Name the field to change.');
+    const record = await applyResourceOp({ op: 'update', ref, values: { [key]: value } }, { businessId: ctx.businessId, projectId: ctx.projectId, mode: 'builder' });
+    const label = getResource(ref.resourceKey)?.schema.find((f) => f.key === key)?.label ?? key;
+    return { summary: `${label} saved`, record };
   },
 } as const;
 
