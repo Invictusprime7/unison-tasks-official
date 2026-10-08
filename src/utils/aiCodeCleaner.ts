@@ -216,7 +216,11 @@ const VOID_ELEMENTS = ['area','base','br','col','embed','hr','img','input','link
 // replacement would mangle the arrow into `= />`. Void elements that legitimately
 // hold expression attributes are already written self-closed by the AI, so the
 // negative lookbehind `(?<!/)` correctly excludes them.
-const VOID_RE = new RegExp(`<(${VOID_ELEMENTS.join('|')})(\\b[^>{}]*?)(?<!/)>`, 'gi');
+// Case-sensitive on purpose: JSX components such as React Router's `<Link>`,
+// `<Input>` or `<Source>` share a name with an HTML void element but hold
+// children. Matching them case-insensitively turned `<Link to="/">…</Link>`
+// into `<Link to="/" />…</Link>` and broke every navbar edit.
+const VOID_RE = new RegExp(`<(${VOID_ELEMENTS.join('|')})(\\b[^>{}]*?)(?<!/)>`, 'g');
 
 export function fixJsxVoidElements(code: string): string {
   if (!code || typeof code !== 'string') return code;
