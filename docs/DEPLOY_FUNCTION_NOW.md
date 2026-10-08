@@ -1,5 +1,7 @@
 # URGENT: Deploy fullstack-ai Function
 
+> **Obsolete incident/deployment instructions.** Do not run the commands below as current setup or treat their deployment/secret claims as current evidence. App Builder Composer modes use the existing `ai-code-assistant` function. Start with [AI setup](AI_SETUP_GUIDE.md) and [AI providers](ai-providers.md).
+
 ## ✅ Current Status
 
 - ✅ **Function deployed**: fullstack-ai is now on Supabase

@@ -19,7 +19,7 @@ Canonical contracts → schemas → accepted SiteBundleSnapshot
 | Tokens and Art Direction | Stage 4b, sealed SiteDesignContract and design-system contracts |
 | Source acceptance | `src/services/vfsCommitService.ts` `commitMutation` |
 | Saved identity | Accepted revision + `ProjectRuntimeEnvelope` |
-| Catalog operation authority | `agentOperations` → `catalogOps` → Resource Runtime |
+| Catalog operation authority | `agentOperations` → `catalogOps` → `cms-records`; Resource Runtime catalog adapter shares that gateway |
 | Resource storage semantics | Resource registry + catalog/content/profile adapters |
 | Runtime actions | Canonical intents, bindings, manifest and permission-checked executors |
 | Preview | Projection of accepted/current source, never an independent author |

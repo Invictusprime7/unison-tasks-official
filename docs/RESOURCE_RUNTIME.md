@@ -34,7 +34,7 @@ applyResourceOp
 
 ## Writer boundaries
 
-- `agentOperations` is the sole client catalog-operation authority for AI, command menu, Catalog panel and migrated catalog callers. `catalogOps.ts` adapts these calls to the shared runtime.
+- `agentOperations` is the client catalog-operation authority for AI, command menu, Catalog panel and migrated catalog callers. `catalogOps.ts` delegates to `cms-records`; the Resource Runtime catalog adapter shares that gateway rather than wrapping `catalogOps.ts`.
 - The floating record editor calls `applyResourceOp` for schema-driven edits to its identified record.
 - Catalog/content gateways use `cms-records`; profile writes use `business_apply_profile_command` through the profile service.
 - Database permissions remain server-enforced. Source changes still go through `commitMutation`; a record write is not a VFS revision and must not be described as one.

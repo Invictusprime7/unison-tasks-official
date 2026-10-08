@@ -1,5 +1,7 @@
 # September 13, 2026, 11:30 p.m. continuation
 
+> **Historical recovery evidence.** Lane A/Lane B and backend identifiers below describe an older revision, not current configuration or fresh-launch ownership. Do not copy those identifiers into setup. See [Architecture](ARCHITECTURE.md), [AI providers](ai-providers.md) and [frontend configuration](vercel-env-setup.md).
+
 Recovered the workspace Copilot session ending at 11:34 p.m. The outstanding requests were to fix AI Builder token failures and restore the Lane A / Stage 4b / Lane B merge through Launch Wizard.
 
 Implemented:

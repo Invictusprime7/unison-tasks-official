@@ -2,6 +2,8 @@
 
 > **Historical implementation record:** `SystemLauncher` references below describe the March 2026 architecture and are not active launch guidance. The current path is `LauncherWizard → runLaunchPipeline → launchOrchestrator`; the 2026-09-30 App Builder canonical-substitution milestone governs fresh-launch authorship.
 
+Current ownership and verification limits: [Architecture](ARCHITECTURE.md). The progress status below is historical, not the current roadmap.
+
 **Date:** March 31, 2026  
 **Status:** In Progress — Foundation Laid  
 **Author:** Copilot (Based on External Code Review)
