@@ -2,6 +2,7 @@ import { next, rewrite } from '@vercel/functions';
 
 export const config = {
   matcher: '/',
+  runtime: 'nodejs',
 };
 
 export default function middleware(request: Request) {
