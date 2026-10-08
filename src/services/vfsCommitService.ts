@@ -1851,6 +1851,14 @@ async function finalize(args: {
   });
 
   if (!dryRun) {
+    // Durability floor: never persist a revision that blanks a project whose
+    // parent had real source (the Oct 6 blank-draft failure mode).
+    const parentFiles = parentRevision?.vfsFiles ?? input.current.vfsFiles ?? {};
+    const hadEntry = Boolean(parentFiles['/src/App.tsx']?.trim());
+    if (hadEntry && !input.options?.explicitAuthorityReset && !vfsFiles['/src/App.tsx']?.trim()) {
+      recordCommitOutcome({ source: input.source, outcome: 'threw', vfsHash, revisionId: null, draftId: input.identity.draftId || null, dryRun });
+      throw new Error('[VFSCommitService] refusing to save a revision that would erase the project entry file.');
+    }
     const vfsDelta = buildVfsDelta(parentRevision?.vfsFiles ?? {}, vfsFiles);
     const patchForPersistence = compactPatchForPersistence(
       input.patch,
