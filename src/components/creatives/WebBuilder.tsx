@@ -3540,9 +3540,10 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
           failureMessage: 'This toolbar change was not saved',
         });
         if (!after) {
-          // canonical-vfs-exempt: rollback restore of the pre-mutation working set
           const prior = toolbarPreEditRef.current;
-          if (prior) importBuilderFiles(prior, {
+          if (!prior) return;
+          // canonical-vfs-exempt: rollback restore of the pre-mutation working set
+          importBuilderFiles(prior, {
             replace: true, preferredPath: activePagePath, entryPoint: launchEntryPoint,
             adoption: { source: 'rollback', exemptReason: 'restore-pre-mutation-state' },
           });
