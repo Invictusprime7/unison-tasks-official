@@ -721,6 +721,10 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
   }, [aiPermissions]);
 
   const canAutoApply = useCallback((category: AIEditPermissionCategory) => aiPermissions[category], [aiPermissions]);
+  // Full Auto: every category is on, so advisory holds (reviewer flags, scope
+  // guard) never stop the AI. The canonical save gate and button-destination
+  // checks still run on every write.
+  const isFullAuto = aiPermissions.behavioral && aiPermissions.surgical && aiPermissions.ui && aiPermissions.backend;
 
   const queuePermissionReview = useCallback((action: PendingPermissionAction) => {
     setPendingPermissionAction(action);
@@ -2500,7 +2504,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
         }
 
         // Check if approval is recommended before auto-applying
-        const shouldBlock = responseMeta?.requiresApproval &&
+        const shouldBlock = !isFullAuto && responseMeta?.requiresApproval &&
           responseMeta.warnings?.some(w => w.severity === 'error');
 
         // Client-side scope enforcement for scoped edits
@@ -2510,7 +2514,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
           : isSurgicalEdit
             ? 'surgical'
             : 'ui';
-        const scopeBlockReason = isScopedTask ? getScopedEditAutoApplyBlockReason({
+        const scopeBlockReason = isScopedTask && !isFullAuto ? getScopedEditAutoApplyBlockReason({
           files: normalizedFiles,
           originalFiles: vfsFiles ?? {},
           prompt: rawInput,
@@ -2760,7 +2764,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
 
         if (generatedCode) {
           // Check approval gate for single-file too
-          const hasBlockingWarning = responseMeta?.requiresApproval &&
+          const hasBlockingWarning = !isFullAuto && responseMeta?.requiresApproval &&
             responseMeta.warnings?.some(w => w.severity === 'error');
 
           if (hasBlockingWarning) {

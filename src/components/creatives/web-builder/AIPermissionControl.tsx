@@ -133,7 +133,7 @@ export const AIPermissionControl: React.FC<AIPermissionControlProps> = ({ permis
 
           <div className="mt-2 flex items-center gap-1.5 pt-1 text-[10px] text-muted-foreground">
             <Check className="h-3 w-3 text-primary" />
-            Changes that need review stay in the panel until you approve them.
+            {enabledCount === 4 ? "Auto: the AI applies every change itself; save and button safety checks still run." : "Changes that need review stay in the panel until you approve them."}
           </div>
         </div>
       )}
