@@ -1,38 +1,19 @@
-# Vercel Environment Variables Configuration
-# Copy these to your Vercel project settings under Environment Variables
+# Vercel frontend configuration
 
-# Supabase Configuration (Required)
-VITE_SUPABASE_URL=https://nfrdomdvyrbwuokathtw.supabase.co
-VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_9ggSZpWep1qxInwm3qRVkw_3Oc-tTtP
-VITE_SUPABASE_ANON_KEY=
-VITE_SUPABASE_PROJECT_ID=nfrdomdvyrbwuokathtw
+Active configuration guidance, reviewed 2026-10-08. Old hardcoded backend identifiers and undocumented feature-flag recommendations have been removed.
 
-# AI services
-# Configure provider credentials such as OPENAI_API_KEY as Supabase Edge
-# Function secrets. Do not add provider keys to Vercel or VITE_ variables.
+## Public frontend settings
 
-# Production Configuration
-VERCEL_ENV=production
-NODE_ENV=production
-VITE_AI_ENABLED=true
+Use `.env.example` and `src/integrations/supabase/env.ts` as the configuration reference for the intended backend. Browser settings include `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`; names are infrastructure compatibility identifiers, not instructions to copy values from another deployment.
 
-# Build Configuration
-ENABLE_EXPERIMENTAL_COREPACK=1
+Configure the same backend and account when two Unison copies must show the same saved projects. Different backends do not live-sync automatically. Frontend redeployment does not migrate project records or deploy server functions.
 
-# Security Headers
-VITE_APP_DOMAIN=your-app-domain.vercel.app
-VITE_SUPABASE_AUTH_DOMAIN=nfrdomdvyrbwuokathtw.supabase.co
+## Private settings
 
-# Performance Monitoring
-VITE_ENABLE_ANALYTICS=true
-VITE_ENABLE_ERROR_REPORTING=true
+AI/provider credentials belong in backend function secrets, never frontend `VITE_*` values. Managed Lovable Cloud service-role/database credentials are unavailable to users. Separately hosted server endpoints have their own secret requirements; never expose those in the browser.
 
-# Feature Flags
-VITE_ENABLE_DESIGN_STUDIO=true
-VITE_ENABLE_CANVAS_STUDIO=true
-VITE_ENABLE_AI_TEMPLATES=true
-VITE_ENABLE_COLLABORATION=true
+## Verify a deployment
 
-# Deployment Settings
-VITE_BUILD_TIME=${VERCEL_GIT_COMMIT_SHA}
-VITE_DEPLOYMENT_URL=${VERCEL_URL}
+Use the repository Vercel configuration and build scripts. Check sign-in redirects for the actual public origin, same-origin preview assets, function CORS and authenticated project reopening. A successful frontend deployment alone does not establish working AI, checkout, data permissions or resource editing.
+
+See [AI setup](AI_SETUP_GUIDE.md), [Preview runtime](PREVIEW_RUNTIME_ARCHITECTURE.md), [Architecture](ARCHITECTURE.md) and [documentation index](README.md). Historical setup guides are references, not current managed-hosting instructions.
