@@ -7751,7 +7751,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                   markCheckpointSaved(outcome.revisionId);
                   return { success: true, errors: [] };
                 }}
-                onOpenFile={(path) => { setViewMode('split'); virtualFS.openFile(path); }}
+                onOpenFile={(path) => { setViewMode('split'); openBuilderFile(path); }}
                 onViewEdits={(edits) => {
                   // Switch to code view and highlight the edited files
                   setViewMode('split');
@@ -8312,7 +8312,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                 markCheckpointSaved(outcome.revisionId);
                 return { success: true, errors: [] };
               }}
-              onOpenFile={(path) => { setViewMode('split'); virtualFS.openFile(path); }}
+              onOpenFile={(path) => { setViewMode('split'); openBuilderFile(path); }}
               onViewEdits={() => { setViewMode('split'); setAiPanelOpen(false); }}
               onCodeGenerated={async (code) => {
                 const committed = await commitBuilderFiles(templateToVFSFiles(code, currentTemplateName || 'AI Template'), {
