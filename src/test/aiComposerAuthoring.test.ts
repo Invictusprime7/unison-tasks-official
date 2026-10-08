@@ -25,7 +25,7 @@ describe('AI composer repair loop', () => {
       return good(request.page.filePath, request.page.title);
     });
     const result = await authorSitePages({ pages, homePageId: 'home', designContext: null, businessName: 'Budget test', files: base, concurrency: 2, budgetMs: 180_000, now: () => 100_000, invoke: invoke as never, commitPage: async files => ({ files }) });
-    expect(invoke.mock.calls[0][1].timeoutMs).toBe(90_000);
+    expect(invoke.mock.calls[0][1].timeoutMs).toBe(120_000);
     expect(result.outcomes).toHaveLength(5);
     expect(result.outcomes.every(outcome => outcome.status === 'authored')).toBe(true);
   });
@@ -38,6 +38,17 @@ describe('AI composer repair loop', () => {
       expect(invoke.mock.calls[0][1].timeoutMs).toBe(90_000);
       expect(invoke.mock.calls[1][1].timeoutMs).toBe(60_000);
       expect(invoke.mock.calls[1][0].gatewayOptions.timeoutMs).toBe(55_000);
+    } finally { spy.mockRestore(); }
+  });
+  it("skips a repair turn when less than a minute is left", async () => {
+    let clock = 100_000;
+    const spy = vi.spyOn(Date, "now").mockImplementation(() => clock);
+    const invoke = vi.fn().mockImplementationOnce(async () => { clock += 45_000; return bad("/src/pages/Home.tsx"); });
+    try {
+      const result = await runComposerRepairLoop({ request, baseFiles: base, invoke: invoke as never, timeoutMs: 90_000 });
+      expect(result.ok).toBe(false);
+      expect(result.reason).toBe("gates_exhausted");
+      expect(invoke).toHaveBeenCalledTimes(1);
     } finally { spy.mockRestore(); }
   });
   it('does not start another provider request after the shared repair budget expires', async () => {
