@@ -433,7 +433,7 @@ export const AIAssistantCore: React.FC<AIAssistantCoreProps> = ({
       )}
 
       {/* Messages */}
-      <ScrollArea className="min-h-0 flex-1 p-3" ref={scrollRef} data-chat-viewport>
+      <ScrollArea className="sleek-scrollbar min-h-0 flex-1 p-3" ref={scrollRef} data-chat-viewport>
         <div className="space-y-3">
           {messages.length === 0 && (
             <div className={cn(
@@ -589,7 +589,7 @@ export const AIAssistantCore: React.FC<AIAssistantCoreProps> = ({
             aria-label={appearance === "unison" ? "Describe what you want Unison to build" : undefined}
             disabled={isLoading}
             className={cn(
-              "flex-1 min-h-[40px] max-h-[120px] resize-none",
+              "sleek-scrollbar flex-1 min-h-[40px] max-h-[120px] resize-none",
               appearance === "unison" && "border-cyan-300/25 bg-white/5 text-white placeholder:text-white/45 focus-visible:ring-cyan-300/40",
               compact && "min-h-[36px]"
             )}
