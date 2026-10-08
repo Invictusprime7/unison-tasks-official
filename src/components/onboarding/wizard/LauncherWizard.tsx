@@ -186,7 +186,14 @@ export const LauncherWizard = ({
   const generationRef = useRef(0);
   const handlePreviewReady = useCallback(() => { setPreviewReady(true); setLaunchError(null); }, []);
   const handlePreviewError = useCallback((message: string) => { setPreviewReady(false); setLaunchError(`Preview could not render: ${message}`); }, []);
-  useEffect(() => () => { generationRef.current++; reviewDecision.current?.(false); }, []);
+  // Unmount must not bump the launch generation: effect cleanups also run on
+  // hot reload / StrictMode re-runs while state survives, and a bumped
+  // generation silently orphaned the running launch (preview never opened).
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
 
   const reset = useCallback(() => {
     generationRef.current++;
@@ -252,9 +259,21 @@ export const LauncherWizard = ({
     if (!guidedStep) setStep("goals");
   }, [open, initialVisionPrompt, prefill?.businessName, guidedStep]);
 
+  // After the user answers, the chat must move forward at least one step —
+  // even when the AI re-asks the same question (e.g. after Back + correction).
+  const minNextStepRef = useRef<SelectionStep | null>(null);
   useEffect(() => {
-    if (open && guidedStep && !isLaunching && !review) setStep(guidedStep);
-  }, [open, guidedStep, isLaunching, review]);
+    if (!open || !guidedStep || isLaunching || review || guidancePending) return;
+    const floor = minNextStepRef.current;
+    let target = floor && stepOrder.indexOf(floor) > stepOrder.indexOf(guidedStep) ? floor : guidedStep;
+    // Never jump past a step whose answer is still missing — the AI may
+    // skip ahead after a Back + correction, leaving Create site disabled.
+    if (target === "confirm" && stepOrder.includes("aesthetic") && !theme) target = "aesthetic";
+    else if (target === "confirm" && stepOrder.includes("brand") && !businessName.trim()) target = "brand";
+    minNextStepRef.current = null;
+    setStep(target);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, guidedStep, guidancePending, isLaunching, review]);
 
   const selectIndustry = (industry: string, id: BusinessSystemType) => {
     setSelectedIndustry(industry);
@@ -353,6 +372,8 @@ export const LauncherWizard = ({
         industry: 'Business type', goals: 'Main goal', questions: 'Visitor actions',
         pages: 'Pages', aesthetic: 'Visual direction', brand: 'Brand name', confirm: 'Review',
       };
+      const nextIndex = stepOrder.indexOf(step) + 1;
+      if (nextIndex > 0 && nextIndex < stepOrder.length) minNextStepRef.current = stepOrder[nextIndex];
       onSelectionConfirmed([
         `My selection: ${answer}`,
         `Business type: ${selectionSummary('industry')}`,
@@ -416,7 +437,7 @@ export const LauncherWizard = ({
     try {
       const result = await runLaunchPipeline(input, {
         onReview: candidate => new Promise<boolean>(resolve => {
-          if (generation !== generationRef.current) { resolve(false); return; }
+          if (generation !== generationRef.current || !mountedRef.current) { resolve(false); return; }
           setReview(candidate);
           setIsLaunching(false);
           reviewDecision.current = resolve;

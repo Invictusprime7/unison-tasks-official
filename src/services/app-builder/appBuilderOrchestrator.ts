@@ -16,7 +16,9 @@ export interface AppBuilderOrchestratorDependencies {
 }
 
 const CLOSURE_REPAIR_RESERVE_MS = 75_000;
-const MIN_CLOSURE_REPAIR_MS = 20_000;
+// A site-wide repair resends every page (~160k chars); the AI needs well over
+// 20s for that. With less time left the request can only time out, so skip it.
+const MIN_CLOSURE_REPAIR_MS = 60_000;
 
 export async function orchestrateAppBuild(
   input: AppBuildRequest,
