@@ -5426,6 +5426,10 @@ export type Database = {
       }
     }
     Functions: {
+      business_apply_profile_command: {
+        Args: { p_business_id: string; p_patch: Json }
+        Returns: string
+      }
       business_has_permission: {
         Args: { p_business_id: string; p_permission: string }
         Returns: boolean
