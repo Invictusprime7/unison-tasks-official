@@ -75,8 +75,25 @@ export function RecordFieldsEditor({ mark, businessId, projectId }: { mark?: str
     try {
       const values = Object.fromEntries(changed.map((f) => [f.key, fromDraft(f, draft[f.key])]));
       const next = await applyResourceOp({ op: 'update', ref, values }, { businessId, projectId, mode: 'builder' });
-      if (next) setRecord(next); else setRecord((r) => (r ? { ...r, ...values } : r));
-      toast.success(`${def.label}: ${changed.map((f) => f.label).join(', ')} saved`);
+      const previous = Object.fromEntries(changed.map((f) => [f.key, record?.[f.key] ?? null]));
+      const applied = next ?? (record ? { ...record, ...values } : null);
+      setRecord(applied);
+      toast.success(`${def.label}: ${changed.map((f) => f.label).join(', ')} saved`, {
+        action: {
+          label: 'Undo',
+          onClick: async () => {
+            try {
+              const back = await applyResourceOp({ op: 'update', ref, values: previous }, { businessId, projectId, mode: 'builder' });
+              const restored = back ?? (applied ? { ...applied, ...previous } : null);
+              setRecord(restored);
+              setDraft(Object.fromEntries(fields.map((f) => [f.key, toDraft(restored?.[f.key])])));
+              toast.success('Change undone');
+            } catch (e) {
+              toast.error('Could not undo', { description: e instanceof Error ? e.message : String(e) });
+            }
+          },
+        },
+      });
     } catch (e) {
       toast.error('Could not save', { description: e instanceof Error ? e.message : String(e) });
     } finally {
