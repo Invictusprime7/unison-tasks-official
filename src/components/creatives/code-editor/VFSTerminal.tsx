@@ -334,7 +334,7 @@ export function VFSTerminal({
         if (match) setInputValue(match + ' ');
       }
     }
-  }, [commandHistory, historyIndex, inputValue]);
+  }, [commandHistory, historyIndex, inputValue, pendingCommand, appendLines]);
 
   // Scroll handler
   const handleScroll = useCallback(() => {
