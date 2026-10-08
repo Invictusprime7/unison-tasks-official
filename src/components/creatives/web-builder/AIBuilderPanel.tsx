@@ -55,6 +55,7 @@ import { AIConversationWelcome } from './ai-chat/AIConversationWelcome';
 import { LaunchReadinessCard } from './ai-chat/LaunchReadinessCard';
 import { AIConversationInput } from './ai-chat/AIConversationInput';
 import { AgentActivityFeed } from './ai-chat/AgentActivityFeed';
+import { FileActivityRibbon } from './ai-chat/FileActivityRibbon';
 import { emitAgentEvent } from '@/services/agent-runtime/agentEvents';
 import { buildSystemGraph, renderSystemGraphForPrompt } from '@/services/agent-runtime/systemGraph';
 import { AgentCommandPalette } from './ai-chat/AgentCommandPalette';
@@ -521,6 +522,8 @@ interface AIBuilderPanelProps {
   /** @deprecated Ignored. AI output must go through onApplyToVFS. */
   onFilesPatch?: (files: Record<string, string>) => boolean;
   onViewEdits?: (edits: VFSEdit[]) => void;
+  /** Opens a project file in the code editor (used by the live file ribbon). */
+  onOpenFile?: (path: string) => void;
   iframeErrors?: IframeError[];
   onClearErrors?: () => void;
   onClose?: () => void;
@@ -636,6 +639,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
   templateName,
   defaultTargetFile,
   onViewEdits,
+  onOpenFile,
   iframeErrors = [],
   onClearErrors,
   onClose,
@@ -3554,6 +3558,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
               </span>
             </div>
           )}
+          <FileActivityRibbon active={isLoading} onOpenFile={onOpenFile} />
           {/* Input */}
           <AIConversationInput
             input={input}
