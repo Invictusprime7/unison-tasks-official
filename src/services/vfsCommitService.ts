@@ -2371,7 +2371,10 @@ export async function restoreRevision(args: {
       summary: args.label ?? `Restored checkpoint ${args.targetRevisionId.slice(0, 8)}`,
       reason: `restore:${args.targetRevisionId}`,
     } as PatchPlan,
-    options: { restoreRevisionId: args.targetRevisionId },
+    // Same rule as every Builder save: the preview must pass; publish
+    // readiness (unfinished bindings) blocks publishing, never a restore of a
+    // revision that was itself accepted.
+    options: { restoreRevisionId: args.targetRevisionId, requireReadinessPass: false },
   });
 }
 
