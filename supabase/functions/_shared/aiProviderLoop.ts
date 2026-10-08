@@ -54,6 +54,8 @@ const markDirectQuotaExhausted = (provider: 'gemini' | 'openai') => {
   directQuotaCooldownUntil[provider] = Date.now() + DIRECT_QUOTA_COOLDOWN_MS;
   console.warn(`[AI-Hybrid] ${provider} key is out of credit; skipping it for ${DIRECT_QUOTA_COOLDOWN_MS / 60_000} min`);
 };
+/** Test hook: forget remembered out-of-credit keys. */
+export const resetDirectQuotaCooldown = () => { directQuotaCooldownUntil.gemini = 0; directQuotaCooldownUntil.openai = 0; };
 const directOnCooldown = (provider: 'gemini' | 'openai') => Date.now() < directQuotaCooldownUntil[provider];
 
 /** The gateway's own 402 message names the remedy (top-up, temporary hold); never replace it with generic text. */
