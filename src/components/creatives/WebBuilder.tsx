@@ -1,6 +1,6 @@
 /* cache-bust: 20260309 */
 import { shouldPauseAutosave, runExclusive, recordCommit, getLastCommit } from '@/services/builder/builderMutationCoordinator';
-import type { TerminalFileOp } from '@/services/terminalCommands';
+import type { TerminalFileOp, TerminalRouteOp } from '@/services/terminalCommands';
 import { deriveIntentChecks, verifyCommittedChange } from '@/services/agent-runtime/browserVerification';
 import { buildPreviewRouteTabs, ROUTE_TAB_PREFIX } from '@/components/creatives/web-builder/previewRouteTabs';
 import "./web-builder/obsidian-theme.css";
@@ -3167,9 +3167,11 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       failureMessage?: string;
       /** Explicit ops (create/replace/delete) — used by the terminal. Overrides `files`. */
       fileOps?: FileOp[];
+      /** Typed registry ops; the canonical compiler rebuilds the router. */
+      routeOps?: TopologyChange[];
     } = {},
   ): Promise<Record<string, string> | null> => {
-    if ((!files || Object.keys(files).length === 0) && !options.fileOps?.length) return null;
+    if ((!files || Object.keys(files).length === 0) && !options.fileOps?.length && !options.routeOps?.length) return null;
 
     const beforeFiles = virtualFSRef.current.getSandpackFiles();
     const snapshot = resolveSnapshot(beforeFiles, effectiveRouteState as any).snapshot
@@ -3196,9 +3198,12 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
         source: options.source ?? 'ai-builder',
         identity: commitIdentity,
         current: buildCanonicalCommitCurrent(beforeFiles, snapshot),
-        patch: options.fileOps?.length
-          ? { ...legacyFilesToPatchPlan({}, options.summary ?? 'Builder edit'), fileOps: options.fileOps }
-          : legacyFilesToPatchPlan(files, options.summary ?? 'Builder edit'),
+        patch: {
+          ...(options.fileOps?.length || options.routeOps?.length
+            ? { ...legacyFilesToPatchPlan({}, options.summary ?? 'Builder edit'), fileOps: options.fileOps ?? [] }
+            : legacyFilesToPatchPlan(files, options.summary ?? 'Builder edit')),
+          ...(options.routeOps?.length ? { routeOps: options.routeOps } : {}),
+        },
         options: buildCommitOptions(snapshot),
       });
       if (commit.status !== 'committed') {
@@ -3233,11 +3238,22 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   ]);
 
   /** Code-terminal file commands: one canonical commit, queued behind other saves, then browser-verified. */
-  const onTerminalPatch = useCallback((ops: TerminalFileOp[], summary: string) => {
+  const onTerminalPatch = useCallback((ops: TerminalFileOp[], summary: string, termRouteOps?: TerminalRouteOp[]) => {
     void runExclusive('terminal', async () => {
       const before = virtualFSRef.current.getSandpackFiles();
+      let routeOps: TopologyChange[] | undefined;
+      if (termRouteOps?.length) {
+        const registry = (resolveSnapshot(before, effectiveRouteState as any).snapshot ?? effectiveRouteState?.siteBundleSnapshot)?.pageRegistry;
+        const pages = Object.values(registry?.pages ?? {}) as Array<{ pageId: string; path: string }>;
+        routeOps = [];
+        for (const op of termRouteOps) {
+          const page = pages.find((p) => (p.path === '/' ? '/' : p.path.replace(/\/+$/, '')) === op.route);
+          if (!page) { toast.error(`No page at ${op.route}`, { description: `Pages: ${pages.map((p) => p.path).join(', ')}` }); return; }
+          routeOps.push({ type: 'rename_page', pageId: page.pageId, newTitle: op.newTitle, newRoute: op.newRoute });
+        }
+      }
       const after = await commitBuilderFiles({}, {
-        source: 'playground-edit', summary, fileOps: ops as FileOp[],
+        source: 'playground-edit', summary, fileOps: ops as FileOp[], routeOps,
         failureMessage: 'The terminal change was not saved',
       });
       if (!after) return;
@@ -3247,7 +3263,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       if (outcome.status === 'verified') toast.success(outcome.message);
       else toast.warning(outcome.message);
     });
-  }, [commitBuilderFiles]);
+  }, [commitBuilderFiles, effectiveRouteState]);
 
   const getTerminalRevisionInfo = useCallback(() => {
     const last = getLastCommit();
