@@ -31,12 +31,10 @@
     "import of a saved project into the workspace": "workspace-import",
     "webpage import into the workspace": "workspace-import",
     "code import into the workspace": "workspace-import",
-    "terminal file write inside the developer workspace": "workspace-import",
     "editor working-buffer projection; persistence happens on commit": "editor-buffer",
     "dependency manifest write, not site content": "runtime-manifest",
     "write-back of canonical Unison runtime files, not user content": "runtime-manifest",
-    "optimistic HMR projection; the same mutation is chained through commitMutation below": "optimistic-hmr",
-    "optimistic HMR projection; the edit is persisted through saveDraft below": "optimistic-hmr"
+    "optimistic HMR projection; the same mutation is chained through commitMutation below": "optimistic-hmr"
   },
   "baseline": {
     "src/components/creatives/WebBuilder.tsx": {
@@ -53,13 +51,11 @@
       "template import adoption, declared through the adoption record": 2,
       "local editor undo of a working-set snapshot": 1,
       "local editor redo of a working-set snapshot": 1,
-      "optimistic HMR projection; the edit is persisted through saveDraft below": 1,
       "AI edit-history revert of a recorded working-set snapshot": 1,
       "AI edit-history reapply of a recorded working-set snapshot": 1
     },
     "src/components/creatives/code-editor/VFSCodeView.tsx": {
-      "dependency manifest write, not site content": 1,
-      "terminal file write inside the developer workspace": 1
+      "dependency manifest write, not site content": 1
     },
     "src/contexts/VFSContext.tsx": {
       "local working-set undo": 1,

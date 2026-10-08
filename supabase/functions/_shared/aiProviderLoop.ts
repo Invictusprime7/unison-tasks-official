@@ -292,7 +292,8 @@ export async function runProviderLoop(opts: {
           // walking the remaining models (including other provider families)
           // instead of aborting generation on the first rate limit.
           if (resp.status === 429 && !isQuotaExhausted(errText)) continue;
-          (openaiQuotaExhausted = true, markDirectQuotaExhausted('openai'));
+          openaiQuotaExhausted = true;
+          markDirectQuotaExhausted('openai');
           break;
         }
 
@@ -404,7 +405,8 @@ export async function runProviderLoop(opts: {
           const exhausted = isQuotaExhausted(errText) || resp.status === 402;
           recordProviderError(model.label, `${resp.status}${errText ? ` ${errText.substring(0, 200)}` : ''}`);
           if (exhausted) {
-            (geminiQuotaExhausted = true, markDirectQuotaExhausted('gemini'));
+            geminiQuotaExhausted = true;
+            markDirectQuotaExhausted('gemini');
             deferredEarlyError ??= { status: 402, error: 'Payment required. Please add credits to your Google AI account.' };
             console.warn(`[AI-Hybrid] ${model.label} quota/billing exhausted; abandoning Gemini for this turn.`);
             break;
@@ -599,7 +601,10 @@ export async function runProviderLoop(opts: {
           if (a.provider === 'lovable' && resp.status === 402) {
             deferredEarlyError ??= { status: 402, error: gatewayErrorMessage(errText) };
           }
-          if (a.provider === 'openai' && (resp.status === 402 || isQuotaExhausted(errText))) (openaiQuotaExhausted = true, markDirectQuotaExhausted('openai'));
+          if (a.provider === 'openai' && (resp.status === 402 || isQuotaExhausted(errText))) {
+            openaiQuotaExhausted = true;
+            markDirectQuotaExhausted('openai');
+          }
           throw new Error('failed');
         }
         const data = await resp.json();
@@ -711,10 +716,14 @@ export async function runProviderLoop(opts: {
               : { status: 402, error: 'Payment required. Please add credits to your OpenAI account.' };
           recordProviderError(model.label, detail);
           if (exhausted && isGeminiModelId(model.id)) {
-            (geminiQuotaExhausted = true, markDirectQuotaExhausted('gemini'));
+            geminiQuotaExhausted = true;
+            markDirectQuotaExhausted('gemini');
             console.warn(`[AI-Hybrid] ${model.label} quota/billing exhausted; skipping all Gemini attempts this turn.`);
           } else {
-            if (exhausted) (openaiQuotaExhausted = true, markDirectQuotaExhausted('openai'));
+            if (exhausted) {
+              openaiQuotaExhausted = true;
+              markDirectQuotaExhausted('openai');
+            }
             deferredEarlyError ??= earlyError;
           }
           console.warn(`[AI-Hybrid] ${model.label} returned ${resp.status}; trying next provider...`);

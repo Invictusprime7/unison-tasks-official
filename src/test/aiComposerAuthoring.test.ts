@@ -18,14 +18,14 @@ const bad = (path: string) => ({ data: { content: JSON.stringify({ summary: 'x',
 const request = { task: 'site_page_author' as const, page: { role: 'home', title: 'Home', route: '/', filePath: '/src/pages/Home.tsx' }, brief: 'b', files: base, routes: [] };
 
 describe('AI composer repair loop', () => {
-  it('reserves page-generation time for every selected worker wave after Home', async () => {
+  it('gives full-page prompts the minimum viable generation window', async () => {
     const pages = ['Home', 'About', 'Contact', 'Gallery', 'Shop'].map((title, index) => ({ pageId: title.toLowerCase(), title, route: index ? `/${title.toLowerCase()}` : '/', filePath: `/src/pages/${title}.tsx`, role: title.toLowerCase() }));
     const invoke = vi.fn(async (input: { messages: Array<{ content: string }> }, _options: { timeoutMs: number }) => {
       const request = JSON.parse(input.messages[0].content);
       return good(request.page.filePath, request.page.title);
     });
     const result = await authorSitePages({ pages, homePageId: 'home', designContext: null, businessName: 'Budget test', files: base, concurrency: 2, budgetMs: 180_000, now: () => 100_000, invoke: invoke as never, commitPage: async files => ({ files }) });
-    expect(invoke.mock.calls[0][1].timeoutMs).toBeLessThanOrEqual(60_000);
+    expect(invoke.mock.calls[0][1].timeoutMs).toBe(90_000);
     expect(result.outcomes).toHaveLength(5);
     expect(result.outcomes.every(outcome => outcome.status === 'authored')).toBe(true);
   });
