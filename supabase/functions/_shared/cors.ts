@@ -79,7 +79,7 @@ export function getCorsHeaders(req: Request): Record<string, string> {
   return {
     "Access-Control-Allow-Origin": allowedOrigin,
     "Access-Control-Allow-Headers":
-      "authorization, x-client-info, x-supabase-api-version, apikey, content-type, x-request-id, x-dev-mode-user, x-session-id",
+      "authorization, x-client-info, x-supabase-api-version, apikey, content-type, x-request-id, x-dev-mode-user, x-session-id, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Access-Control-Max-Age": "86400",
     "Vary": "Origin",
@@ -94,7 +94,7 @@ export function getCorsHeaders(req: Request): Record<string, string> {
 export const publicCorsHeaders: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, x-supabase-api-version, apikey, content-type, x-request-id, x-session-id",
+    "authorization, x-client-info, x-supabase-api-version, apikey, content-type, x-request-id, x-session-id, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
