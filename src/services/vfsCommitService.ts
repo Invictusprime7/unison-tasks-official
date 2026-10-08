@@ -1893,16 +1893,50 @@ async function finalize(args: {
         p_vfs_hash: vfsHash,
         p_active_page_path: input.current.activePagePath ?? null,
       };
-      rpcResult = await (supabase.rpc as any)('commit_canonical_site_revision_v2', compactRpcPayload);
-      if (rpcResult.error && isLegacyCanonicalVfsContractError(rpcResult.error)) {
-        rpcResult = await (supabase.rpc as any)('commit_canonical_site_revision_v2', {
-          ...compactRpcPayload,
-          p_vfs_files: vfsFiles,
-          p_site_bundle_snapshot: {
-            ...siteBundleSnapshotPayload,
-            vfsFiles: projectRuntimeVfs(vfsFiles),
-          },
+      // The commit RPC is idempotent for a given (vfs_hash, parent) pair, so a
+      // gateway/statement timeout that did NOT commit can be retried safely.
+      // Large sites serialize multi-MB JSONB payloads; a single slow attempt
+      // must not fail the whole mutation.
+      const PERSIST_RPC_ATTEMPTS = 3;
+      rpcResult = { data: null, error: { message: 'canonical revision transaction not attempted' } };
+      for (let attempt = 0; attempt < PERSIST_RPC_ATTEMPTS; attempt += 1) {
+        if (attempt > 0) {
+          await new Promise<void>((resolve) => globalThis.setTimeout(resolve, 1_000 * attempt));
+          diagnostics.push({
+            stage: 'persist',
+            level: 'warn',
+            message: 'canonical revision transaction timed out; retrying',
+            detail: { attempt: attempt + 1, maxAttempts: PERSIST_RPC_ATTEMPTS },
+          });
+        }
+        try {
+          rpcResult = await (supabase.rpc as any)('commit_canonical_site_revision_v2', compactRpcPayload);
+          if (rpcResult.error && isLegacyCanonicalVfsContractError(rpcResult.error)) {
+            rpcResult = await (supabase.rpc as any)('commit_canonical_site_revision_v2', {
+              ...compactRpcPayload,
+              p_vfs_files: vfsFiles,
+              p_site_bundle_snapshot: {
+                ...siteBundleSnapshotPayload,
+                vfsFiles: projectRuntimeVfs(vfsFiles),
+              },
+            });
+          }
+        } catch (rpcError) {
+          rpcResult = { data: null, error: { message: rpcError instanceof Error ? rpcError.message : String(rpcError) } };
+        }
+        if (!rpcResult.error || !isRecoverablePersistTimeout(rpcResult.error)) break;
+        // A timeout is ambiguous: the transaction may have committed after the
+        // gateway gave up. Reconcile before retrying so we never double-commit.
+        const recoveredRevisionId = await recoverTimedOutRevision({
+          projectId: input.identity.projectId,
+          draftId: input.identity.draftId,
+          vfsHash,
+          parentRevisionId,
         });
+        if (recoveredRevisionId) {
+          rpcResult = { data: recoveredRevisionId, error: null };
+          break;
+        }
       }
     } catch (rpcError) {
       rpcResult = { data: null, error: { message: rpcError instanceof Error ? rpcError.message : String(rpcError) } };
