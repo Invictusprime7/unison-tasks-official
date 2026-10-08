@@ -826,6 +826,8 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   // a .tsx/.jsx file that contains the selector. This makes manual toolbar
   // edits work for elements that live in imported component files (Navbar, etc.)
   // and avoids the misleading "dynamic className" toast.
+  /** Working set before the latest optimistic toolbar edit, restored if the save is refused. */
+  const toolbarPreEditRef = useRef<Record<string, string> | null>(null);
   const applyMutatorAcrossVFS = useCallback((
     selector: string,
     mutate: (code: string) => string | null,
@@ -836,6 +838,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     const next = mutate(previewCode);
     if (next && next !== previewCode) {
       recordManualPageEdit(snapshotLabel, previewCode, next);
+      toolbarPreEditRef.current = virtualFS.getSandpackFiles();
       // Write directly to VFS so the Sandpack preview HMRs in real time
       // instead of waiting for Effect A (previewCode → VFS) to flush.
       try {
@@ -892,8 +895,6 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   // AI Builder and layout fast-path commits.
   // See mem://features/web-builder/preview-floating-toolbar.
   const commitToolbarMutationRef = useRef<((nextCode: string, summary: string, path?: string) => void) | null>(null);
-  /** Working set before the latest optimistic toolbar edit, restored if the save is refused. */
-  const toolbarPreEditRef = useRef<Record<string, string> | null>(null);
 
   const handleFloatingStyleUpdate = useCallback((selector: string, styles: Record<string, string>) => {
     console.log('[WebBuilder] handleFloatingStyleUpdate called:', selector, styles);
@@ -1044,6 +1045,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       toast.error('Could not delete element. Try selecting a different element.');
       return;
     }
+    toolbarPreEditRef.current = virtualFS.getSandpackFiles();
     recordManualPageEdit('Manual · delete element', previewCode, res.code);
     setEditorCode(res.code);
     setPreviewCode(res.code);
@@ -1060,6 +1062,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       toast.error('Could not duplicate element. Try selecting a different element.');
       return;
     }
+    toolbarPreEditRef.current = virtualFS.getSandpackFiles();
     recordManualPageEdit('Manual · duplicate element', previewCode, res.code);
     setEditorCode(res.code);
     setPreviewCode(res.code);
@@ -1091,6 +1094,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       toast.info('Already at the top');
       return;
     }
+    toolbarPreEditRef.current = virtualFS.getSandpackFiles();
     recordManualPageEdit('Manual · move element up', previewCode, res.code);
     setEditorCode(res.code);
     setPreviewCode(res.code);
@@ -1122,6 +1126,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       toast.info('Already at the bottom');
       return;
     }
+    toolbarPreEditRef.current = virtualFS.getSandpackFiles();
     recordManualPageEdit('Manual · move element down', previewCode, res.code);
     setEditorCode(res.code);
     setPreviewCode(res.code);
@@ -3528,9 +3533,6 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       if (!targetPath || !nextCode) return;
       void runExclusive('toolbar', async () => {
         const before = virtualFSRef.current.getSandpackFiles();
-        if (before[targetPath] === nextCode && path) {
-          // optimistic projection already landed; diff against the pre-edit copy is unavailable, commit as-is
-        }
         const after = await commitBuilderFiles({ [targetPath]: nextCode }, {
           source: 'preview-toolbar',
           summary: `Toolbar · ${summary}`,
@@ -8651,80 +8653,8 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
               activePagePath={activePagePath ?? null}
               getVFSFiles={() => virtualFS.getSandpackFiles()}
               readiness={selectedElementReadiness}
-              onAIEditComplete={async (selector, newHtml) => {
-                // 1. Try the active page first.
-                const primary = applyElementHtmlUpdate(previewCode, selector, newHtml);
-                if (primary.ok) {
-                  try {
-                    pushAISnapshot(currentDraftId ?? null, {
-                      label: `AI · element edit ${selector.slice(0, 40)}`,
-                      source: 'ai',
-                      before: { [activePagePath]: previewCode },
-                      after: { [activePagePath]: primary.code },
-                      changedPaths: [activePagePath],
-                      meta: { origin: 'floating-toolbar-ai', actionType: 'element-edit' },
-                    });
-                  } catch (err) { console.warn('[onAIEditComplete] snapshot failed:', err); }
-                  const committed = await commitBuilderFiles(templateToVFSFiles(primary.code, currentTemplateName || 'Element Edit'), {
-                    source: 'preview-toolbar',
-                    summary: `Element edit · ${selector.slice(0, 40)}`,
-                  });
-                  if (!committed) return false;
-                  const imported = { files: committed };
-                  const saved = await saveDraft({
-                    force: true,
-                    reason: 'ai_edit',
-                    vfsFiles: imported.files,
-                  });
-                  if (!saved) {
-                    toast.error('AI edit saved locally, but Cloud sync is pending');
-                    return false;
-                  }
-                  setSelectedHTMLElement(null);
-                  toast.success('Element updated by AI');
-                  return true;
-                }
-                // 2. Element likely lives in an imported component file — scan VFS.
-                try {
-                  const allFiles = virtualFS.getSandpackFiles();
-                  for (const [path, code] of Object.entries(allFiles)) {
-                    if (!path.endsWith('.tsx') && !path.endsWith('.jsx')) continue;
-                    if (path === activePagePath) continue;
-                    const attempt = applyElementHtmlUpdate(code, selector, newHtml);
-                    if (attempt.ok) {
-                      try {
-                        pushAISnapshot(currentDraftId ?? null, {
-                          label: `AI · element edit in ${path.split('/').pop()}`,
-                          source: 'ai',
-                          before: { [path]: code },
-                          after: { [path]: attempt.code },
-                          changedPaths: [path],
-                          meta: { origin: 'floating-toolbar-ai', actionType: 'element-edit' },
-                        });
-                      } catch (err) { console.warn('[onAIEditComplete] snapshot failed:', err); }
-                      // canonical-vfs-exempt: optimistic HMR projection; the edit is persisted through saveDraft below
-                      virtualFS.importFiles({ [path]: attempt.code });
-                      const saved = await saveDraft({
-                        force: true,
-                        reason: 'ai_edit',
-                        vfsFiles: { ...allFiles, [path]: attempt.code },
-                      });
-                      if (!saved) {
-                        toast.error('AI edit saved locally, but Cloud sync is pending');
-                        return false;
-                      }
-                      setSelectedHTMLElement(null);
-                      toast.success(`Element updated by AI in ${path.split('/').pop()}`);
-                      return true;
-                    }
-                  }
-                } catch (err) {
-                  console.warn('[onAIEditComplete] VFS-wide scan failed:', err);
-                }
-                console.warn('[onAIEditComplete] selector not found in any VFS file:', selector);
-                toast.error('AI edit could not be applied — element not found');
-                return false;
-              }}
+              // AI requests are sent to the AI Builder by the toolbar itself (unison:builder-send).
+              onAIEditComplete={async () => true}
             />
           </div>
         )}

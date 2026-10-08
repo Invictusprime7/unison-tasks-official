@@ -8,7 +8,7 @@
  */
 import { fnv1a, type AICandidateChangeSet } from '@/services/builder/aiCandidateChangeSet';
 
-export type MutationSurface = 'ai-builder' | 'toolbar-ai' | 'terminal' | 'command-menu' | 'autosave' | 'catalog';
+export type MutationSurface = 'ai-builder' | 'toolbar-ai' | 'toolbar' | 'terminal' | 'command-menu' | 'autosave' | 'catalog';
 
 let tail: Promise<unknown> = Promise.resolve();
 let activeAiEdits = 0;
