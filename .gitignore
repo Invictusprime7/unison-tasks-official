@@ -38,7 +38,10 @@ vs code loveable migration.txt
 *.njsproj
 *.sln
 *.sw?
-.vercel
+# Share the Vercel repository-to-project mapping across clones while keeping
+# downloaded environments and other device-local Vercel state out of Git.
+.vercel/*
+!.vercel/repo.json
 .env*.local
 
 # Generated compiler and Supabase CLI state
