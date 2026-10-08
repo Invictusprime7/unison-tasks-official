@@ -288,12 +288,27 @@ export function VFSTerminal({
   // Handle input submission
   const handleSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
+    // An empty Enter confirms a pending natural-language change.
+    if (pendingCommand && !inputValue.trim()) {
+      const cmd = pendingCommand;
+      setPendingCommand(null);
+      executeCommand(cmd);
+      setInputValue('');
+      return;
+    }
+    if (pendingCommand) setPendingCommand(null);
     executeCommand(inputValue);
     setInputValue('');
-  }, [inputValue, executeCommand]);
+  }, [inputValue, executeCommand, pendingCommand]);
 
   // Handle key events (history navigation, tab completion)
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Escape' && pendingCommand) {
+      e.preventDefault();
+      setPendingCommand(null);
+      appendLines([{ id: `cx_${Date.now()}`, type: 'system', text: 'Cancelled — nothing was changed.', timestamp: Date.now() }]);
+      return;
+    }
     if (e.key === 'ArrowUp') {
       e.preventDefault();
       if (commandHistory.length > 0) {
