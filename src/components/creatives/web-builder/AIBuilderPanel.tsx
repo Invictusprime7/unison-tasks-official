@@ -692,6 +692,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
   // Files the auto-apply guard held back. Without this the AI "resolved" a
   // rewrite that never materialized anywhere — now the user can still apply it.
   const [heldFiles, setHeldFiles] = useState<{ files: Record<string, string>; deletions?: string[]; routeOps?: TopologyChange[]; candidate?: AICandidateChangeSet; reason: string } | null>(null);
+  const [isApplyingHeld, setIsApplyingHeld] = useState(false);
   const [droppedFiles, setDroppedFiles] = useState<DroppedFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [gatewayConfig, setGatewayConfig] = useState<GatewayConfig | undefined>(undefined);
