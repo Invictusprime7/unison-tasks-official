@@ -84,6 +84,9 @@ export function decodeComposerResponse(data: unknown): AIComposerResponse | null
   }
 }
 
+/** Minimum time for one repair turn; below this the attempt is skipped. */
+export const MIN_REPAIR_WINDOW_MS = 60_000;
+
 export async function runComposerRepairLoop(input: ComposerLoopInput): Promise<ComposerLoopResult> {
   const invoke = input.invoke ?? runBuilderTurn;
   const maxAttempts = Math.max(1, input.maxAttempts ?? 3);
