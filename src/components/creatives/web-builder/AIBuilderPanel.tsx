@@ -30,7 +30,6 @@ import {
   ChevronLeft,
   Eye,
   AlertTriangle,
-  CheckCircle2,
   XCircle,
   RefreshCw,
   Terminal,
@@ -49,7 +48,6 @@ import {
   X,
   MessageSquare,
   CircleDot,
-  Settings2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AIConversationMessage } from './ai-chat/AIConversationMessage';
