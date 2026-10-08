@@ -141,17 +141,17 @@ export async function saveBusinessProfile(
   if (!businessId) return null;
   const row = profilePatchToRow(patch);
   if (Object.keys(row).length === 0) return loadBusinessProfile(businessId);
-  const { data, error } = await supabase
-    .from('businesses')
-    .update(row)
-    .eq('id', businessId)
-    .select(SELECT_COLS)
-    .maybeSingle();
+  // Writes go through the business command gateway, which enforces the
+  // business.profile.write permission and the editable-field allow-list.
+  const { error } = await (supabase.rpc as any)('business_apply_profile_command', {
+    p_business_id: businessId,
+    p_patch: row,
+  });
   if (error) {
     console.warn('[businessProfileService] save failed', error);
-    return null;
+    throw new Error(error.message || 'Your business details could not be saved.');
   }
-  return data ? rowToProfile(data as unknown as BusinessRow) : null;
+  return loadBusinessProfile(businessId);
 }
 
 export function scoreProfile(profile: BusinessProfileDTO): ProfileCompletenessReport {
