@@ -29,7 +29,7 @@
 ## Milestone: Unified Resource Runtime (2026-10-08)
 - [x] P0.1–4: resource types, registry above catalogSurfaceRegistry, catalog/content/profile adapters, runtime reads/writes
 - [x] P0.10–11, 13: ResourceEntityRef on EditableEntity, ResourceDataOp, RESOURCE_INVALIDATED (event bus + preview postMessage)
-- [ ] Content tables not in database yet (content_types/entries migration never applied) — needs user yes
+- [x] Content storage (FAQs, articles) added to the database with content permissions
 - [x] P0.9 provenance: AI-written pages and product cards tag records; click reports the record
 - [ ] P0.5–8: ResourceBinding over site_data_bindings, useResourceBinding() in generated sites
 - [x] P0.13 live rehydration: record saves now reach preview sections bound to that table
