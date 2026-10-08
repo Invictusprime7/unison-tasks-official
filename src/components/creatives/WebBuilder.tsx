@@ -87,7 +87,7 @@ import { ResearchOverlay, type ResearchOverlayPayload } from "./web-builder/Rese
 import { decideIntentUx } from "@/runtime/intentUx";
 import SystemHealthPanel from "@/components/web-builder/SystemHealthPanel";
 import ReadinessCenterPanel from "@/components/web-builder/ReadinessCenterPanel";
-import { decodeThemeEdit, type ThemeEdit } from '@/services/theme/themeEdit';
+import { decodeThemeEdit, THEME_FONT_CHOICES, type ThemeEdit } from '@/services/theme/themeEdit';
 import { runBuilderTurn } from '@/services/builderBrainClient';
 import { buildThemeContract } from '@/platform/core/themeContract';
 import { readSealedArtDirection } from '@/sections/variants/resolvedArtDirection';
@@ -3502,7 +3502,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     if (!snapshot) throw new Error('Save or open a site before changing its theme.');
     const revisionId = currentRevisionIdRef.current || null;
     const contract = buildThemeContract({ artDirection: readSealedArtDirection(snapshot.meta), artDirectionPackId: snapshot.meta.artDirectionPackId, themePresetId: snapshot.meta.themePresetId });
-    const response = await runBuilderTurn<unknown>({ mode: 'theme-edit', messages: [{ role: 'user', content: JSON.stringify({ prompt, snapshotId: snapshot.snapshotId, revisionId, presetId: snapshot.meta.themePresetId, contract: { ...contract, tokenNames: contract.tokenNames.filter(isEditableThemeToken) }, effectiveValues: { ...readCompiledTokenValues(files['/src/index.css'] || '', true), ...readThemeOverrides(files) }, overrides: readThemeOverrides(files), businessName: snapshot.businessName, industry: snapshot.industry }) }] });
+    const response = await runBuilderTurn<unknown>({ mode: 'theme-edit', messages: [{ role: 'user', content: JSON.stringify({ prompt, snapshotId: snapshot.snapshotId, revisionId, presetId: snapshot.meta.themePresetId, contract: { ...contract, tokenNames: contract.tokenNames.filter(isEditableThemeToken) }, effectiveValues: { ...readCompiledTokenValues(files['/src/index.css'] || '', true), ...readThemeOverrides(files) }, overrides: readThemeOverrides(files), allowedFonts: { '--font-heading': THEME_FONT_CHOICES, '--font-body': THEME_FONT_CHOICES, rule: 'Font tokens take exactly one name from this list, no fallback stack.' }, businessName: snapshot.businessName, industry: snapshot.industry }) }] });
     if (response.error) throw response.error;
     if ((currentRevisionIdRef.current || null) !== revisionId) throw new Error('The site changed during this request. Please request the theme change again.');
     return commitThemeTokenOps([], prompt, decodeThemeEdit(response.data));
