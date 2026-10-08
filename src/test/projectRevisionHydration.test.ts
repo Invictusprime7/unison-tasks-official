@@ -101,11 +101,23 @@ describe('project revision hydration', () => {
     expect(revision?.vfsFiles['/src/App.tsx']).toBe('requested draft');
   });
 
-  it('rejects a canonical draft with no revision pointer instead of selecting a fallback', async () => {
+  it('recovers only the draft\'s own newest committed revision when its pointer is lost', async () => {
     draftRevisionPointer = null;
+    const revision = await loadProjectedRevisionForDraft(projectId, requestedDraftId);
+    expect(revision.draftId).toBe(requestedDraftId);
+    expect(revision.vfsFiles['/src/App.tsx']).toBe('requested draft');
+  });
 
-    await expect(loadProjectedRevisionForDraft(projectId, requestedDraftId))
-      .rejects.toThrow('has no committed revision projection');
+  it('recovers when the pointer references a missing revision, never another draft', async () => {
+    draftRevisionPointer = '99999999-9999-4999-8999-999999999999';
+    const revision = await loadProjectedRevisionForDraft(projectId, requestedDraftId);
+    expect(revision.id).toBe(pointedRevisionId);
+  });
+
+  it('still rejects a draft that owns no committed revision', async () => {
+    draftRevisionPointer = null;
+    await expect(loadProjectedRevisionForDraft(projectId, '88888888-8888-4888-8888-888888888888'))
+      .rejects.toThrow();
   });
 
   it('preserves project-wide latest loading for compatibility callers without a draft', async () => {
