@@ -3,10 +3,12 @@ import {
   reserveFallbackWindow,
   PROVIDER_LOOP_TOTAL_BUDGET_MS,
   runProviderLoop,
+  resetDirectQuotaCooldown,
 } from '../_shared/aiProviderLoop.ts';
 import { isPageDesignRequest } from '../_shared/catalogTools.ts';
 import { buildResponseBody } from '../_shared/responseNormalizer.ts';
 
+resetDirectQuotaCooldown();
 Deno.test('page design requests cannot be diverted into catalog mutations', () => {
   assert(isPageDesignRequest('home is complete. design the other nav pages.'), 'remaining pages require file output');
   assert(isPageDesignRequest('redesign the Services page'), 'page layout needs file output');
