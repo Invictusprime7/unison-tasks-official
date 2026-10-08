@@ -264,7 +264,10 @@ export async function authorSitePages(input: SiteAuthoringInput): Promise<SiteAu
     const remainingPages = Math.max(0, ordered.length - index - 1);
     const waves = index === 0 ? 1 + Math.ceil(remainingPages / concurrency)
       : Math.max(1, Math.ceil((ordered.length - index) / concurrency));
-    const pageDeadline = Math.min(deadline, now() + Math.min(130_000, Math.max(10_000, (deadline - now()) / waves)));
+    // A full page prompt (~110k chars) needs ~90s from the AI; a shorter
+    // window only produces a guaranteed timeout. Later pages past the overall
+    // budget keep their baseline instead.
+    const pageDeadline = Math.min(deadline, now() + Math.min(130_000, Math.max(90_000, (deadline - now()) / waves)));
     const runLoop = (request: AIComposerRequest) => runComposerRepairLoop({
       request,
       baseFiles,
