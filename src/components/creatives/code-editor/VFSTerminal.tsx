@@ -124,6 +124,9 @@ export function VFSTerminal({
     }
   }, [lines]);
 
+  // A natural-language change waiting for the user to confirm (Enter runs it, Esc cancels).
+  const [pendingCommand, setPendingCommand] = useState<string | null>(null);
+
   // Execute a command
   const executeCommand = useCallback((input: string) => {
     const trimmed = input.trim();
@@ -147,7 +150,28 @@ export function VFSTerminal({
     } else {
       const result = processCommand(trimmed, cmdContext);
       setIsProcessing(false);
-      appendLines([inputLine, ...result.lines]);
+      const confirmLine = result.lines.find((l) => l.text.startsWith('__CONFIRM__'));
+      const aiLine = result.lines.find((l) => l.text.startsWith('__AI__'));
+      if (confirmLine) {
+        const cmd = confirmLine.text.slice('__CONFIRM__'.length);
+        setPendingCommand(cmd);
+        const label = result.lines.find((l) => !l.text.startsWith('__'))?.text ?? cmd;
+        appendLines([
+          inputLine,
+          { id: `cf_${Date.now()}`, type: 'system', text: `I understood: ${label}`, timestamp: Date.now() },
+          { id: `cf2_${Date.now()}`, type: 'warn', text: `This changes your site. Press Enter to run \`${cmd}\`, or Esc to cancel.`, timestamp: Date.now() },
+        ]);
+      } else if (aiLine) {
+        const prompt = aiLine.text.slice('__AI__'.length);
+        // One canonical agent: the terminal never calls AI itself.
+        window.dispatchEvent(new CustomEvent('unison:builder-send', { detail: { prompt } }));
+        appendLines([
+          inputLine,
+          { id: `ai_${Date.now()}`, type: 'system', text: 'Sent to the AI Builder — follow progress in the chat.', timestamp: Date.now() },
+        ]);
+      } else {
+        appendLines([inputLine, ...result.lines]);
+      }
     }
 
     // Update history
@@ -264,12 +288,27 @@ export function VFSTerminal({
   // Handle input submission
   const handleSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
+    // An empty Enter confirms a pending natural-language change.
+    if (pendingCommand && !inputValue.trim()) {
+      const cmd = pendingCommand;
+      setPendingCommand(null);
+      executeCommand(cmd);
+      setInputValue('');
+      return;
+    }
+    if (pendingCommand) setPendingCommand(null);
     executeCommand(inputValue);
     setInputValue('');
-  }, [inputValue, executeCommand]);
+  }, [inputValue, executeCommand, pendingCommand]);
 
   // Handle key events (history navigation, tab completion)
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Escape' && pendingCommand) {
+      e.preventDefault();
+      setPendingCommand(null);
+      appendLines([{ id: `cx_${Date.now()}`, type: 'system', text: 'Cancelled — nothing was changed.', timestamp: Date.now() }]);
+      return;
+    }
     if (e.key === 'ArrowUp') {
       e.preventDefault();
       if (commandHistory.length > 0) {
@@ -295,7 +334,7 @@ export function VFSTerminal({
         if (match) setInputValue(match + ' ');
       }
     }
-  }, [commandHistory, historyIndex, inputValue]);
+  }, [commandHistory, historyIndex, inputValue, pendingCommand, appendLines]);
 
   // Scroll handler
   const handleScroll = useCallback(() => {

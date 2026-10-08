@@ -24,6 +24,7 @@ import { buildSystemGraph, renderSystemGraphForPrompt } from '@/services/agent-r
 import { resolveMutableNode } from '@/services/agent-runtime/nodeAddress';
 import { runPreviewProbe, parseProbeArgs, formatProbeReport } from '@/services/agent-runtime/previewProbe';
 import { removeSection, restyleSection, moveSection } from '@/services/agent-runtime/sectionActions';
+import { matchNaturalLanguage, looksLikeNaturalLanguage } from '@/services/terminal/naturalLanguage';
 import { SANDPACK_DEPENDENCIES, isSandpackAllowedImport } from '@/utils/sandpackDependencies';
 
 // ============================================================================
@@ -351,6 +352,7 @@ function cmdHelp(): CommandResult {
       mkLine('output', '│  whoami                 Show business system type'),
       mkLine('output', '│  clear                  Clear terminal'),
       mkLine('output', '│  help                   Show this help'),
+      mkLine('output', '│  …or just type what you want in plain English'),
       mkLine('system', '└───────────────────────────────────────────────────────'),
     ],
   };
@@ -822,13 +824,27 @@ export function processCommand(input: string, ctx: CommandContext): CommandResul
     case 'clear':
     case 'cls':
       return { lines: [mkLine('system', '__CLEAR__')] };
-    default:
+    default: {
+      // Natural-language fallback: local patterns first (instant, free).
+      const nl = matchNaturalLanguage(trimmed, vfsToFileMap(ctx.nodes));
+      if (nl) {
+        if (nl.mutating) {
+          // Changes ask before running; the UI turns __CONFIRM__ into a prompt.
+          return { lines: [mkLine('system', `__CONFIRM__${nl.command}`), mkLine('output', nl.label)] };
+        }
+        return processCommand(nl.command, ctx);
+      }
+      // No local match: hand the phrase to the AI Builder (one canonical agent).
+      if (looksLikeNaturalLanguage(trimmed)) {
+        return { lines: [mkLine('system', `__AI__${trimmed}`)] };
+      }
       return {
         lines: [
           mkLine('error', `Unknown command: ${cmd}`),
           mkLine('output', 'Type "help" for available commands'),
         ],
       };
+    }
   }
 }
 
