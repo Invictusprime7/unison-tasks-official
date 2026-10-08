@@ -4,6 +4,8 @@ Single canonical surface for every contract that drives the platform. Wizard,
 AI Builder, Playground, Preview, Publish, and Runtime all consume from this
 module — nothing else is allowed to construct these types independently.
 
+Reviewed 2026-10-08. This barrel owns platform contracts, not fresh page authorship or durable persistence. `LauncherWizard` captures selections; `launchOrchestrator` invokes `UnisonAppBuilder`; `vfsCommitService.ts` `commitMutation` is the only canonical writer. `commitToPipeline` supports compilation beneath that writer. See [Architecture](../../../docs/ARCHITECTURE.md).
+
 Execution hierarchy this surface enforces:
 
 ```text
@@ -33,7 +35,7 @@ Contracts (this module)
 | `integrityReport.ts` | `IntegrityReport` aggregator for structural + AI diagnostics | Debug Agent, Builder integrity panel |
 | `runtimeManifest.ts` | `RuntimeManifest` — what the preview/runtime actually loads | Preview compiler, runtime intent executor |
 | `canonicalPipeline.ts` | End-to-end pipeline orchestration types | `commitToPipeline`, AI orchestrator |
-| `commitToPipeline.ts` | **Only legal mutation entry** (Wizard / AI Builder / Playground / Republish) | Wizard Launcher, Builder save, AI patch commit |
+| `commitToPipeline.ts` | Canonical compilation/mutation support beneath the revision writer | Canonical mutation services |
 | `contractCompiler.ts` | Compiles `SiteBundleSnapshot` → `CompiledContract`; defines `PreviewGate` / `PublishGate` predicates and `PublishBlocker` taxonomy | Gates, Deploy pipeline, GateVerdictStrip |
 | `contractGuard.ts` | Silent-retry-then-surface enforcement for AI patches | AI patch executor |
 | `pipelineGuard.ts` | Pipeline-level invariant checks | commitToPipeline, CI |
@@ -59,9 +61,9 @@ thin back-compat exports.
 
 | Layer | Reads | Writes |
 | ----- | ----- | ------ |
-| **Wizard Launcher** | blueprintSchema, industryMatrix, siteTopologyPlanner, capabilityRegistry | `commitToPipeline` only |
-| **System Launcher + AI Builder (Lane B)** | intentSurfaceRegistry, coreIntents, contractGuard, integrityReport | `commitToPipeline` only |
-| **Creator Playground** | playground, routePolicy, slotBindingPolicy, capabilityRegistry, gates | `commitToPipeline` only |
+| **Wizard Launcher** | blueprintSchema, industryMatrix, siteTopologyPlanner, capabilityRegistry | Selection handoff only; orchestrator owns promotion |
+| **App Builder / AI Builder** | intentSurfaceRegistry, coreIntents, contractGuard, integrityReport | Candidate/proposal → `commitMutation` |
+| **Creator Playground** | playground, routePolicy, slotBindingPolicy, capabilityRegistry, gates | Coordinated mutation → `commitMutation` |
 | **Preview compiler** | runtimeManifest, routePolicy, iconIntentRegistry | — (read-only) |
 | **Runtime** | coreIntents, intentSurfaceRegistry, iconIntentRegistry, runtimeManifest | — (read-only) |
 | **Publish / DeployButton** | gates, contractCompiler (`PublishBlocker`) | — (read-only) |
@@ -70,7 +72,7 @@ thin back-compat exports.
 ## Hard rules
 
 1. **No parallel sources of truth.** If a layer needs a contract type, it imports from `@/platform/core`. Period.
-2. **`commitToPipeline` is the only mutation entry.** Wizard, AI patches, Playground edits, and Republish all funnel through it.
+2. **`commitMutation` is the only canonical writer.** Compilation support cannot independently persist or replace accepted authored source. Wizard selection UI never writes source.
 3. **Gates compose; they do not duplicate.** New gates land in `gates.ts` and register in the `GATES` map so `evaluateAllGates` discovers them.
 4. **No YAML migrations.** YAML is optional sugar around these contracts — never an alternative source of truth.
 5. **Schemas before runtime.** Anything the runtime executes must first be representable in `SiteBundleSnapshot` / `RuntimeManifest`.
