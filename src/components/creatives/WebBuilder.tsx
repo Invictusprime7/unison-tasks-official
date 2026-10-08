@@ -3131,6 +3131,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
         options: buildCommitOptions(snapshot),
       });
       if (commit.status !== 'committed') throw new CommitRejectedError('binding mutation was rejected', commit);
+      // canonical-vfs-exempt: adoption of an accepted commitMutation result
       importBuilderFiles(commit.vfsFiles, {
         replace: true, preferredPath: activePagePath, entryPoint: launchEntryPoint,
         adoption: commitAdoptionRecord(commit),
