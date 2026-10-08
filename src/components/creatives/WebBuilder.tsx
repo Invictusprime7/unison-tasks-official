@@ -4,7 +4,7 @@ import { shouldPauseAutosave, runExclusive, recordCommit, getLastCommit } from '
 import type { TerminalFileOp, TerminalRouteOp } from '@/services/terminalCommands';
 import type { TopologyChange } from '@/services/pageTopologyOrchestrator';
 import { captureIntentBaseline, deriveIntentChecks, verifyCommittedChange } from '@/services/agent-runtime/browserVerification';
-import { buildPreviewRouteTabs, ROUTE_TAB_PREFIX } from '@/components/creatives/web-builder/previewRouteTabs';
+import { buildPreviewRouteTabs, ROUTE_TAB_PREFIX, resolveRouteSourceFile } from '@/components/creatives/web-builder/previewRouteTabs';
 import "./web-builder/obsidian-theme.css";
 import { useEffect, useRef, useState, useCallback, useMemo, lazy, Suspense, Component, type ReactNode, type ErrorInfo } from "react";
 import TemplateFeedback from "./TemplateFeedback";
