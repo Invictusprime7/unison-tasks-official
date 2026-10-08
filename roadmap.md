@@ -35,7 +35,8 @@
 - [x] P0.13 live rehydration: record saves now reach preview sections bound to that table
 - [x] P0.12: profile writes via business_apply_profile_command gateway
 - [x] P0.18a: AI actions list_resources / read_resource / update_resource_field
-- [ ] P0.14–17: verification, schema-driven WYSIWYG edit boxes (P0.18 AI chat uses record ops: done)
+- [x] P0.14: schema-driven record edit boxes in the floating toolbar
+- [ ] P0.15–17: live verification on a real site, history/undo for record edits
 
 - [x] AI Builder live file activity ribbon above input (clickable files open in editor)
 - [x] AI Builder detects and shows when preview updated after its edits

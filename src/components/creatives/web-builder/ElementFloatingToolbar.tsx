@@ -1,4 +1,5 @@
 import { generateSiteImage } from '@/services/media/generateSiteImage';
+import { RecordFieldsEditor } from './RecordFieldsEditor';
 /**
  * ElementFloatingToolbar - Context-Sensitive Toolbar for Element-Level Editing
  *
@@ -489,6 +490,12 @@ export const ElementFloatingToolbar: React.FC<ElementFloatingToolbarProps> = ({
       'animate-in fade-in-0 slide-in-from-bottom-1 duration-150',
       className
     )}>
+      <RecordFieldsEditor
+        mark={element.attributes?.['data-ut-resource'] || (element.scopeAncestors as { resource?: string | null } | undefined)?.resource}
+        businessId={businessId}
+        projectId={projectId}
+      />
+
       {readiness && (
         <div className="mb-1.5 flex flex-wrap items-center gap-1.5 border-b border-white/[0.06] px-1.5 py-1.5">
           {readiness.surfaceLabel ? (
