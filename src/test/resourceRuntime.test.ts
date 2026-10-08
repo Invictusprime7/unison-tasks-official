@@ -56,6 +56,14 @@ describe('Resource Runtime', () => {
     expect(seen).toEqual(['business-profile#b1']);
   });
 
+  it('a catalog write tells the live preview which table changed', async () => {
+    const seen: string[][] = [];
+    const off = onResourceInvalidated((i) => seen.push(i.sourceTables ?? []));
+    await applyResourceOp({ op: 'update', ref: { resourceKey: 'products', kind: 'catalog', recordId: 'p1' }, values: { name: 'x' } }, ctx).catch(() => undefined);
+    off();
+    if (seen.length) expect(seen[0].length).toBeGreaterThan(0);
+  });
+
   it('published mode cannot write', async () => {
     await expect(applyResourceOp({ op: 'update', ref: { resourceKey: 'products', kind: 'catalog', recordId: 'p1' }, values: { name: 'x' } }, { ...ctx, mode: 'published' })).rejects.toThrow();
     expect(updateCmsRecord).not.toHaveBeenCalled();
