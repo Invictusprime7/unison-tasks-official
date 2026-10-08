@@ -1,5 +1,5 @@
 # Roadmap — Agentic IDE milestone
-- [ ] Refresh README and first-party documentation against current Unison architecture; distinguish active guidance, historical evidence and unverified milestone work.
+- [x] Refresh README and first-party documentation against current Unison architecture; distinguish active guidance, historical evidence and unverified milestone work.
 - [x] Phase 1 (slice): agent-runtime operations registry, intent-destination check before every AI save, live activity feed in AI chat
 - [x] Phase 0: save step — applied the never-deployed changed-files-only save + timeout recovery (confirmed by user)
 - [x] Phase 2: SystemGraph projection fed into AI context
