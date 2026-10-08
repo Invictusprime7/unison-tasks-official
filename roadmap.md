@@ -35,4 +35,4 @@
 - [x] P0.13 live rehydration: record saves now reach preview sections bound to that table
 - [x] P0.12: profile writes via business_apply_profile_command gateway
 - [x] P0.18a: AI actions list_resources / read_resource / update_resource_field
-- [ ] P0.14–18: verification, schema-driven WYSIWYG, AI tools on ResourceRuntime
+- [ ] P0.14–17: verification, schema-driven WYSIWYG edit boxes (P0.18 AI chat uses record ops: done)
