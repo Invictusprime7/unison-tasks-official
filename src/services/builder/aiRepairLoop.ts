@@ -101,6 +101,11 @@ export async function runComposerRepairLoop(input: ComposerLoopInput): Promise<C
     if (input.signal?.aborted) return { ok: false, reason: 'aborted', attempts: attempt - 1, errors: ['Cancelled.'] };
     const remainingMs = deadline - Date.now();
     if (remainingMs <= 5_000) return { ok: false, reason: 'aborted', attempts: attempt - 1, errors: ['AI page authoring exhausted its shared time budget.'], response: lastResponse, prepared: lastPrepared };
+    // A repair turn resends the whole page plus its errors (~150k chars) and
+    // needs about a minute; a shorter window can only time out on the server.
+    if (attempt > 1 && remainingMs < MIN_REPAIR_WINDOW_MS) {
+      return { ok: false, reason: 'gates_exhausted', attempts: attempt - 1, errors: lastErrors.length ? lastErrors : ['Not enough time left to repair this page.'], response: lastResponse, prepared: lastPrepared };
+    }
     const { data, error } = await invoke({
       mode: AI_COMPOSER_MODES[request.task],
       messages: [{ role: 'user', content: JSON.stringify(request) }],
