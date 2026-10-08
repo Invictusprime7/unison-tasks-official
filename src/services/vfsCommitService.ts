@@ -2210,6 +2210,26 @@ export async function loadLatestRevisionForProject(
   return mapRevisionRow(data as Record<string, unknown>);
 }
 
+async function loadNewestCommittedRevisionForDraft(
+  projectId: string,
+  draftId: string,
+): Promise<LoadedRevision | null> {
+  const { data, error } = await supabase
+    .from('site_revisions')
+    .select('*')
+    .eq('project_id', projectId)
+    .eq('draft_id', draftId)
+    .eq('status', 'committed')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error || !data) return null;
+  const loaded = mapRevisionRow(data as Record<string, unknown>);
+  if (!Object.keys(loaded.vfsFiles || {}).length) return null;
+  console.warn(`[VFSCommitService] draft ${draftId} pointer missing/invalid; recovered newest own committed revision ${loaded.id}`);
+  return loaded;
+}
+
 /** Load only the committed revision selected by the durable draft projection. */
 export async function loadProjectedRevisionForDraft(
   projectId: string,
@@ -2226,6 +2246,10 @@ export async function loadProjectedRevisionForDraft(
     throw new Error(`[VFSCommitService] canonical draft ${draftId} was not found for project ${projectId}`);
   }
   if (typeof draft.last_revision_id !== 'string' || !draft.last_revision_id) {
+    // Self-heal (read-only): a lost pointer must not blank a draft that still
+    // owns committed revisions. Only this draft's own revisions qualify.
+    const recovered = await loadNewestCommittedRevisionForDraft(projectId, draftId);
+    if (recovered) return recovered;
     throw new Error(`[VFSCommitService] canonical draft ${draftId} has no committed revision projection`);
   }
 
@@ -2239,6 +2263,8 @@ export async function loadProjectedRevisionForDraft(
     .maybeSingle();
   if (revisionError) throw revisionError;
   if (!revision) {
+    const recovered = await loadNewestCommittedRevisionForDraft(projectId, draftId);
+    if (recovered) return recovered;
     throw new Error(`[VFSCommitService] draft ${draftId} points to an invalid committed revision`);
   }
   const loaded = mapRevisionRow(revision as Record<string, unknown>);
