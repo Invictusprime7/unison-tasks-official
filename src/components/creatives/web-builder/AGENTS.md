@@ -1,2 +1,3 @@
 # Directory rules
 - The floating edit toolbar's AI box is a front-end of the AI Builder: it dispatches `unison:builder-send` {prompt, target} and never calls AI itself; why: one agent owns context, button-destination checks and saves.
+- Direct toolbar edits (style/text/image/attrs/delete/duplicate/move) commit via `commitBuilderFiles` inside `runExclusive('toolbar')`, then run post-save intent verification; why: the old bridge bypassed the save queue, ignored edits in non-active files and never checked buttons.

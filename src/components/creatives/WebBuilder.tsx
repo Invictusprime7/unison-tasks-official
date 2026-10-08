@@ -826,6 +826,8 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   // a .tsx/.jsx file that contains the selector. This makes manual toolbar
   // edits work for elements that live in imported component files (Navbar, etc.)
   // and avoids the misleading "dynamic className" toast.
+  /** Working set before the latest optimistic toolbar edit, restored if the save is refused. */
+  const toolbarPreEditRef = useRef<Record<string, string> | null>(null);
   const applyMutatorAcrossVFS = useCallback((
     selector: string,
     mutate: (code: string) => string | null,
@@ -836,6 +838,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     const next = mutate(previewCode);
     if (next && next !== previewCode) {
       recordManualPageEdit(snapshotLabel, previewCode, next);
+      toolbarPreEditRef.current = virtualFS.getSandpackFiles();
       // Write directly to VFS so the Sandpack preview HMRs in real time
       // instead of waiting for Effect A (previewCode → VFS) to flush.
       try {
@@ -860,6 +863,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
         if (path === activePath) continue;
         const attempt = mutate(code);
         if (attempt && attempt !== code) {
+          toolbarPreEditRef.current = allFiles;
           try {
             pushAISnapshot(ctx.projectId ?? null, {
               label: `${snapshotLabel} (${path.split('/').pop()})`,
@@ -872,6 +876,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
           } catch (err) { console.warn('[applyMutatorAcrossVFS] snapshot failed:', err); }
           // canonical-vfs-exempt: optimistic HMR projection; the same mutation is chained through commitMutation below
           virtualFS.importFiles({ [path]: attempt });
+          commitToolbarMutationRef.current?.(attempt, snapshotLabel.replace(/^Manual · /, ''), path);
           return { ok: true };
         }
       }
@@ -889,7 +894,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   // so toolbar mutations land in the durable site_revisions ledger alongside
   // AI Builder and layout fast-path commits.
   // See mem://features/web-builder/preview-floating-toolbar.
-  const commitToolbarMutationRef = useRef<((nextCode: string, summary: string) => void) | null>(null);
+  const commitToolbarMutationRef = useRef<((nextCode: string, summary: string, path?: string) => void) | null>(null);
 
   const handleFloatingStyleUpdate = useCallback((selector: string, styles: Record<string, string>) => {
     console.log('[WebBuilder] handleFloatingStyleUpdate called:', selector, styles);
@@ -1040,6 +1045,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       toast.error('Could not delete element. Try selecting a different element.');
       return;
     }
+    toolbarPreEditRef.current = virtualFS.getSandpackFiles();
     recordManualPageEdit('Manual · delete element', previewCode, res.code);
     setEditorCode(res.code);
     setPreviewCode(res.code);
@@ -1056,6 +1062,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       toast.error('Could not duplicate element. Try selecting a different element.');
       return;
     }
+    toolbarPreEditRef.current = virtualFS.getSandpackFiles();
     recordManualPageEdit('Manual · duplicate element', previewCode, res.code);
     setEditorCode(res.code);
     setPreviewCode(res.code);
@@ -1087,6 +1094,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       toast.info('Already at the top');
       return;
     }
+    toolbarPreEditRef.current = virtualFS.getSandpackFiles();
     recordManualPageEdit('Manual · move element up', previewCode, res.code);
     setEditorCode(res.code);
     setPreviewCode(res.code);
@@ -1118,6 +1126,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       toast.info('Already at the bottom');
       return;
     }
+    toolbarPreEditRef.current = virtualFS.getSandpackFiles();
     recordManualPageEdit('Manual · move element down', previewCode, res.code);
     setEditorCode(res.code);
     setPreviewCode(res.code);
@@ -3517,69 +3526,36 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   // durable site_revisions ledger so they participate in capability and
   // intent readiness gating.
   useEffect(() => {
-    commitToolbarMutationRef.current = (nextCode, summary) => {
-      if (!businessId || !currentDraftId) return;
-      const targetPath = activePagePath?.endsWith('.tsx') ? activePagePath : launchEntryPoint;
+    // Direct toolbar edits share the terminal/AI save path: queued behind other
+    // saves, committed by commitBuilderFiles, then preview-verified.
+    commitToolbarMutationRef.current = (nextCode, summary, path) => {
+      const targetPath = path ?? (activePagePath?.endsWith('.tsx') ? activePagePath : launchEntryPoint);
       if (!targetPath || !nextCode) return;
-      const beforeFiles = virtualFSRef.current.getSandpackFiles();
-      const snapshot = effectiveRouteState?.siteBundleSnapshot ?? null;
-      void (async () => {
-        try {
-          const { data: { user } } = await supabaseClient.auth.getUser();
-          if (!user) return;
-          const identity = buildCommitIdentity({
-            userId: user.id,
-            businessId,
-            projectId: resolvedProjectId,
-            draftId: currentDraftId,
-            revisionId: currentRevisionId,
-          });
-          if (!identity) return;
-          const patch = legacyFilesToPatchPlan(
-            { [targetPath]: nextCode },
-            `Toolbar · ${summary}`,
-          );
-          const commit = await commitMutation({
-            source: 'preview-toolbar',
-            identity,
-            current: buildCanonicalCommitCurrent(beforeFiles, snapshot),
-            patch,
-            options: buildCommitOptions(snapshot),
-          });
-          if (commit.status !== 'committed') {
-            throw new CommitRejectedError('toolbar edit was rejected by the canonical pipeline', commit);
-          }
-          if (commit.persistedRevisionId) {
-            setCurrentRevisionId(commit.persistedRevisionId);
-            console.log('[WebBuilder] preview-toolbar commit persisted:', commit.persistedRevisionId);
-          }
-        } catch (err) {
+      void runExclusive('toolbar', async () => {
+        const before = virtualFSRef.current.getSandpackFiles();
+        const after = await commitBuilderFiles({ [targetPath]: nextCode }, {
+          source: 'preview-toolbar',
+          summary: `Toolbar · ${summary}`,
+          preferredPath: activePagePath,
+          failureMessage: 'This toolbar change was not saved',
+        });
+        if (!after) {
+          const prior = toolbarPreEditRef.current;
+          if (!prior) return;
           // canonical-vfs-exempt: rollback restore of the pre-mutation working set
-          importBuilderFiles(beforeFiles, {
-            replace: true,
-            preferredPath: activePagePath,
-            entryPoint: launchEntryPoint,
+          importBuilderFiles(prior, {
+            replace: true, preferredPath: activePagePath, entryPoint: launchEntryPoint,
             adoption: { source: 'rollback', exemptReason: 'restore-pre-mutation-state' },
           });
-          if (err instanceof CommitRejectedError) {
-            console.warn('[WebBuilder] preview-toolbar commit rejected:', err.message);
-          } else {
-            console.warn('[WebBuilder] preview-toolbar commit failed:', err);
-          }
+          return;
         }
-      })();
+        toolbarPreEditRef.current = null;
+        recordCommit('toolbar', currentRevisionIdRef.current);
+        const outcome = await verifyCommittedChange(deriveIntentChecks(before, after, [targetPath]));
+        if (outcome.status !== 'verified') toast.warning(outcome.message);
+      });
     };
-  }, [
-    businessId,
-    currentDraftId,
-    currentRevisionId,
-    activePagePath,
-    launchEntryPoint,
-    effectiveRouteState?.siteBundleSnapshot,
-    buildCanonicalCommitCurrent,
-    importBuilderFiles,
-    resolvedProjectId,
-  ]);
+  }, [activePagePath, launchEntryPoint, commitBuilderFiles, importBuilderFiles]);
 
 
 
@@ -8678,80 +8654,8 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
               activePagePath={activePagePath ?? null}
               getVFSFiles={() => virtualFS.getSandpackFiles()}
               readiness={selectedElementReadiness}
-              onAIEditComplete={async (selector, newHtml) => {
-                // 1. Try the active page first.
-                const primary = applyElementHtmlUpdate(previewCode, selector, newHtml);
-                if (primary.ok) {
-                  try {
-                    pushAISnapshot(currentDraftId ?? null, {
-                      label: `AI · element edit ${selector.slice(0, 40)}`,
-                      source: 'ai',
-                      before: { [activePagePath]: previewCode },
-                      after: { [activePagePath]: primary.code },
-                      changedPaths: [activePagePath],
-                      meta: { origin: 'floating-toolbar-ai', actionType: 'element-edit' },
-                    });
-                  } catch (err) { console.warn('[onAIEditComplete] snapshot failed:', err); }
-                  const committed = await commitBuilderFiles(templateToVFSFiles(primary.code, currentTemplateName || 'Element Edit'), {
-                    source: 'preview-toolbar',
-                    summary: `Element edit · ${selector.slice(0, 40)}`,
-                  });
-                  if (!committed) return false;
-                  const imported = { files: committed };
-                  const saved = await saveDraft({
-                    force: true,
-                    reason: 'ai_edit',
-                    vfsFiles: imported.files,
-                  });
-                  if (!saved) {
-                    toast.error('AI edit saved locally, but Cloud sync is pending');
-                    return false;
-                  }
-                  setSelectedHTMLElement(null);
-                  toast.success('Element updated by AI');
-                  return true;
-                }
-                // 2. Element likely lives in an imported component file — scan VFS.
-                try {
-                  const allFiles = virtualFS.getSandpackFiles();
-                  for (const [path, code] of Object.entries(allFiles)) {
-                    if (!path.endsWith('.tsx') && !path.endsWith('.jsx')) continue;
-                    if (path === activePagePath) continue;
-                    const attempt = applyElementHtmlUpdate(code, selector, newHtml);
-                    if (attempt.ok) {
-                      try {
-                        pushAISnapshot(currentDraftId ?? null, {
-                          label: `AI · element edit in ${path.split('/').pop()}`,
-                          source: 'ai',
-                          before: { [path]: code },
-                          after: { [path]: attempt.code },
-                          changedPaths: [path],
-                          meta: { origin: 'floating-toolbar-ai', actionType: 'element-edit' },
-                        });
-                      } catch (err) { console.warn('[onAIEditComplete] snapshot failed:', err); }
-                      // canonical-vfs-exempt: optimistic HMR projection; the edit is persisted through saveDraft below
-                      virtualFS.importFiles({ [path]: attempt.code });
-                      const saved = await saveDraft({
-                        force: true,
-                        reason: 'ai_edit',
-                        vfsFiles: { ...allFiles, [path]: attempt.code },
-                      });
-                      if (!saved) {
-                        toast.error('AI edit saved locally, but Cloud sync is pending');
-                        return false;
-                      }
-                      setSelectedHTMLElement(null);
-                      toast.success(`Element updated by AI in ${path.split('/').pop()}`);
-                      return true;
-                    }
-                  }
-                } catch (err) {
-                  console.warn('[onAIEditComplete] VFS-wide scan failed:', err);
-                }
-                console.warn('[onAIEditComplete] selector not found in any VFS file:', selector);
-                toast.error('AI edit could not be applied — element not found');
-                return false;
-              }}
+              // AI requests are sent to the AI Builder by the toolbar itself (unison:builder-send).
+              onAIEditComplete={async () => true}
             />
           </div>
         )}
