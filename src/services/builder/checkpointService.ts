@@ -20,9 +20,45 @@ export interface Checkpoint {
   kind: 'ai' | 'restore' | 'manual' | 'launch' | 'other';
   createdAt: string;
   source: string;
+  /** Exact saved changes, in plain words: one line per file / page change. */
+  changes: string[];
 }
 
-const COLUMNS = 'id, source, status, created_at, parent_revision_id, patch_summary:patch_json->>summary';
+const COLUMNS = 'id, source, status, created_at, parent_revision_id, patch_summary:patch_json->>summary, file_ops:patch_json->fileOps, route_ops:patch_json->routeOps, candidate_intent:patch_json->candidate->>intent';
+
+function friendlyFile(path: string): string {
+  const base = path.split('/').pop() ?? path;
+  const name = base.replace(/\.(tsx?|jsx?|css|json)$/, '');
+  if (path.startsWith('/src/pages/')) return `${name} page`;
+  if (name === 'SiteNav') return 'Navigation';
+  if (name === 'SiteFooter') return 'Footer';
+  if (base === 'index.css' || base === 'tailwind.css') return 'Site styles';
+  if (base === 'package.json') return 'Dependencies';
+  if (base === 'App.tsx') return 'Page routes';
+  return base;
+}
+
+const VERB: Record<string, string> = { create: 'Added', add: 'Added', delete: 'Removed', remove: 'Removed', rename: 'Renamed', move: 'Moved' };
+
+/** Plain-language list of what a revision actually saved. Internal `/.unison` files collapse into one line. */
+export function describeCheckpointChanges(fileOps: unknown, routeOps: unknown): string[] {
+  const lines: string[] = [];
+  const seen = new Set<string>();
+  let internal = 0;
+  for (const op of Array.isArray(fileOps) ? fileOps : []) {
+    const path = typeof op?.path === 'string' ? op.path : '';
+    if (!path || seen.has(path)) continue;
+    seen.add(path);
+    if (path.startsWith('/.unison/')) { internal += 1; continue; }
+    lines.push(`${VERB[String(op?.type)] ?? 'Updated'} ${friendlyFile(path)} (${path})`);
+  }
+  for (const op of Array.isArray(routeOps) ? routeOps : []) {
+    const route = op?.path ?? op?.route ?? op?.to ?? op?.slug;
+    if (route) lines.push(`${VERB[String(op?.type ?? op?.op)] ?? 'Updated'} route ${String(route)}`);
+  }
+  if (internal) lines.push(`Updated site settings (${internal} internal file${internal === 1 ? '' : 's'})`);
+  return lines;
+}
 
 export function checkpointKind(source: string): Checkpoint['kind'] {
   if (source === 'ai-builder' || source === 'theme-change') return 'ai';
@@ -60,7 +96,10 @@ export async function listCheckpoints(draftId: string, limit = 30): Promise<Chec
       id: String(row.id),
       source,
       kind: checkpointKind(source),
-      label: checkpointLabel(source, row.patch_summary as string | null),
+      label: typeof row.candidate_intent === 'string' && row.candidate_intent.trim() && /^AI candidate\b/.test(String(row.patch_summary ?? ''))
+        ? `AI: ${row.candidate_intent.trim()}`
+        : checkpointLabel(source, row.patch_summary as string | null),
+      changes: describeCheckpointChanges(row.file_ops, row.route_ops),
       createdAt: String(row.created_at),
     };
   });
