@@ -8363,74 +8363,12 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
               </div>
             )}
             
-            {/* Code Mode - VFS Code Editor */}
-            {viewMode === 'code' && (
-              <CodeViewErrorBoundary onFallbackClick={() => setViewMode('canvas')}>
-                <VFSCodeView
-                  historyDraftId={currentDraftId}
-                  onTerminalPatch={onTerminalPatch}
-                  getRevisionInfo={getTerminalRevisionInfo}
-                  nodes={virtualFS.nodes}
-                  activeFileId={virtualFS.activeFileId}
-                  hasFiles={virtualFS.hasFiles}
-                  openFile={virtualFS.openFile}
-                  closeTab={virtualFS.closeTab}
-                  createFile={virtualFS.createFile}
-                  createFolder={virtualFS.createFolder}
-                  deleteNode={virtualFS.deleteNode}
-                  renameNode={virtualFS.renameNode}
-                  duplicateNode={virtualFS.duplicateNode}
-                  toggleFolder={virtualFS.toggleFolder}
-                  expandAll={virtualFS.expandAll}
-                  collapseAll={virtualFS.collapseAll}
-                  getActiveFile={virtualFS.getActiveFile}
-                  getOpenFiles={virtualFS.getOpenFiles}
-                  updateFileContent={virtualFS.updateFileContent}
-                  importFiles={virtualFS.importFiles}
-                  loadDefaultTemplate={virtualFS.loadDefaultTemplate}
-                  getSandpackFiles={virtualFS.getSandpackFiles}
-                  modifiedFiles={modifiedFiles}
-                  aiGeneratedFiles={aiGeneratedFiles}
-                  recentlyChangedFiles={recentlyChangedFiles}
-                  isAIProcessing={templateState.isRendering}
-                  onFileModified={trackFileModification}
-                  onSave={(fileId, val) => {
-                    toast.success('File saved');
-                  }}
-                  onSwitchToCanvas={() => setViewMode('canvas')}
-                  onUndo={() => {
-                    const snap = vfsSnapshotManager.undo();
-                    if (!snap) return false;
-                    // canonical-vfs-exempt: local editor undo of a working-set snapshot
-                    virtualFS.importFiles(snap.files);
-                    return true;
-                  }}
-                  onRedo={() => {
-                    const snap = vfsSnapshotManager.redo();
-                    if (!snap) return false;
-                    // canonical-vfs-exempt: local editor redo of a working-set snapshot
-                    virtualFS.importFiles(snap.files);
-                    return true;
-                  }}
-                  canUndo={vfsSnapshotManager.canUndo}
-                  canRedo={vfsSnapshotManager.canRedo}
-                  undoCount={vfsSnapshotManager.undoCount}
-                  redoCount={vfsSnapshotManager.redoCount}
-                  onCreateSnapshot={(label) => {
-                    const files = virtualFS.getSandpackFiles();
-                    const snap = vfsSnapshotManager.createSnapshot(files, label, 'manual');
-                    return snap.id;
-                  }}
-                />
-              </CodeViewErrorBoundary>
-            )}
-
-            {/* Canonical preview owner — retained while switching canvas/split layout. */}
-            {(viewMode === 'canvas' || viewMode === 'split') && (
-              <div className={cn('w-full h-full flex', viewMode === 'split' && 'gap-4')}>
+            {/* Code + Split modes share the full VFS interface; Split adds the canvas preview pane. */}
+            {(() => {
+              const canvasPreviewPane = (
                 <div className={cn(
                   'flex-1 overflow-hidden relative flex flex-col',
-                  viewMode === 'split' && 'bg-white rounded-xl border border-white/[0.08] shadow-2xl shadow-black/30',
+                  viewMode === 'split' && 'bg-white',
                 )}>
                   {/* Page tabs — synced with PageRegistry (Creator Playground + AI-generated pages) */}
                   <PageNavigationBar
@@ -8555,96 +8493,73 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                       />
                   </div>
                 </div>
-
-                {/* Split mode adds an editor beside the retained preview runtime. */}
-                {viewMode === 'split' && (
-                  <div className="flex-1 flex flex-col gap-4">
-                  {/* Code Editor */}
-                  <div className="flex-1 bg-[#1e1e1e] rounded-lg overflow-hidden border border-white/10 flex flex-col">
-                    <div className="h-10 bg-[#2d2d2d] border-b border-white/10 flex items-center justify-between px-4">
-                      <div className="flex items-center">
-                        <FileCode className="w-4 h-4 text-white/70 mr-2" />
-                        <span className="text-sm text-white/70">Code Editor</span>
-                      </div>
-                      <Button
-                        size="sm"
-                        onClick={() => setViewMode('canvas')}
-                        className="h-7 bg-primary hover:bg-primary/90"
-                      >
-                        <Eye className="w-3 h-3 mr-1" />
-                        View in Canvas
-                      </Button>
-                    </div>
-                    
-                    <div className="flex-1">
-                      {(() => {
-                        const splitActiveFile = virtualFS.getActiveFile();
-                        const splitFileName = splitActiveFile?.name || 'App.tsx';
-                        const splitValue = splitActiveFile?.content || previewCode;
-                        return (
-                          <VFSMonacoEditor
-                            height="100%"
-                            fileName={splitFileName}
-                            value={splitValue}
-                            onChange={(value) => {
-                              if (splitActiveFile) {
-                                virtualFS.updateFileContent(splitActiveFile.id, value || '');
-                                trackFileModification(splitActiveFile.id, value || '');
-                              }
-                              // Also update previewCode for SimplePreview (HTML mode)
-                              setPreviewCode(value || '');
-                            }}
-                            isAIProcessing={templateState.isRendering}
-                            onSave={(val) => {
-                              if (splitActiveFile) {
-                                virtualFS.updateFileContent(splitActiveFile.id, val);
-                              }
-                              setPreviewCode(val);
-                              toast.success('Saved');
-                            }}
-                          />
-                        );
-                      })()}
-                    </div>
-                  </div>
-
-                  {/* Component Info & Actions */}
-                  <div className="bg-[#1e1e1e] rounded-lg border border-white/10 p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm text-white/70">Quick Actions</span>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          const file = virtualFS.getActiveFile();
-                          navigator.clipboard.writeText(file?.content || previewCode);
-                          toast('Code copied to clipboard!');
-                        }}
-                        className="flex-1 h-8 text-xs"
-                      >
-                        <Copy className="w-3 h-3 mr-1" />
-                        Copy Code
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          setViewMode('code');
-                          toast('Switched to full code view');
-                        }}
-                        className="flex-1 h-8 text-xs"
-                      >
-                        <Maximize2 className="w-3 h-3 mr-1" />
-                        Fullscreen
-                      </Button>
-                    </div>
-                  </div>
-                  </div>
-                )}
-              </div>
-            )}
+              );
+              if (viewMode === 'canvas') {
+                return <div className="w-full h-full flex">{canvasPreviewPane}</div>;
+              }
+              if (viewMode !== 'code' && viewMode !== 'split') return null;
+              return (
+              <CodeViewErrorBoundary onFallbackClick={() => setViewMode('canvas')}>
+                <VFSCodeView
+                  previewSlot={viewMode === 'split' ? canvasPreviewPane : undefined}
+                  historyDraftId={currentDraftId}
+                  onTerminalPatch={onTerminalPatch}
+                  getRevisionInfo={getTerminalRevisionInfo}
+                  nodes={virtualFS.nodes}
+                  activeFileId={virtualFS.activeFileId}
+                  hasFiles={virtualFS.hasFiles}
+                  openFile={virtualFS.openFile}
+                  closeTab={virtualFS.closeTab}
+                  createFile={virtualFS.createFile}
+                  createFolder={virtualFS.createFolder}
+                  deleteNode={virtualFS.deleteNode}
+                  renameNode={virtualFS.renameNode}
+                  duplicateNode={virtualFS.duplicateNode}
+                  toggleFolder={virtualFS.toggleFolder}
+                  expandAll={virtualFS.expandAll}
+                  collapseAll={virtualFS.collapseAll}
+                  getActiveFile={virtualFS.getActiveFile}
+                  getOpenFiles={virtualFS.getOpenFiles}
+                  updateFileContent={virtualFS.updateFileContent}
+                  importFiles={virtualFS.importFiles}
+                  loadDefaultTemplate={virtualFS.loadDefaultTemplate}
+                  getSandpackFiles={virtualFS.getSandpackFiles}
+                  modifiedFiles={modifiedFiles}
+                  aiGeneratedFiles={aiGeneratedFiles}
+                  recentlyChangedFiles={recentlyChangedFiles}
+                  isAIProcessing={templateState.isRendering}
+                  onFileModified={trackFileModification}
+                  onSave={(fileId, val) => {
+                    toast.success('File saved');
+                  }}
+                  onSwitchToCanvas={() => setViewMode('canvas')}
+                  onUndo={() => {
+                    const snap = vfsSnapshotManager.undo();
+                    if (!snap) return false;
+                    // canonical-vfs-exempt: local editor undo of a working-set snapshot
+                    virtualFS.importFiles(snap.files);
+                    return true;
+                  }}
+                  onRedo={() => {
+                    const snap = vfsSnapshotManager.redo();
+                    if (!snap) return false;
+                    // canonical-vfs-exempt: local editor redo of a working-set snapshot
+                    virtualFS.importFiles(snap.files);
+                    return true;
+                  }}
+                  canUndo={vfsSnapshotManager.canUndo}
+                  canRedo={vfsSnapshotManager.canRedo}
+                  undoCount={vfsSnapshotManager.undoCount}
+                  redoCount={vfsSnapshotManager.redoCount}
+                  onCreateSnapshot={(label) => {
+                    const files = virtualFS.getSandpackFiles();
+                    const snap = vfsSnapshotManager.createSnapshot(files, label, 'manual');
+                    return snap.id;
+                  }}
+                />
+              </CodeViewErrorBoundary>
+              );
+            })()}
           </div>
         </div>
 

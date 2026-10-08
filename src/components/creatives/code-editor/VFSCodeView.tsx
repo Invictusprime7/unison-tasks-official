@@ -274,6 +274,8 @@ export interface VFSCodeViewProps {
   /** Terminal file commands commit through the host's canonical writer. */
   onTerminalPatch?: CommandContext['onPatch'];
   getRevisionInfo?: CommandContext['getRevisionInfo'];
+  /** Canvas preview rendered in a resizable pane beside the editor (Split mode). */
+  previewSlot?: React.ReactNode;
 }
 
 // ---------------------------------------------------------------------------
@@ -317,6 +319,7 @@ export function VFSCodeView({
   onSwitchToCanvas,
   onTerminalPatch,
   getRevisionInfo,
+  previewSlot,
 }: VFSCodeViewProps) {
   const [showExplorer, setShowExplorer] = useState(true);
   const [terminalCollapsed, setTerminalCollapsed] = useState(true);
@@ -713,7 +716,7 @@ export function VFSCodeView({
             )}
 
             {/* Editor Panel */}
-            <ResizablePanel defaultSize={showExplorer ? 80 : 100}>
+            <ResizablePanel defaultSize={previewSlot ? (showExplorer ? 30 : 50) : (showExplorer ? 80 : 100)} minSize={20}>
               <div className="h-full flex flex-col bg-[#0d0d18]">
                 {/* Editor Tabs */}
                 <ModernEditorTabs
@@ -792,6 +795,17 @@ export function VFSCodeView({
                 </div>
               </div>
             </ResizablePanel>
+
+            {previewSlot && (
+              <>
+                <ResizableHandle withHandle className="bg-white/[0.03] hover:bg-fuchsia-500/20 transition-colors data-[resize-handle-active]:bg-fuchsia-500/30" />
+                <ResizablePanel defaultSize={50} minSize={25}>
+                  <div className="h-full min-h-0 flex flex-col" aria-label="Canvas preview">
+                    {previewSlot}
+                  </div>
+                </ResizablePanel>
+              </>
+            )}
 
         </ResizablePanelGroup>
         </div>
