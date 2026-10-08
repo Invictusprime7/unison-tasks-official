@@ -716,7 +716,7 @@ export function VFSCodeView({
             )}
 
             {/* Editor Panel */}
-            <ResizablePanel defaultSize={previewSlot ? (showExplorer ? 35 : 50) : (showExplorer ? 80 : 100)} minSize={20}>
+            <ResizablePanel defaultSize={previewSlot ? (showExplorer ? 30 : 50) : (showExplorer ? 80 : 100)} minSize={20}>
               <div className="h-full flex flex-col bg-[#0d0d18]">
                 {/* Editor Tabs */}
                 <ModernEditorTabs
