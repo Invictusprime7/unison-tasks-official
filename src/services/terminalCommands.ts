@@ -23,7 +23,7 @@ import { vfsToFileMap, getFilePaths } from '@/hooks/useVirtualFileSystem';
 import { buildSystemGraph, renderSystemGraphForPrompt } from '@/services/agent-runtime/systemGraph';
 import { resolveMutableNode } from '@/services/agent-runtime/nodeAddress';
 import { runPreviewProbe, parseProbeArgs, formatProbeReport } from '@/services/agent-runtime/previewProbe';
-import { removeSection, moveSection } from '@/services/agent-runtime/sectionActions';
+import { removeSection, restyleSection, moveSection } from '@/services/agent-runtime/sectionActions';
 import { SANDPACK_DEPENDENCIES, isSandpackAllowedImport } from '@/utils/sandpackDependencies';
 
 // ============================================================================
@@ -219,12 +219,14 @@ function cmdNode(args: string[], ctx: CommandContext): CommandResult {
 
 function cmdSection(args: string[], ctx: CommandContext): CommandResult {
   const [verb, address] = args;
-  if (!verb || !address || !['rm', 'up', 'down'].includes(verb)) {
-    return { lines: [mkLine('error', 'Usage: section <rm|up|down> section:/page#id')] };
+  if (!verb || !address || !['rm', 'up', 'down', 'style'].includes(verb)) {
+    return { lines: [mkLine('error', 'Usage: section <rm|up|down> section:/page#id  |  section style section:/page#id "classes"')] };
   }
   const files = { ...vfsToFileMap(ctx.nodes) };
   for (const op of stagedOps ?? []) { if (op.type === 'delete') delete files[op.path]; else files[op.path] = op.contents; }
-  const r = verb === 'rm' ? removeSection(address, files) : moveSection(address, verb as 'up' | 'down', files);
+  const r = verb === 'style'
+    ? restyleSection(address, args.slice(2).join(' ').replace(/^["']|["']$/g, ''), files)
+    : verb === 'rm' ? removeSection(address, files) : moveSection(address, verb as 'up' | 'down', files);
   if (r.ok === false) return { lines: [mkLine('error', r.error)] };
   const msg = submitOps([{ type: 'replace', path: r.path, contents: r.contents }], `Terminal: ${r.summary}`, ctx);
   return { lines: [mkLine('success', `✓ ${r.summary} — ${msg}`)], mutated: true };

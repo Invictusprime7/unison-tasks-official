@@ -65,3 +65,25 @@ export function moveSection(address: string, direction: 'up' | 'down', files: Re
   const contents = src.slice(0, a.start) + src.slice(b.start, b.end) + src.slice(a.end, b.start) + src.slice(a.start, a.end) + src.slice(b.end);
   return { ok: true, path: l.path, contents, summary: `Moved section ${l.spans[l.i].id} ${direction}` };
 }
+
+/**
+ * Swap a section's style: replaces only the className on the section's
+ * opening tag. Content, wording and button destinations are untouched.
+ */
+export function restyleSection(address: string, className: string, files: Record<string, string>): SectionActionResult {
+  const l = locate(address, files);
+  if ('error' in l) return { ok: false, error: l.error! };
+  const cls = className.trim();
+  if (!cls || /["'{}<>`]/.test(cls)) return { ok: false, error: 'Give plain style classes, e.g. "bg-muted py-24"' };
+  const s = l.spans[l.i];
+  const tagEnd = l.source.indexOf('>', s.start) + 1;
+  const tag = l.source.slice(s.start, tagEnd);
+  const next = /\bclassName=(["'])[^"']*\1/.test(tag)
+    ? tag.replace(/\bclassName=(["'])[^"']*\1/, `className="${cls}"`)
+    : /\bclassName=\{/.test(tag)
+      ? null
+      : tag.replace(/^<section\b/, `<section className="${cls}"`);
+  if (next === null) return { ok: false, error: 'This section builds its style in code; ask the AI to restyle it instead' };
+  const contents = l.source.slice(0, s.start) + next + l.source.slice(tagEnd);
+  return { ok: true, path: l.path, contents, summary: `Restyled section ${s.id}` };
+}
