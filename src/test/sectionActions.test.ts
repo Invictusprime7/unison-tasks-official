@@ -34,3 +34,26 @@ describe('section actions', () => {
     expect(restyleSection('section:/about#hero', '"}evil', files).ok).toBe(false);
   });
 });
+
+describe('variant swap', () => {
+  const src = `import { ServicesCardGrid, HeroCentered } from '@/design-system/unison-x-loveable-design-d5be96';
+export default () => <main>
+<section id="services"><ServicesCardGrid items={catalog} cta={{ intent: 'nav.goto', path: '/contact' }} /></section>
+<section id="hero"><HeroCentered title="Hi" /></section>
+</main>;`;
+  const f = { '/src/pages/Home.tsx': src };
+  it('swaps the design and keeps every prop and the import', async () => {
+    const { swapVariant } = await import('@/services/agent-runtime/sectionActions');
+    const r = swapVariant('section:/home#services', 'ServicesEditorialRows', f);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.contents).toContain(`<ServicesEditorialRows items={catalog} cta={{ intent: 'nav.goto', path: '/contact' }} />`);
+    expect(r.contents).toMatch(/import \{ ServicesEditorialRows, HeroCentered \}/);
+    expect(r.contents).not.toContain('ServicesCardGrid');
+  });
+  it('refuses a design from another family', async () => {
+    const { swapVariant } = await import('@/services/agent-runtime/sectionActions');
+    const r = swapVariant('section:/home#services', 'HeroFullBleed', f);
+    expect(r.ok).toBe(false);
+  });
+});

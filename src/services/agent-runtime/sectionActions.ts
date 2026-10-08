@@ -87,3 +87,48 @@ export function restyleSection(address: string, className: string, files: Record
   const contents = l.source.slice(0, s.start) + next + l.source.slice(tagEnd);
   return { ok: true, path: l.path, contents, summary: `Restyled section ${s.id}` };
 }
+
+/** Unison section families; a variant swap must stay inside one family. */
+const FAMILIES = ['About', 'BeforeAfter', 'BlogPreview', 'CTA', 'Contact', 'FAQ', 'Features', 'Footer', 'Gallery', 'Hero', 'LogoCloud', 'Navbar', 'Pricing', 'Services', 'Stats', 'Team', 'Testimonials'];
+export const familyOf = (name: string) =>
+  FAMILIES.filter((f) => name.startsWith(f) && /^[A-Z]/.test(name.slice(f.length))).sort((a, b) => b.length - a.length)[0];
+
+/**
+ * Swap a section's design variant (e.g. ServicesCardGrid → ServicesEditorialRows).
+ * Only the component name changes: every prop — wording, catalog data, button
+ * intents — is kept byte-for-byte, and the import is renamed in place.
+ */
+export function swapVariant(address: string, toName: string, files: Record<string, string>): SectionActionResult {
+  const target = toName.trim();
+  const toFamily = familyOf(target);
+  if (!toFamily) return { ok: false, error: `"${target}" is not a Unison section design (e.g. ServicesEditorialRows)` };
+  let path: string; let source: string; let from: string | undefined; let start = 0; let end: number;
+  if (address.startsWith('component:')) {
+    const r = resolveMutableNode(address, files);
+    if (r.ok === false) return { ok: false, error: r.error };
+    path = r.ownerPath; source = files[path] ?? ''; from = address.slice('component:'.length); end = source.length;
+  } else {
+    const l = locate(address, files);
+    if ('error' in l) return { ok: false, error: l.error! };
+    path = l.path; source = l.source; ({ start, end } = l.spans[l.i]);
+    from = [...source.slice(start, end).matchAll(/<([A-Z][A-Za-z0-9]*)\b/g)].map((m) => m[1]).find((n) => familyOf(n));
+    if (!from) return { ok: false, error: 'This section has no Unison design to swap; ask the AI to redesign it instead' };
+  }
+  if (familyOf(from) !== toFamily) return { ok: false, error: `${target} is a ${toFamily} design, but this section is ${familyOf(from) ?? from}. Pick a ${familyOf(from) ?? 'matching'} design.` };
+  if (from === target) return { ok: false, error: `Already uses ${target}` };
+  const tagRe = new RegExp(`(<\\/?)${from}\\b`, 'g');
+  const scope = source.slice(start, end);
+  if (!tagRe.test(scope)) return { ok: false, error: `${from} is not used in ${path}` };
+  let contents = source.slice(0, start) + scope.replace(tagRe, `$1${target}`) + source.slice(end);
+  // Keep the import correct: rename it when no other use of the old design remains.
+  const stillUsed = new RegExp(`<${from}\\b`).test(contents);
+  const importRe = new RegExp(`(import\\s*\\{[^}]*?)\\b${from}\\b([^}]*\\}\\s*from\\s*['"][^'"]*design-system[^'"]*['"])`);
+  if (!new RegExp(`\\b${target}\\b[^;]*from\\s*['"][^'"]*design-system`).test(contents)) {
+    contents = stillUsed
+      ? contents.replace(importRe, (_m, a, b) => `${a}${from}, ${target}${b}`)
+      : contents.replace(importRe, `$1${target}$2`);
+  } else if (!stillUsed) {
+    contents = contents.replace(importRe, (_m, a: string, b: string) => `${a}${b}`.replace(/,\s*,/, ',').replace(/\{\s*,/, '{').replace(/,\s*\}/, ' }'));
+  }
+  return { ok: true, path, contents, summary: `Swapped ${from} for ${target}` };
+}
