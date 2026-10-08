@@ -31,3 +31,11 @@ describe('zero-bypass guards', () => {
     expect(wb).toMatch(/onTerminalPatch=\{onTerminalPatch\}/);
   });
 });
+
+describe('browser verifier contract', () => {
+  it('defaults to the in-preview verifier and refuses clicks without a browser provider', async () => {
+    const m = await import('@/services/agent-runtime/browserVerification');
+    expect(m.getBrowserVerifier().id).toBe('in-preview');
+    await expect(m.getBrowserVerifier().click('button')).rejects.toThrow(/browser provider/);
+  });
+});
