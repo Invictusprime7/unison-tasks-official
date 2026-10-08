@@ -1,4 +1,4 @@
-import { restyleSection, describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { removeSection, moveSection, sectionSpans } from '@/services/agent-runtime/sectionActions';
 
 const page = `export default () => <main>
