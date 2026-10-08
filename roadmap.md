@@ -18,7 +18,7 @@
 ## Milestone: canonical terminal, node mutations, browser verification (2026-10-07)
 - [x] Phase 1: mutation coordinator (queue, autosave pause, safe rebase of stale AI edits, plain stale message)
 - [x] Phase 2: terminal writes through the canonical writer; touch/mv/cp/rm/rename; staged mode; revision/routes/intents commands (graph → Phase 3)
-- [~] Phase 3: node addressing (resolver + terminal graph/node) done; typed page/section actions next
+- [x] Phase 3: node addressing + typed section actions shared by terminal and AI/command menu (propose_section_action)
 - [ ] Phase 4B: provider-agnostic BrowserVerifier — local Playwright done (scripts/verify-browser-local.mjs); hosted adapter only when remote AI verification is enabled
 - [x] Phase 5: tests + zero-bypass guard (no client Playwright, terminal never writes directly)
 - [x] Revised plan P0.12: post-commit browser check after terminal saves (provider-swappable probe)

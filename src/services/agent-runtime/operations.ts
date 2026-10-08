@@ -23,6 +23,7 @@ import { resolveEditableEntity, type EditableSelection } from './editableOwnersh
 import { listResources, getResource } from '@/services/resources/resourceRegistry';
 import { getResourceRecord, applyResourceOp, parseResourceProvenance } from '@/services/resources/resourceRuntime';
 import type { ResourceRecord } from '@/services/resources/resourceTypes';
+import { removeSection, moveSection, restyleSection, swapVariant, type SectionActionResult } from './sectionActions';
 import { isCoreIntent } from '@/platform/core/coreIntents';
 import type { BindingOp } from '@/types/patchPlan';
 
@@ -110,6 +111,28 @@ export const agentOperations = {
   },
   inspect_preview(ctx: AgentContext) {
     return ctx.previewErrors ?? [];
+  },
+  /**
+   * Typed section actions shared with the terminal. Proposals only; callers
+   * commit through the canonical writer. Moved markup keeps button destinations.
+   */
+  propose_section_action(
+    ctx: AgentContext,
+    action:
+      | { op: 'remove'; address: string }
+      | { op: 'move'; address: string; direction: 'up' | 'down' }
+      | { op: 'restyle'; address: string; className: string }
+      | { op: 'variant'; address: string; to: string },
+  ): ProposedChange {
+    let r: SectionActionResult;
+    switch (action.op) {
+      case 'remove': r = removeSection(action.address, ctx.files); break;
+      case 'move': r = moveSection(action.address, action.direction, ctx.files); break;
+      case 'restyle': r = restyleSection(action.address, action.className, ctx.files); break;
+      case 'variant': r = swapVariant(action.address, action.to, ctx.files); break;
+    }
+    if (r.ok === false) throw new Error(r.error);
+    return { files: { [r.path]: r.contents }, summary: r.summary };
   },
   /**
    * Propose a canonical intent binding for the exact control selected in
