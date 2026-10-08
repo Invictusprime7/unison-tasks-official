@@ -186,7 +186,14 @@ export const LauncherWizard = ({
   const generationRef = useRef(0);
   const handlePreviewReady = useCallback(() => { setPreviewReady(true); setLaunchError(null); }, []);
   const handlePreviewError = useCallback((message: string) => { setPreviewReady(false); setLaunchError(`Preview could not render: ${message}`); }, []);
-  useEffect(() => () => { generationRef.current++; reviewDecision.current?.(false); }, []);
+  // Unmount must not bump the launch generation: effect cleanups also run on
+  // hot reload / StrictMode re-runs while state survives, and a bumped
+  // generation silently orphaned the running launch (preview never opened).
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
 
   const reset = useCallback(() => {
     generationRef.current++;
