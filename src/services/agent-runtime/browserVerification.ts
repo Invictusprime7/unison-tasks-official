@@ -9,6 +9,32 @@
 import { runPreviewProbe, type ProbeCheck, type ProbeReport } from './previewProbe';
 import { awaitPreviewVerification } from '@/services/builder/previewVerification';
 
+/**
+ * Provider-agnostic multi-step verifier. Local Playwright (scripts/verify-browser-local.mjs)
+ * implements it on a developer machine; a hosted adapter can be added later.
+ * The AI only ever talks to this interface.
+ */
+export interface BrowserVerifier {
+  id: string;
+  open(url: string): Promise<void>;
+  click(target: string): Promise<void>;
+  getText(target: string): Promise<string>;
+  assertVisible(target: string): Promise<void>;
+  screenshot?(): Promise<unknown>;
+}
+
+/** Always-usable verifier backed by the in-preview probe (read-only; no clicks). */
+export const inPreviewVerifier: BrowserVerifier = {
+  id: "in-preview",
+  async open(url) { if (!url.startsWith("#") && !url.startsWith("/")) throw new Error("In-preview verifier can only open site routes."); },
+  async click() { throw new Error("Clicking needs a browser provider (local Playwright)."); },
+  async getText(target) { const r = await runPreviewProbe([{ kind: "selector", value: target }]); if (!r.reachable) throw new Error("Preview did not answer."); return r.results[0]?.ok ? target : ""; },
+  async assertVisible(target) { const r = await runPreviewProbe([{ kind: "selector", value: target }]); if (!r.ok) throw new Error(`Not visible: ${target}`); },
+};
+let verifier: BrowserVerifier = inPreviewVerifier;
+export function setBrowserVerifier(next: BrowserVerifier | null): void { verifier = next ?? inPreviewVerifier; }
+export function getBrowserVerifier(): BrowserVerifier { return verifier; }
+
 export interface BrowserProbeProvider {
   id: 'in-preview' | 'playwright-worker';
   probe(checks: ProbeCheck[], timeoutMs?: number): Promise<ProbeReport>;
