@@ -12,7 +12,7 @@ Current integration checklist, source-reviewed 2026-10-08. This replaces the his
 | New file edit surface | Propose operations → coordinator/mutation service → canonical commit |
 | Terminal operation | `onPatch` FileOps/RouteOps → `runExclusive('terminal')` → `commitBuilderFiles` |
 | AI or command-menu action | Compose/register `agentOperations`; do not introduce a parallel agent/writer |
-| Catalog changes | `agentOperations` → catalog adapter → shared Resource Runtime |
+| Catalog changes | `agentOperations` → `catalogOps` → `cms-records`; Resource Runtime's catalog adapter shares the gateway |
 | Content/profile changes | Resource definitions + existing adapters/permission-checked commands |
 | Preview UI | Existing VFSPreview/preparation; observe, do not regenerate pages |
 | Browser verification | BrowserVerifier/BrowserProbeProvider adapter outside client Playwright |
