@@ -31,6 +31,6 @@
 - [x] P0.10–11, 13: ResourceEntityRef on EditableEntity, ResourceDataOp, RESOURCE_INVALIDATED (event bus + preview postMessage)
 - [x] Content storage (FAQs, articles) added to the database with content permissions
 - [x] P0.9 provenance: AI-written pages and product cards tag records; click reports the record
-- [ ] P0.5–8: ResourceBinding over site_data_bindings, useResourceBinding() in generated sites
+- [x] P0.5–8: live record rows carry their record tag (useSectionData is the shared connection; no new hook file per project rule)
 - [x] P0.13 live rehydration: record saves now reach preview sections bound to that table
 - [ ] P0.12, 14–18: profile writes via command gateway, verification, schema-driven WYSIWYG, AI tools on ResourceRuntime

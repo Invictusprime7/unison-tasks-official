@@ -106,7 +106,13 @@ export async function hydrateBinding(
     };
   }
 
-  const rows = (data as unknown as Array<Record<string, unknown>>) ?? [];
+  const rawRows = (data as unknown as Array<Record<string, unknown>>) ?? [];
+  // Resource Runtime provenance: every row carries `__resource` ("key#id") so
+  // generated components can tag `data-ut-resource={`${row.__resource}.price`}`.
+  const resourceKey = getCatalogSurfaceByTable(binding.sourceTable as never)?.surfaceId ?? null;
+  const rows = resourceKey
+    ? rawRows.map((row) => (row && row.id != null ? { ...row, __resource: `${resourceKey}#${String(row.id)}` } : row))
+    : rawRows;
   return {
     rows,
     binding,
