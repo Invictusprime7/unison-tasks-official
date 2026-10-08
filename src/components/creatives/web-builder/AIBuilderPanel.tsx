@@ -3526,6 +3526,55 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
               </button>
             </div>
           )}
+          {heldFiles && (
+            <div
+              className="flex items-baseline gap-3 border-t border-border px-3 py-2 text-xs text-muted-foreground"
+              role="status"
+              aria-live="polite"
+            >
+              <span
+                className="min-w-0 flex-1 truncate"
+                title={`${heldFiles.reason} ${Object.keys(heldFiles.files).join(', ')}`}
+              >
+                {heldFiles.reason}
+                <span className="text-foreground/80"> {Object.keys(heldFiles.files).join(', ')}</span>
+              </span>
+              <span className="flex shrink-0 items-center gap-3">
+                {isApplyingHeld && <Loader2 className="h-3 w-3 animate-spin" />}
+                <button
+                  type="button"
+                  disabled={isApplyingHeld}
+                  className="text-foreground disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  onClick={async () => {
+                    const pending = heldFiles.files;
+                    const deletions = heldFiles.deletions;
+                    const routeOps = heldFiles.routeOps;
+                    const candidate = heldFiles.candidate;
+                    setIsApplyingHeld(true);
+                    const outcome = await applyAIBuilderFiles(onApplyToVFS, pending, { origin: 'held-review', deletions, routeOps, candidate });
+                    setIsApplyingHeld(false);
+                    if (outcome.success) {
+                      setHeldFiles(null);
+                      toast.success('Held changes applied to your project');
+                    } else {
+                      toast.error('Apply failed', { description: outcome.errors?.[0] });
+                      setHeldFiles({ files: pending, deletions, routeOps, candidate, reason: outcome.errors?.[0] ?? 'Apply failed.' });
+                    }
+                  }}
+                >
+                  Apply
+                </button>
+                <button
+                  type="button"
+                  disabled={isApplyingHeld}
+                  className="disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  onClick={() => setHeldFiles(null)}
+                >
+                  Discard
+                </button>
+              </span>
+            </div>
+          )}
           {/* Input */}
           <AIConversationInput
             input={input}
