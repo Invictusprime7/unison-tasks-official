@@ -252,9 +252,17 @@ export const LauncherWizard = ({
     if (!guidedStep) setStep("goals");
   }, [open, initialVisionPrompt, prefill?.businessName, guidedStep]);
 
+  // After the user answers, the chat must move forward at least one step —
+  // even when the AI re-asks the same question (e.g. after Back + correction).
+  const minNextStepRef = useRef<SelectionStep | null>(null);
   useEffect(() => {
-    if (open && guidedStep && !isLaunching && !review) setStep(guidedStep);
-  }, [open, guidedStep, isLaunching, review]);
+    if (!open || !guidedStep || isLaunching || review || guidancePending) return;
+    const floor = minNextStepRef.current;
+    const target = floor && stepOrder.indexOf(floor) > stepOrder.indexOf(guidedStep) ? floor : guidedStep;
+    minNextStepRef.current = null;
+    setStep(target);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, guidedStep, guidancePending, isLaunching, review]);
 
   const selectIndustry = (industry: string, id: BusinessSystemType) => {
     setSelectedIndustry(industry);
