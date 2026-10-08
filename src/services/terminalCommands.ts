@@ -822,13 +822,27 @@ export function processCommand(input: string, ctx: CommandContext): CommandResul
     case 'clear':
     case 'cls':
       return { lines: [mkLine('system', '__CLEAR__')] };
-    default:
+    default: {
+      // Natural-language fallback: local patterns first (instant, free).
+      const nl = matchNaturalLanguage(trimmed, vfsToFileMap(ctx.nodes));
+      if (nl) {
+        if (nl.mutating) {
+          // Changes ask before running; the UI turns __CONFIRM__ into a prompt.
+          return { lines: [mkLine('system', `__CONFIRM__${nl.command}`), mkLine('output', nl.label)] };
+        }
+        return processCommand(nl.command, ctx);
+      }
+      // No local match: hand the phrase to the AI Builder (one canonical agent).
+      if (looksLikeNaturalLanguage(trimmed)) {
+        return { lines: [mkLine('system', `__AI__${trimmed}`)] };
+      }
       return {
         lines: [
           mkLine('error', `Unknown command: ${cmd}`),
           mkLine('output', 'Type "help" for available commands'),
         ],
       };
+    }
   }
 }
 
