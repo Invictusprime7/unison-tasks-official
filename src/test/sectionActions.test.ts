@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { restyleSection, describe, it, expect } from 'vitest';
 import { removeSection, moveSection, sectionSpans } from '@/services/agent-runtime/sectionActions';
 
 const page = `export default () => <main>
@@ -25,5 +25,12 @@ describe('section actions', () => {
   });
   it('refuses moving past the edge', () => {
     expect(moveSection('section:/about#hero', 'up', files).ok).toBe(false);
+  });
+  it('restyles only the section tag, keeping content and buttons', () => {
+    const r = restyleSection('section:/about#hero', 'bg-muted py-24', files);
+    if (r.ok === false) throw new Error(r.error);
+    expect(r.contents).toContain('className="bg-muted py-24"');
+    expect(r.contents).toContain('data-ut-path="/contact">Book');
+    expect(restyleSection('section:/about#hero', '"}evil', files).ok).toBe(false);
   });
 });
