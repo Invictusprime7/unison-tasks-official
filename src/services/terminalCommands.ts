@@ -352,6 +352,7 @@ function cmdHelp(): CommandResult {
       mkLine('output', '│  whoami                 Show business system type'),
       mkLine('output', '│  clear                  Clear terminal'),
       mkLine('output', '│  help                   Show this help'),
+      mkLine('output', '│  …or just type what you want in plain English'),
       mkLine('system', '└───────────────────────────────────────────────────────'),
     ],
   };
