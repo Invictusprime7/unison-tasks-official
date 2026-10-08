@@ -437,7 +437,7 @@ export const LauncherWizard = ({
     try {
       const result = await runLaunchPipeline(input, {
         onReview: candidate => new Promise<boolean>(resolve => {
-          if (generation !== generationRef.current) { resolve(false); return; }
+          if (generation !== generationRef.current || !mountedRef.current) { resolve(false); return; }
           setReview(candidate);
           setIsLaunching(false);
           reviewDecision.current = resolve;
