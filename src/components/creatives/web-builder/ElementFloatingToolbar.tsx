@@ -229,7 +229,7 @@ const InlineAIPanel: React.FC<InlineAIPanelProps> = ({
           bindingId: ancestors.bindingId,
           targetPath: ancestors.targetPath,
           // Resource Runtime identity (key#recordId.field) so the Builder edits the record, not the markup.
-          resource: attrs['data-ut-resource'],
+          resource: attrs['data-ut-resource'] || (ancestors as { resource?: string | null }).resource || undefined,
         },
       },
     } }));
