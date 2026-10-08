@@ -63,6 +63,8 @@ import { AgentCommandPalette } from './ai-chat/AgentCommandPalette';
 import { CatalogPanel } from './ai-chat/CatalogPanel';
 import { agentOperations } from '@/services/agent-runtime/operations';
 import { renderCatalogForPrompt } from '@/services/agent-runtime/catalogOps';
+import { parseResourceValueRequest } from '@/services/agent-runtime/resourceValueRequest';
+import { parseResourceProvenance } from '@/services/resources/resourceRuntime';
 import {
   discoverGeneratedSiteArtifacts,
   renderGeneratedSiteDiscoveryForPrompt,
@@ -780,7 +782,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
   const [agentTarget, setAgentTarget] = useState<{
     tagName: string; text?: string; selector?: string; section?: string; intent?: string; revisionId?: string | null;
     scopeAncestors?: import('@/services/editScopeResolver').ScopeAncestors;
-    provenance?: { sourceTable?: string | null; rowId?: string | null; field?: string | null; bindingId?: string | null; targetPath?: string | null };
+    provenance?: { sourceTable?: string | null; rowId?: string | null; field?: string | null; bindingId?: string | null; targetPath?: string | null; resource?: string | null };
   } | null>(null);
   useEffect(() => {
     const onTarget = (event: Event) => {
@@ -999,7 +1001,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
     const selectedTarget = agentTarget;
     // Build file context suffix
     const targetContext = agentTarget
-      ? `\n\n[Target element — apply this request to it only: <${agentTarget.tagName}>${agentTarget.text ? ` "${agentTarget.text}"` : ''}${agentTarget.section ? ` in section "${agentTarget.section}"` : ''}${agentTarget.scopeAncestors?.pagePath ? ` on the page at route "${agentTarget.scopeAncestors.pagePath}" (edit only that page's source)` : ''}${agentTarget.selector ? ` (selector ${agentTarget.selector})` : ''}${agentTarget.intent ? `; its button action "${agentTarget.intent}" and destination must stay unchanged` : ''}${agentTarget.provenance?.sourceTable && agentTarget.provenance.rowId ? `; canonical data owner ${agentTarget.provenance.sourceTable}/${agentTarget.provenance.rowId}${agentTarget.provenance.field ? ` field ${agentTarget.provenance.field}` : ''}` : ''}${agentTarget.provenance?.bindingId ? `; binding ${agentTarget.provenance.bindingId}` : ''}${agentTarget.provenance?.targetPath ? `; link target ${agentTarget.provenance.targetPath}` : ''}]`
+      ? `\n\n[Target element — apply this request to it only: <${agentTarget.tagName}>${agentTarget.text ? ` "${agentTarget.text}"` : ''}${agentTarget.section ? ` in section "${agentTarget.section}"` : ''}${agentTarget.scopeAncestors?.pagePath ? ` on the page at route "${agentTarget.scopeAncestors.pagePath}" (edit only that page's source)` : ''}${agentTarget.selector ? ` (selector ${agentTarget.selector})` : ''}${agentTarget.intent ? `; its button action "${agentTarget.intent}" and destination must stay unchanged` : ''}${agentTarget.provenance?.sourceTable && agentTarget.provenance.rowId ? `; canonical data owner ${agentTarget.provenance.sourceTable}/${agentTarget.provenance.rowId}${agentTarget.provenance.field ? ` field ${agentTarget.provenance.field}` : ''}` : ''}${agentTarget.provenance?.resource ? `; its value comes from saved record ${agentTarget.provenance.resource} — keep the data-ut-resource mark and do not hardcode a new value in place of the record` : ''}${agentTarget.provenance?.bindingId ? `; binding ${agentTarget.provenance.bindingId}` : ''}${agentTarget.provenance?.targetPath ? `; link target ${agentTarget.provenance.targetPath}` : ''}]`
       : '';
     setAgentTarget(null);
     const fileContext = targetContext + (droppedFiles.length > 0 ? (() => {
@@ -1058,6 +1060,24 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
         setMessages(prev => [...prev, { id: generateId(), role: 'assistant', content: error instanceof Error ? error.message : 'Theme update failed.', timestamp: new Date() }]);
       } finally { setIsLoading(false); }
       return;
+    }
+
+    // Record-backed value: a clicked price/name carrying a data-ut-resource mark
+    // is changed on the saved record (ResourceRuntime), never in page code.
+    const resourceMark = selectedTarget?.provenance?.resource;
+    if (resourceMark && droppedFiles.length === 0 && businessId) {
+      const ref = parseResourceProvenance(resourceMark);
+      const value = ref ? parseResourceValueRequest(userContent, ref.field) : null;
+      if (ref && value !== null) {
+        try {
+          const { summary } = await agentOperations.update_resource_field({ files: vfsFiles ?? {}, businessId, projectId: projectId ?? undefined } as never, resourceMark, value);
+          setMessages(prev => [...prev, { id: generateId(), role: 'assistant', content: `${summary}. The page shows the saved record, so its layout and buttons are unchanged.`, timestamp: new Date() }]);
+          toast.success(summary);
+        } catch (error) {
+          setMessages(prev => [...prev, { id: generateId(), role: 'assistant', content: error instanceof Error ? error.message : 'That record could not be saved.', timestamp: new Date() }]);
+        } finally { setIsLoading(false); }
+        return;
+      }
     }
 
     // Milestone 5 / Step 1: classification is envelope-driven. The interpreter
