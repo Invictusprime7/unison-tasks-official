@@ -1,0 +1,68 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+const listContentRecords = vi.fn();
+const updateCmsRecord = vi.fn();
+vi.mock('@/services/cmsRecordService', () => ({
+  listCmsRecords: vi.fn(async () => [{ id: 'p1', name: 'Tee', price: 20 }]),
+  createCmsRecord: vi.fn(), removeCmsRecord: vi.fn(), updateCmsRecord: (...a: unknown[]) => updateCmsRecord(...a),
+  listContentRecords: (...a: unknown[]) => listContentRecords(...a),
+  getContentRecord: vi.fn(), createContentRecord: vi.fn(), updateContentRecord: vi.fn(),
+}));
+vi.mock('@/services/businessProfileService', () => ({
+  loadBusinessProfile: vi.fn(async (id: string) => ({ businessId: id, name: 'Acme' })),
+  saveBusinessProfile: vi.fn(async (id: string, p: object) => ({ businessId: id, name: 'Acme', ...p })),
+}));
+
+import { getResource, listResources, registerContentTypes } from '@/services/resources/resourceRegistry';
+import { applyResourceOp, onResourceInvalidated, parseResourceProvenance, queryResource, validateResourceOp } from '@/services/resources/resourceRuntime';
+
+const ctx = { businessId: 'b1', mode: 'builder' as const };
+
+describe('Resource Runtime', () => {
+  beforeEach(() => { registerContentTypes([{ id: 't1', slug: 'faq', name: 'FAQ', field_schema: [{ key: 'question' }, { key: 'answer', type: 'textarea' }] }]); });
+
+  it('registers catalog, content and business profile under one registry', () => {
+    const kinds = new Set(listResources().map((r) => r.kind));
+    expect(kinds).toEqual(new Set(['catalog', 'content', 'business-profile']));
+    expect(getResource('products')?.storage.adapter).toBe('catalog');
+    expect(getResource('content:faq')?.lifecycle?.publicStatus).toBe('published');
+    expect(getResource('business-profile')?.cardinality).toBe('single-record');
+  });
+
+  it('catalog reads go through the catalog adapter', async () => {
+    expect((await queryResource('products', ctx))[0].id).toBe('p1');
+  });
+
+  it('published runtime never returns draft content', async () => {
+    listContentRecords.mockResolvedValue([{ id: 'e1', status: 'draft', data: { question: 'Q?' } }, { id: 'e2', status: 'published', data: { question: 'Live?' } }]);
+    const rows = await queryResource('content:faq', { ...ctx, mode: 'published' });
+    expect(rows.map((r) => r.id)).toEqual(['e2']);
+    expect(rows[0].question).toBe('Live?');
+    const builder = await queryResource('content:faq', ctx);
+    expect(builder).toHaveLength(2);
+  });
+
+  it('rejects unknown fields, profile create/delete, and content delete', () => {
+    expect(validateResourceOp({ op: 'update', ref: { resourceKey: 'business-profile', kind: 'business-profile', recordId: 'b1' }, values: { ownerId: 'x' } }).ok).toBe(false);
+    expect(validateResourceOp({ op: 'create', resourceKey: 'business-profile', values: {} }).ok).toBe(false);
+    expect(validateResourceOp({ op: 'delete', ref: { resourceKey: 'content:faq', kind: 'content', recordId: 'e1' } }).ok).toBe(false);
+  });
+
+  it('a write emits RESOURCE_INVALIDATED for the record', async () => {
+    const seen: string[] = [];
+    const off = onResourceInvalidated((i) => seen.push(`${i.resourceKey}#${i.recordIds[0]}`));
+    await applyResourceOp({ op: 'update', ref: { resourceKey: 'business-profile', kind: 'business-profile', recordId: 'b1' }, values: { tagline: 'Hi' } }, ctx);
+    off();
+    expect(seen).toEqual(['business-profile#b1']);
+  });
+
+  it('published mode cannot write', async () => {
+    await expect(applyResourceOp({ op: 'update', ref: { resourceKey: 'products', kind: 'catalog', recordId: 'p1' }, values: { name: 'x' } }, { ...ctx, mode: 'published' })).rejects.toThrow();
+    expect(updateCmsRecord).not.toHaveBeenCalled();
+  });
+
+  it('parses resource provenance attributes', () => {
+    expect(parseResourceProvenance('content:faq#e1.question')).toEqual({ resourceKey: 'content:faq', kind: 'content', recordId: 'e1', field: 'question' });
+    expect(parseResourceProvenance('nope#1')).toBeNull();
+  });
+});
