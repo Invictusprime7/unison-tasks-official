@@ -272,7 +272,7 @@ export interface VFSCodeViewProps {
   onSave?: (fileId: string, content: string) => void;
   onSwitchToCanvas?: () => void;
   /** Terminal file commands commit through the host's canonical writer. */
-  onTerminalPatch?: (ops: TerminalFileOp[], summary: string) => void;
+  onTerminalPatch?: CommandContext['onPatch'];
   getRevisionInfo?: CommandContext['getRevisionInfo'];
 }
 

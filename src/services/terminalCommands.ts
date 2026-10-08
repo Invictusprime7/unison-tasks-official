@@ -49,7 +49,7 @@ export interface CommandContext {
    * them here; the host commits them through commitMutation (one checkpoint per
    * call). The terminal never writes files itself.
    */
-  onPatch?: (ops: TerminalFileOp[], summary: string) => void;
+  onPatch?: (ops: TerminalFileOp[], summary: string, routeOps?: TerminalRouteOp[]) => void;
   /** Optional read-only revision info for the `revision` command. */
   getRevisionInfo?: () => { revisionId: string | null; lastSurface?: string | null; lastAt?: number | null };
 }
@@ -58,6 +58,40 @@ export type TerminalFileOp =
   | { type: 'create'; path: string; contents: string }
   | { type: 'replace'; path: string; contents: string }
   | { type: 'delete'; path: string };
+
+/** Typed page operation; the host maps `route` to the registry pageId and commits it as a routeOp. */
+export type TerminalRouteOp = { type: 'rename_page'; route: string; newTitle: string; newRoute?: string };
+
+const normRoute = (r: string) => '/' + r.replace(/^page:/, '').replace(/^\/+|\/+$/g, '');
+
+/** Pure planner for `page rename`. Refuses a new address while any button still points at the old one. */
+export function planPageRename(args: string[], files: Record<string, string>):
+  { ok: true; op: TerminalRouteOp; summary: string } | { ok: false; error: string } {
+  const [address, ...rest] = args;
+  if (!address || !rest.length) return { ok: false, error: 'Usage: page rename page:/about "New title" [/new-address]' };
+  let newRoute: string | undefined;
+  if (rest.length > 1 && rest[rest.length - 1].startsWith('/')) newRoute = normRoute(rest.pop()!);
+  const newTitle = rest.join(' ').replace(/^["']|["']$/g, '').trim();
+  if (!newTitle) return { ok: false, error: 'Give the page a new title.' };
+  const route = normRoute(address);
+  if (newRoute && newRoute !== route) {
+    const esc = route.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const linkRe = new RegExp(`data-ut-(?:path|target)=["']#?${esc}["']|(?:to|href)=["']#?${esc}["']`);
+    const linked = Object.entries(files).filter(([p, src]) => /\.(t|j)sx$/.test(p) && p !== '/src/App.tsx' && linkRe.test(src)).map(([p]) => p);
+    if (linked.length) return { ok: false, error: `Not renamed: buttons in ${linked.slice(0, 3).join(', ')} still go to ${route}. Rename the title only, or change those buttons first.` };
+  }
+  return { ok: true, op: { type: 'rename_page', route, newTitle, newRoute }, summary: `renamed ${route} to "${newTitle}"${newRoute && newRoute !== route ? ` at ${newRoute}` : ''}` };
+}
+
+function cmdPage(args: string[], ctx: CommandContext): CommandResult {
+  if (args[0] !== 'rename') return { lines: [mkLine('error', 'Usage: page rename page:/about "New title" [/new-address]')] };
+  if (stagedOps) return { lines: [mkLine('error', 'Page renames save on their own — "commit" or "abort" staged changes first.')] };
+  const r = planPageRename(args.slice(1), vfsToFileMap(ctx.nodes));
+  if (r.ok === false) return { lines: [mkLine('error', r.error)] };
+  if (!ctx.onPatch) return { lines: [mkLine('error', 'Not saved: no site is connected to this terminal')] };
+  ctx.onPatch([], `Terminal: ${r.summary}`, [r.op]);
+  return { lines: [mkLine('success', `✓ ${r.summary} — saving as a checkpoint`)], mutated: true };
+}
 
 /** Staged mode buffer (begin → … → commit/abort). Null when not staging. */
 let stagedOps: TerminalFileOp[] | null = null;
@@ -749,6 +783,8 @@ export function processCommand(input: string, ctx: CommandContext): CommandResul
       return cmdNode(args, ctx);
     case 'section':
       return cmdSection(args, ctx);
+    case 'page':
+      return cmdPage(args, ctx);
     case 'deps':
     case 'dependencies':
     case 'packages':

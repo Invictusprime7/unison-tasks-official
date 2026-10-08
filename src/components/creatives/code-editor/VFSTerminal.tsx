@@ -51,7 +51,7 @@ export interface VFSTerminalProps {
   /** Callback to refresh preview */
   onRefreshPreview?: () => void;
   /** Callback to write a file to VFS */
-  onPatch?: (ops: TerminalFileOp[], summary: string) => void;
+  onPatch?: CommandContext['onPatch'];
   getRevisionInfo?: CommandContext['getRevisionInfo'];
 }
 
