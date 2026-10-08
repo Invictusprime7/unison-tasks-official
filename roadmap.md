@@ -36,7 +36,8 @@
 - [x] P0.12: profile writes via business_apply_profile_command gateway
 - [x] P0.18a: AI actions list_resources / read_resource / update_resource_field
 - [x] P0.14: schema-driven record edit boxes in the floating toolbar
-- [ ] P0.15–17: live verification on a real site, history/undo for record edits
+- [x] P0.17: undo for record edits
+- [ ] P0.15–16: live verification on a real site (needs the user)
 
 - [x] AI Builder live file activity ribbon above input (clickable files open in editor)
 - [x] AI Builder detects and shows when preview updated after its edits
