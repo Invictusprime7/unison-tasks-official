@@ -92,14 +92,15 @@ const Index = () => {
       setLoadingProjects(true);
       try {
         const [projectResult, draftResult] = await Promise.all([
-          listProjectsCompat({ ownerId: userId }),
+          listProjectsCompat({ ownerId: userId, limit: 100 }),
           supabase
             .from('builder_drafts')
             // Summary fields only: generated VFS files are loaded by WebBuilder
             // after the user opens a card.
             .select('id, name, project_id, business_id, last_revision_id, updated_at, created_at, previewCode:metadata->>previewCode, metaName:metadata->>name, metaDescription:metadata->>description')
             .eq('user_id', userId)
-            .order('updated_at', { ascending: false }),
+            .order('updated_at', { ascending: false })
+            .limit(100),
         ]);
 
         if (projectResult.error && draftResult.error) {
@@ -113,13 +114,10 @@ const Index = () => {
         const rows = ((draftResult.data || []) as any[]).filter((row): row is Record<string, any> =>
           Boolean(row && typeof row === 'object'),
         );
-        // Do not truncate an authenticated profile here. The old nine-card
-        // shortlist silently removed older saved projects (including October
-        // drafts) even though they were still present in Cloud.
         const workspaceProjects = mergeWorkspaceProjects(
           projectResult.error ? [] : projectResult.data || [],
           rows as any,
-        );
+        ).slice(0, 9);
         const draftsById = new Map(rows.map((row) => [row.id, row]));
         const revisionIds = workspaceProjects.map((project) => project.revision_id).filter(Boolean);
         const revisionTimes = new Map<string, string>();
