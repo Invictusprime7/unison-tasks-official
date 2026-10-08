@@ -80,8 +80,27 @@ export interface PostCommitVerification {
   report?: ProbeReport;
 }
 
+/**
+ * Before a save: record which button actions in the files about to change are
+ * actually painted right now. Buttons living on other pages, in closed menus or
+ * in shared parts not shown on this route are then never reported as "missing".
+ */
+export async function captureIntentBaseline(
+  before: Readonly<Record<string, string>>,
+  changedPaths: string[],
+): Promise<ProbeReport | null> {
+  const checks = deriveIntentChecks(before, before, changedPaths);
+  if (!checks.length) return null;
+  try { const r = await provider.probe(checks, 1500); return r.reachable ? r : null; } catch { return null; }
+}
+
 /** After a canonical commit: wait for the preview to compile, then probe it. */
-export async function verifyCommittedChange(checks: ProbeCheck[]): Promise<PostCommitVerification> {
+export async function verifyCommittedChange(checks: ProbeCheck[], baseline?: ProbeReport | null): Promise<PostCommitVerification> {
+  if (baseline !== undefined) {
+    // Only buttons that were visible on this same page before the save can go missing.
+    const shown = new Set(baseline?.results.filter((r) => r.ok).map((r) => r.value) ?? []);
+    checks = checks.filter((c) => shown.has(c.value));
+  }
   const live = await awaitPreviewVerification({ timeoutMs: 15_000 });
   if (!live.verified) {
     return /did not confirm/.test(live.reason ?? '')
@@ -90,6 +109,9 @@ export async function verifyCommittedChange(checks: ProbeCheck[]): Promise<PostC
   }
   if (!checks.length) return { status: 'verified', message: 'Saved and the preview loaded it.' };
   const report = await provider.probe(checks);
+  if (baseline?.route && report.route && baseline.route !== report.route) {
+    return { status: 'unconfirmed', message: `Saved. The preview moved to ${report.route}, so buttons were not re-checked.`, report };
+  }
   if (!report.reachable) return { status: 'unconfirmed', message: 'Saved. The preview did not answer the check.', report };
   // The probe sees only the current page; missing intents may live on other pages.
   const missing = report.results.filter((r) => !r.ok).map((r) => r.value);

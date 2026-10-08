@@ -3,8 +3,8 @@ import { IMAGE_GENERATED_EVENT, type ImageGeneratedDetail } from '@/services/med
 import { shouldPauseAutosave, runExclusive, recordCommit, getLastCommit } from '@/services/builder/builderMutationCoordinator';
 import type { TerminalFileOp, TerminalRouteOp } from '@/services/terminalCommands';
 import type { TopologyChange } from '@/services/pageTopologyOrchestrator';
-import { deriveIntentChecks, verifyCommittedChange } from '@/services/agent-runtime/browserVerification';
-import { buildPreviewRouteTabs, ROUTE_TAB_PREFIX } from '@/components/creatives/web-builder/previewRouteTabs';
+import { captureIntentBaseline, deriveIntentChecks, verifyCommittedChange } from '@/services/agent-runtime/browserVerification';
+import { buildPreviewRouteTabs, ROUTE_TAB_PREFIX, resolveRouteSourceFile } from '@/components/creatives/web-builder/previewRouteTabs';
 import "./web-builder/obsidian-theme.css";
 import { useEffect, useRef, useState, useCallback, useMemo, lazy, Suspense, Component, type ReactNode, type ErrorInfo } from "react";
 import TemplateFeedback from "./TemplateFeedback";
@@ -733,7 +733,12 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   }, [isMobile]);
 
   // Stable callback for SimplePreview element selection (avoids new ref each render)
+  const selectionPageSyncRef = useRef<((route: string | null) => void) | null>(null);
   const handlePreviewElementSelect = useCallback((el: any) => {
+    // The page the user clicked on owns the edit — keep the active file in step
+    // with the route the preview actually shows (nav clicks inside the preview
+    // change the route without changing the Builder's page tab).
+    selectionPageSyncRef.current?.(el.scopeAncestors?.pagePath ?? null);
     setSelectedHTMLElement({
       tagName: el.tagName,
       textContent: el.textContent,
@@ -2198,6 +2203,12 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       setEditorCode(pageContent);
     }
   }, [getSandpackFiles]);
+  selectionPageSyncRef.current = (route) => {
+    if (!route) return;
+    const files = getSandpackFiles();
+    const file = resolveRouteSourceFile(files, route);
+    if (file && file !== activePagePath && files[file] !== undefined) openBuilderFile(file);
+  };
 
   // Handle page switching in multi-page preview
   const handleSelectPage = useCallback((path: string) => {
@@ -3298,6 +3309,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
           routeOps.push({ type: 'rename_page', pageId: page.pageId, newTitle: op.newTitle, newRoute: op.newRoute });
         }
       }
+      const baseline = await captureIntentBaseline(before, ops.map((op) => op.path));
       const after = await commitBuilderFiles({}, {
         source: 'playground-edit', summary, fileOps: ops as FileOp[], routeOps,
         failureMessage: 'The terminal change was not saved',
@@ -3305,7 +3317,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       if (!after) return;
       recordCommit('terminal', currentRevisionIdRef.current);
       const checks = deriveIntentChecks(before, after, ops.map((op) => op.path));
-      const outcome = await verifyCommittedChange(checks);
+      const outcome = await verifyCommittedChange(checks, baseline);
       if (outcome.status === 'verified') toast.success(outcome.message);
       else toast.warning(outcome.message);
     });
@@ -3569,6 +3581,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
       if (!targetPath || !nextCode) return;
       void runExclusive('toolbar', async () => {
         const before = virtualFSRef.current.getSandpackFiles();
+        const baseline = await captureIntentBaseline(before, [targetPath]);
         const after = await commitBuilderFiles({ [targetPath]: nextCode }, {
           source: 'preview-toolbar',
           summary: `Toolbar · ${summary}`,
@@ -3587,7 +3600,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
         }
         toolbarPreEditRef.current = null;
         recordCommit('toolbar', currentRevisionIdRef.current);
-        const outcome = await verifyCommittedChange(deriveIntentChecks(before, after, [targetPath]));
+        const outcome = await verifyCommittedChange(deriveIntentChecks(before, after, [targetPath]), baseline);
         if (outcome.status !== 'verified') toast.warning(outcome.message);
       });
     };
