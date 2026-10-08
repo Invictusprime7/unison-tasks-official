@@ -64,6 +64,13 @@
       "when": 1791481178688,
       "tag": "0008_content_permissions",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1791483074286,
+      "tag": "0009_business_profile_command",
+      "breakpoints": true
     }
   ]
 }
