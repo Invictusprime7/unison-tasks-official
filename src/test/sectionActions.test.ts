@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { removeSection, moveSection, sectionSpans } from '@/services/agent-runtime/sectionActions';
+import { restyleSection, removeSection, moveSection, sectionSpans } from '@/services/agent-runtime/sectionActions';
 
 const page = `export default () => <main>
 <section id="hero"><a data-ut-intent="nav.goto" data-ut-path="/contact">Book</a></section>
