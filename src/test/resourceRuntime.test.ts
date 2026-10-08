@@ -62,6 +62,7 @@ describe('Resource Runtime', () => {
     await applyResourceOp({ op: 'update', ref: { resourceKey: 'products', kind: 'catalog', recordId: 'p1' }, values: { name: 'x' } }, ctx).catch(() => undefined);
     off();
     if (seen.length) expect(seen[0].length).toBeGreaterThan(0);
+    vi.mocked(updateCmsRecord).mockClear();
   });
 
   it('published mode cannot write', async () => {
