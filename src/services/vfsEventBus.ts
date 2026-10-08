@@ -41,7 +41,8 @@ export type VFSEventType =
   | 'build:log'
   | 'build:error'
   | 'build:success'
-  | 'agent:event';
+  | 'agent:event'
+  | 'resource:invalidated';
 
 export interface VFSEvent<T = unknown> {
   type: VFSEventType;
