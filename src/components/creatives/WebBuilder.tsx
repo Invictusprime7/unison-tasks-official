@@ -860,6 +860,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
         if (path === activePath) continue;
         const attempt = mutate(code);
         if (attempt && attempt !== code) {
+          toolbarPreEditRef.current = allFiles;
           try {
             pushAISnapshot(ctx.projectId ?? null, {
               label: `${snapshotLabel} (${path.split('/').pop()})`,
@@ -872,6 +873,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
           } catch (err) { console.warn('[applyMutatorAcrossVFS] snapshot failed:', err); }
           // canonical-vfs-exempt: optimistic HMR projection; the same mutation is chained through commitMutation below
           virtualFS.importFiles({ [path]: attempt });
+          commitToolbarMutationRef.current?.(attempt, snapshotLabel.replace(/^Manual · /, ''), path);
           return { ok: true };
         }
       }
@@ -889,7 +891,9 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   // so toolbar mutations land in the durable site_revisions ledger alongside
   // AI Builder and layout fast-path commits.
   // See mem://features/web-builder/preview-floating-toolbar.
-  const commitToolbarMutationRef = useRef<((nextCode: string, summary: string) => void) | null>(null);
+  const commitToolbarMutationRef = useRef<((nextCode: string, summary: string, path?: string) => void) | null>(null);
+  /** Working set before the latest optimistic toolbar edit, restored if the save is refused. */
+  const toolbarPreEditRef = useRef<Record<string, string> | null>(null);
 
   const handleFloatingStyleUpdate = useCallback((selector: string, styles: Record<string, string>) => {
     console.log('[WebBuilder] handleFloatingStyleUpdate called:', selector, styles);
@@ -3517,69 +3521,38 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
   // durable site_revisions ledger so they participate in capability and
   // intent readiness gating.
   useEffect(() => {
-    commitToolbarMutationRef.current = (nextCode, summary) => {
-      if (!businessId || !currentDraftId) return;
-      const targetPath = activePagePath?.endsWith('.tsx') ? activePagePath : launchEntryPoint;
+    // Direct toolbar edits share the terminal/AI save path: queued behind other
+    // saves, committed by commitBuilderFiles, then preview-verified.
+    commitToolbarMutationRef.current = (nextCode, summary, path) => {
+      const targetPath = path ?? (activePagePath?.endsWith('.tsx') ? activePagePath : launchEntryPoint);
       if (!targetPath || !nextCode) return;
-      const beforeFiles = virtualFSRef.current.getSandpackFiles();
-      const snapshot = effectiveRouteState?.siteBundleSnapshot ?? null;
-      void (async () => {
-        try {
-          const { data: { user } } = await supabaseClient.auth.getUser();
-          if (!user) return;
-          const identity = buildCommitIdentity({
-            userId: user.id,
-            businessId,
-            projectId: resolvedProjectId,
-            draftId: currentDraftId,
-            revisionId: currentRevisionId,
-          });
-          if (!identity) return;
-          const patch = legacyFilesToPatchPlan(
-            { [targetPath]: nextCode },
-            `Toolbar · ${summary}`,
-          );
-          const commit = await commitMutation({
-            source: 'preview-toolbar',
-            identity,
-            current: buildCanonicalCommitCurrent(beforeFiles, snapshot),
-            patch,
-            options: buildCommitOptions(snapshot),
-          });
-          if (commit.status !== 'committed') {
-            throw new CommitRejectedError('toolbar edit was rejected by the canonical pipeline', commit);
-          }
-          if (commit.persistedRevisionId) {
-            setCurrentRevisionId(commit.persistedRevisionId);
-            console.log('[WebBuilder] preview-toolbar commit persisted:', commit.persistedRevisionId);
-          }
-        } catch (err) {
+      void runExclusive('toolbar', async () => {
+        const before = virtualFSRef.current.getSandpackFiles();
+        if (before[targetPath] === nextCode && path) {
+          // optimistic projection already landed; diff against the pre-edit copy is unavailable, commit as-is
+        }
+        const after = await commitBuilderFiles({ [targetPath]: nextCode }, {
+          source: 'preview-toolbar',
+          summary: `Toolbar · ${summary}`,
+          preferredPath: activePagePath,
+          failureMessage: 'This toolbar change was not saved',
+        });
+        if (!after) {
           // canonical-vfs-exempt: rollback restore of the pre-mutation working set
-          importBuilderFiles(beforeFiles, {
-            replace: true,
-            preferredPath: activePagePath,
-            entryPoint: launchEntryPoint,
+          const prior = toolbarPreEditRef.current;
+          if (prior) importBuilderFiles(prior, {
+            replace: true, preferredPath: activePagePath, entryPoint: launchEntryPoint,
             adoption: { source: 'rollback', exemptReason: 'restore-pre-mutation-state' },
           });
-          if (err instanceof CommitRejectedError) {
-            console.warn('[WebBuilder] preview-toolbar commit rejected:', err.message);
-          } else {
-            console.warn('[WebBuilder] preview-toolbar commit failed:', err);
-          }
+          return;
         }
-      })();
+        toolbarPreEditRef.current = null;
+        recordCommit('toolbar', currentRevisionIdRef.current);
+        const outcome = await verifyCommittedChange(deriveIntentChecks(before, after, [targetPath]));
+        if (outcome.status !== 'verified') toast.warning(outcome.message);
+      });
     };
-  }, [
-    businessId,
-    currentDraftId,
-    currentRevisionId,
-    activePagePath,
-    launchEntryPoint,
-    effectiveRouteState?.siteBundleSnapshot,
-    buildCanonicalCommitCurrent,
-    importBuilderFiles,
-    resolvedProjectId,
-  ]);
+  }, [activePagePath, launchEntryPoint, commitBuilderFiles, importBuilderFiles]);
 
 
 
