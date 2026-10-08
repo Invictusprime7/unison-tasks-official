@@ -23,5 +23,5 @@
 - [x] Phase 5: tests + zero-bypass guard (no client Playwright, terminal never writes directly)
 - [x] Revised plan P0.12: post-commit browser check after terminal saves (provider-swappable probe)
 - [x] Revised P0.9: `page rename` (typed route op through the canonical writer)
-- [ ] Revised P0.9: swap a section variant from the terminal
+- [x] Revised P0.9: swap a section variant from the terminal (`section variant`)
 - [ ] Revised P0.1–P0.3/P0.11: hosted Playwright worker + candidate preview (needs your approval of an outside host)
