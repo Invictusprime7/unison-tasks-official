@@ -3347,39 +3347,6 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
               )}
               <LaunchReadinessCard vfsFiles={vfsFiles} className="-mx-3" />
               <LayoutSnapshotCard vfsFiles={vfsFiles} />
-              {heldFiles && (
-                <div className="mb-3 min-w-0 max-w-full overflow-hidden border-l-2 border-amber-500/60 py-1 pl-3 text-xs">
-                  <div className="font-semibold text-foreground">Changes ready but not applied</div>
-                  <p className="mt-1 break-words text-muted-foreground">{heldFiles.reason}</p>
-                  <p className="mt-1 break-words text-muted-foreground">
-                    {Object.keys(heldFiles.files).join(', ')}
-                  </p>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    <Button
-                      size="sm"
-                      onClick={async () => {
-                        const pending = heldFiles.files;
-                        const deletions = heldFiles.deletions;
-                        const routeOps = heldFiles.routeOps;
-                        const candidate = heldFiles.candidate;
-                        setHeldFiles(null);
-                        const outcome = await applyAIBuilderFiles(onApplyToVFS, pending, { origin: 'held-review', deletions, routeOps, candidate });
-                        if (outcome.success) {
-                          toast.success('Held changes applied to your project');
-                        } else {
-                          toast.error('Apply failed', { description: outcome.errors?.[0] });
-                          setHeldFiles({ files: pending, deletions, routeOps, candidate, reason: outcome.errors?.[0] ?? 'Apply failed.' });
-                        }
-                      }}
-                    >
-                      Apply anyway
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={() => setHeldFiles(null)}>
-                      Discard
-                    </Button>
-                  </div>
-                </div>
-              )}
               {pendingCapabilityProposal && (
                 <div className="mb-3 min-w-0 max-w-full overflow-hidden border-l-2 border-amber-500/60 py-1 pl-3 text-xs">
                   <div className="flex items-center gap-2 font-semibold text-foreground">
