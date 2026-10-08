@@ -3325,23 +3325,27 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
           <ScrollArea className="flex-1 sleek-scrollbar" ref={scrollRef}>
             <div className="py-3 px-3">
               {pendingPermissionAction && (
-                <div className="mb-3 min-w-0 max-w-full overflow-hidden border-l-2 border-amber-500/60 py-1 pl-3">
-                  <div className="flex items-start gap-2">
-                    <Settings2 className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-semibold text-foreground">Review required</p>
-                      <p className="mt-1 break-words text-[11px] font-medium text-foreground/85">{pendingPermissionAction.title}</p>
-                      <p className="mt-0.5 break-words text-[10px] leading-relaxed text-muted-foreground">{pendingPermissionAction.description}</p>
-                      <div className="mt-2 flex flex-wrap gap-1.5">
-                        <Button size="sm" disabled={isApplyingPermissionAction} onClick={() => void approvePendingPermissionAction()} className="h-7 gap-1 px-2.5 text-[10px]">
-                          {isApplyingPermissionAction ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />}
-                          Apply change
-                        </Button>
-                        <Button size="sm" variant="outline" disabled={isApplyingPermissionAction} onClick={() => setPendingPermissionAction(null)} className="h-7 px-2.5 text-[10px]">
-                          Dismiss
-                        </Button>
-                      </div>
-                    </div>
+                <div className="mb-3 min-w-0 max-w-full overflow-hidden py-1 text-xs text-muted-foreground" role="status" aria-live="polite">
+                  <p className="break-words">{pendingPermissionAction.title}</p>
+                  <p className="mt-0.5 break-words leading-relaxed">{pendingPermissionAction.description}</p>
+                  <div className="mt-1 flex items-baseline gap-3">
+                    <button
+                      type="button"
+                      disabled={isApplyingPermissionAction}
+                      onClick={() => void approvePendingPermissionAction()}
+                      className="inline-flex items-center gap-1 text-foreground underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+                    >
+                      {isApplyingPermissionAction && <Loader2 className="h-3 w-3 animate-spin" />}
+                      Apply change
+                    </button>
+                    <button
+                      type="button"
+                      disabled={isApplyingPermissionAction}
+                      onClick={() => setPendingPermissionAction(null)}
+                      className="underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+                    >
+                      Dismiss
+                    </button>
                   </div>
                 </div>
               )}
