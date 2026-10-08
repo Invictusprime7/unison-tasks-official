@@ -37,5 +37,5 @@
 - [x] P0.18a: AI actions list_resources / read_resource / update_resource_field
 - [ ] P0.14–17: verification, schema-driven WYSIWYG edit boxes (P0.18 AI chat uses record ops: done)
 
-- [ ] AI Builder live file activity ribbon above input (clickable files open in editor)
-- [ ] AI Builder detects and shows when preview updated after its edits
+- [x] AI Builder live file activity ribbon above input (clickable files open in editor)
+- [x] AI Builder detects and shows when preview updated after its edits
