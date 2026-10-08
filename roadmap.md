@@ -20,4 +20,7 @@
 - [x] Phase 2: terminal writes through the canonical writer; touch/mv/cp/rm/rename; staged mode; revision/routes/intents commands (graph → Phase 3)
 - [~] Phase 3: node addressing (resolver + terminal graph/node) done; typed page/section actions next
 - [x] Phase 4A: in-preview browser probe (terminal `probe`) + verification recipes (4B hosted Playwright needs your approval)
-- [ ] Phase 5: tests + zero-bypass lint
+- [x] Phase 5: tests + zero-bypass guard (no client Playwright, terminal never writes directly)
+- [x] Revised plan P0.12: post-commit browser check after terminal saves (provider-swappable probe)
+- [ ] Revised P0.9 rest: rename page, swap component variant
+- [ ] Revised P0.1–P0.3/P0.11: hosted Playwright worker + candidate preview (needs your approval of an outside host)
