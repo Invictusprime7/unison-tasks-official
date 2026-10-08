@@ -7,7 +7,7 @@ vi.mock('@/services/vfsCommitService', () => ({ restoreRevision: (...a: unknown[
 import { checkpointLabel, pickUndoTarget, restoreCheckpoint, type Checkpoint } from '@/services/builder/checkpointService';
 import { buildRenderedSiteDigest, __resetRenderedSiteDigestForTests } from '@/services/builder/renderedSiteDigest';
 
-const cp = (id: string, kind: Checkpoint['kind']): Checkpoint => ({ id, kind, label: id, createdAt: '', source: kind });
+const cp = (id: string, kind: Checkpoint['kind']): Checkpoint => ({ id, kind, label: id, createdAt: '', source: kind, changes: [] });
 
 describe('checkpoints', () => {
   it('labels AI checkpoints with the prompt and hides internal candidate ids', () => {

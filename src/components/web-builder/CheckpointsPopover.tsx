@@ -73,6 +73,14 @@ export default function CheckpointsPopover({ draftId, currentRevisionId, refresh
                   <Icon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-xs text-foreground" title={item.label}>{item.label}</p>
+                    {item.changes.length > 0 && (
+                      <ul className="mt-0.5 space-y-0.5 text-[11px] text-muted-foreground" aria-label="Saved changes">
+                        {item.changes.slice(0, 6).map((line) => (
+                          <li key={line} className="truncate" title={line}>{line}</li>
+                        ))}
+                        {item.changes.length > 6 && <li>+{item.changes.length - 6} more</li>}
+                      </ul>
+                    )}
                     <p className="text-[11px] text-muted-foreground">{timeAgo(item.createdAt)}{isCurrent ? ' · current' : ''}</p>
                   </div>
                   {!isCurrent && (
