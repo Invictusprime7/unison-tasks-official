@@ -1,3 +1,5 @@
+import type { ResourceEntityRef } from '@/services/resources/resourceTypes';
+
 /** Read-only canonical identity for one rendered, editable application item. */
 export type EditableEntityKind = 'catalog' | 'content' | 'presentation' | 'topology' | 'behavior' | 'backend';
 export type EditableMutationLane = 'dataOps' | 'fileOps' | 'presentationOps' | 'routeOps' | 'bindingOps' | 'backendOps';
@@ -10,7 +12,8 @@ export type EditableOwnerKind =
   | 'intent-binding'
   | 'asset'
   | 'runtime-state'
-  | 'backend-action';
+  | 'backend-action'
+  | 'resource-field';
 
 export interface EditablePropertyOwner {
   kind: EditableOwnerKind;
@@ -26,6 +29,8 @@ export interface EditablePropertyOwner {
   routeId?: string;
   intent?: string;
   backendActionId?: string;
+  /** Set when the property is owned by a Resource Runtime record field. */
+  resource?: ResourceEntityRef;
 }
 
 export interface EditableEntity {
@@ -45,6 +50,8 @@ export interface EditableEntity {
   elementRole?: string;
   selector?: string;
   intents: string[];
+  /** Resource + record + field this element renders, when resource-backed. */
+  resource?: ResourceEntityRef;
   permissions: { readable: boolean; writable: boolean; destructive?: boolean };
   allowedMutationLanes: readonly EditableMutationLane[];
   provenance: { catalogSurface?: string; registryKey?: string; bindingId?: string; generatedBy?: string };
