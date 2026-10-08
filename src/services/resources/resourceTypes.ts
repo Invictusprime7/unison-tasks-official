@@ -91,4 +91,6 @@ export interface ResourceInvalidation {
   kind: ResourceKind;
   businessId: string;
   recordIds: string[];
+  /** Storage tables touched, so live sections bound to them refresh (and only them). */
+  sourceTables?: string[];
 }

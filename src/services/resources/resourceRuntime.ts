@@ -24,9 +24,11 @@ function defOrThrow(key: string): ResourceDefinition {
 export function invalidateResource(inv: ResourceInvalidation): void {
   vfsEventBus.emit<ResourceInvalidation>('resource:invalidated', inv);
   if (typeof window === 'undefined') return;
-  const message = { type: RESOURCE_INVALIDATED, ...inv };
+  // Generated sites listen for CATALOG_BINDINGS_CHANGED (catalogHydration
+  // module) and refresh only sections bound to the touched tables.
+  const message = { type: 'CATALOG_BINDINGS_CHANGED', invalidation: { type: RESOURCE_INVALIDATED, ...inv, sourceTables: inv.sourceTables ?? [] } };
   for (const iframe of document.querySelectorAll('iframe')) {
-    iframe.contentWindow?.postMessage(message, '*');
+    try { iframe.contentWindow?.postMessage(message, '*'); } catch { /* cross-origin frame gone */ }
   }
 }
 
@@ -71,7 +73,7 @@ export async function applyResourceOp(op: ResourceDataOp, ctx: ResourceContext):
   else if (op.op === 'update') result = await adapter.update(def, ctx, op.ref.recordId, filterWritableValues(def, op.values));
   else await adapter.delete!(def, ctx, op.ref.recordId);
   const recordId = op.op === 'create' ? result?.id ?? '' : op.ref.recordId;
-  invalidateResource({ resourceKey: def.key, kind: def.kind, businessId: ctx.businessId, recordIds: recordId ? [recordId] : [] });
+  invalidateResource({ resourceKey: def.key, kind: def.kind, businessId: ctx.businessId, recordIds: recordId ? [recordId] : [], sourceTables: def.storage.table ? [def.storage.table] : undefined });
   emitAgentEvent({ kind: 'data_change', message: `${op.op === 'create' ? 'Added to' : op.op === 'update' ? 'Updated' : 'Removed from'} ${def.label}`, status: 'ok' });
   return result;
 }
