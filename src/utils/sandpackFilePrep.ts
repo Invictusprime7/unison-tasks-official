@@ -697,6 +697,7 @@ const PREVIEW_SELECTION_BRIDGE = `function __initUnisonPreviewSelectionBridge() 
     let bindingKey: string | null = null;
     let sourceTable: string | null = null;
     let rowId: string | null = null;
+    let resource: string | null = null;
     let field: string | null = null;
     let targetPath: string | null = el.getAttribute('data-ut-path') || el.getAttribute('href') || null;
     let pageId: string | null = null;
@@ -726,6 +727,7 @@ const PREVIEW_SELECTION_BRIDGE = `function __initUnisonPreviewSelectionBridge() 
       if (!sourceTable) sourceTable = cur.getAttribute('data-ut-source-table');
       if (!rowId) rowId = cur.getAttribute('data-ut-row-id') || cur.getAttribute('data-ut-product-id');
       if (!field) field = cur.getAttribute('data-ut-field');
+      if (!resource) resource = cur.getAttribute('data-ut-resource');
       if (!targetPath) targetPath = cur.getAttribute('data-ut-path') || cur.getAttribute('href') || cur.getAttribute('data-ut-target-page-id');
       if (!pageId) pageId = cur.getAttribute('data-ut-page');
       if (!pagePath) pagePath = cur.getAttribute('data-ut-page-path') || cur.getAttribute('data-page-path');
@@ -759,6 +761,7 @@ const PREVIEW_SELECTION_BRIDGE = `function __initUnisonPreviewSelectionBridge() 
       sourceTable,
       rowId,
       field,
+      resource,
       targetPath,
       pageId,
       pagePath,
