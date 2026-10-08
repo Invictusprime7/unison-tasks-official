@@ -361,6 +361,8 @@ export const LauncherWizard = ({
         industry: 'Business type', goals: 'Main goal', questions: 'Visitor actions',
         pages: 'Pages', aesthetic: 'Visual direction', brand: 'Brand name', confirm: 'Review',
       };
+      const nextIndex = stepOrder.indexOf(step) + 1;
+      if (nextIndex > 0 && nextIndex < stepOrder.length) minNextStepRef.current = stepOrder[nextIndex];
       onSelectionConfirmed([
         `My selection: ${answer}`,
         `Business type: ${selectionSummary('industry')}`,
