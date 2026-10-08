@@ -45,6 +45,19 @@ const providerForRace = (id: string) =>
 
 export const PROVIDER_LOOP_TOTAL_BUDGET_MS = 135_000;
 
+// A billing/quota-exhausted direct key fails the same way on every request, so
+// remember it per isolate for a while instead of rediscovering it (and
+// reserving deadline time for it) on every page.
+const DIRECT_QUOTA_COOLDOWN_MS = 15 * 60_000;
+const directQuotaCooldownUntil: Record<'gemini' | 'openai', number> = { gemini: 0, openai: 0 };
+const markDirectQuotaExhausted = (provider: 'gemini' | 'openai') => {
+  directQuotaCooldownUntil[provider] = Date.now() + DIRECT_QUOTA_COOLDOWN_MS;
+  console.warn(`[AI-Hybrid] ${provider} key is out of credit; skipping it for ${DIRECT_QUOTA_COOLDOWN_MS / 60_000} min`);
+};
+/** Test hook: forget remembered out-of-credit keys. */
+export const resetDirectQuotaCooldown = () => { directQuotaCooldownUntil.gemini = 0; directQuotaCooldownUntil.openai = 0; };
+const directOnCooldown = (provider: 'gemini' | 'openai') => Date.now() < directQuotaCooldownUntil[provider];
+
 /** The gateway's own 402 message names the remedy (top-up, temporary hold); never replace it with generic text. */
 export function gatewayErrorMessage(errText: string): string {
   try {
@@ -127,8 +140,8 @@ export async function runProviderLoop(opts: {
   const budgetRemaining = () => totalBudgetMs - (Date.now() - startedAt);
   const activeAttempts = new Set<() => void>();
   const geminiExclusive = isGeminiExclusiveProviderMode();
-  const hasDirectOpenAI = allowDirectFallbacks && !geminiExclusive && Boolean(Deno.env.get('OPENAI_API_KEY'));
-  const hasDirectGemini = allowDirectFallbacks && Boolean(Deno.env.get('GEMINI_API_KEY') || Deno.env.get('GOOGLE_API_KEY') || Deno.env.get('UNISONGEMINI_API_KEY'));
+  const hasDirectOpenAI = allowDirectFallbacks && !geminiExclusive && !directOnCooldown('openai') && Boolean(Deno.env.get('OPENAI_API_KEY'));
+  const hasDirectGemini = allowDirectFallbacks && !directOnCooldown('gemini') && Boolean(Deno.env.get('GEMINI_API_KEY') || Deno.env.get('GOOGLE_API_KEY') || Deno.env.get('UNISONGEMINI_API_KEY'));
   // A configured managed fallback remains available if Gemini cannot answer.
   const hasLastResortGateway = allowDirectFallbacks && Boolean(Deno.env.get('LOVABLE_API_KEY'));
   // The managed gateway is the final safety net; a 20 s slice is not enough for
@@ -139,11 +152,11 @@ export async function runProviderLoop(opts: {
   // A 429 whose body says billing/quota is exhausted is not a transient rate
   // limit: every further call to that provider will fail the same way. Mark the
   // whole family dead so the remaining budget goes to providers that can answer.
-  let geminiQuotaExhausted = false;
+  let geminiQuotaExhausted = directOnCooldown('gemini');
   // Same for OpenAI: a 402 / billing-exhausted response means every further
   // OpenAI model will fail identically, so skip them and give the remaining
   // budget to Gemini and the managed gateway.
-  let openaiQuotaExhausted = false;
+  let openaiQuotaExhausted = directOnCooldown('openai');
   const isQuotaExhausted = (detail: string) =>
     /credits are depleted|prepayment|quota|billing|insufficient|exceeded your current quota/i.test(detail);
   const isGeminiModelId = (id: string) => id.startsWith('google/') || id.startsWith('gemini-');
@@ -279,7 +292,7 @@ export async function runProviderLoop(opts: {
           // walking the remaining models (including other provider families)
           // instead of aborting generation on the first rate limit.
           if (resp.status === 429 && !isQuotaExhausted(errText)) continue;
-          openaiQuotaExhausted = true;
+          (openaiQuotaExhausted = true, markDirectQuotaExhausted('openai'));
           break;
         }
 
@@ -391,7 +404,7 @@ export async function runProviderLoop(opts: {
           const exhausted = isQuotaExhausted(errText) || resp.status === 402;
           recordProviderError(model.label, `${resp.status}${errText ? ` ${errText.substring(0, 200)}` : ''}`);
           if (exhausted) {
-            geminiQuotaExhausted = true;
+            (geminiQuotaExhausted = true, markDirectQuotaExhausted('gemini'));
             deferredEarlyError ??= { status: 402, error: 'Payment required. Please add credits to your Google AI account.' };
             console.warn(`[AI-Hybrid] ${model.label} quota/billing exhausted; abandoning Gemini for this turn.`);
             break;
@@ -546,8 +559,12 @@ export async function runProviderLoop(opts: {
   if (hasLastResortGateway && (!hasDirectGemini || providerPlan.gatewayLeads)) {
     gatewayTriedFirst = true;
     // Hybrid page writing keeps a real window for the Gemini backup.
-    const fallbackReserveMs = (hasDirectOpenAI || hasDirectGemini) && budgetRemaining() >= 90_000
-      ? (providerPlan.gatewayLeads ? 45_000 : 30_000) : 5_000;
+    // A full page needs ~90 s; a backup squeezed into the last 30-45 s can
+    // never finish one, and starving the lead caused every page to time out.
+    // The lead gets the whole window; backups still run if it fails fast.
+    const fallbackReserveMs = providerPlan.gatewayLeads
+      ? 3_000
+      : (hasDirectOpenAI || hasDirectGemini) && budgetRemaining() >= 90_000 ? 30_000 : 5_000;
     await runManagedGatewayAttempt(
       providerPlan.gatewayLeads ? 'Lovable AI (hybrid lead)' : 'Lovable AI fallback (Gemini unavailable)',
       Math.min(providerPlan.perModelTimeoutMs, budgetRemaining() - fallbackReserveMs));
@@ -582,7 +599,7 @@ export async function runProviderLoop(opts: {
           if (a.provider === 'lovable' && resp.status === 402) {
             deferredEarlyError ??= { status: 402, error: gatewayErrorMessage(errText) };
           }
-          if (a.provider === 'openai' && (resp.status === 402 || isQuotaExhausted(errText))) openaiQuotaExhausted = true;
+          if (a.provider === 'openai' && (resp.status === 402 || isQuotaExhausted(errText))) (openaiQuotaExhausted = true, markDirectQuotaExhausted('openai'));
           throw new Error('failed');
         }
         const data = await resp.json();
@@ -694,10 +711,10 @@ export async function runProviderLoop(opts: {
               : { status: 402, error: 'Payment required. Please add credits to your OpenAI account.' };
           recordProviderError(model.label, detail);
           if (exhausted && isGeminiModelId(model.id)) {
-            geminiQuotaExhausted = true;
+            (geminiQuotaExhausted = true, markDirectQuotaExhausted('gemini'));
             console.warn(`[AI-Hybrid] ${model.label} quota/billing exhausted; skipping all Gemini attempts this turn.`);
           } else {
-            if (exhausted) openaiQuotaExhausted = true;
+            if (exhausted) (openaiQuotaExhausted = true, markDirectQuotaExhausted('openai'));
             deferredEarlyError ??= earlyError;
           }
           console.warn(`[AI-Hybrid] ${model.label} returned ${resp.status}; trying next provider...`);
