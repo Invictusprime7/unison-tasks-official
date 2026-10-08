@@ -1,6 +1,7 @@
 /* cache-bust: 20260309 */
 import { shouldPauseAutosave, runExclusive, recordCommit, getLastCommit } from '@/services/builder/builderMutationCoordinator';
 import type { TerminalFileOp, TerminalRouteOp } from '@/services/terminalCommands';
+import type { TopologyChange } from '@/services/pageTopologyOrchestrator';
 import { deriveIntentChecks, verifyCommittedChange } from '@/services/agent-runtime/browserVerification';
 import { buildPreviewRouteTabs, ROUTE_TAB_PREFIX } from '@/components/creatives/web-builder/previewRouteTabs';
 import "./web-builder/obsidian-theme.css";
