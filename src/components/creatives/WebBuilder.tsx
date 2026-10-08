@@ -766,6 +766,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
         field: el.scopeAncestors?.field,
         bindingId: el.scopeAncestors?.bindingId,
         targetPath: el.scopeAncestors?.targetPath,
+        resource: attrs['data-ut-resource'] || (el.scopeAncestors as { resource?: string | null } | undefined)?.resource || undefined,
       },
     } }));
   }, [setSelectedHTMLElement]);

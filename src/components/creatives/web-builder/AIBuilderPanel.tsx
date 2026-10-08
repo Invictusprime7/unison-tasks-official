@@ -780,7 +780,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
   const [agentTarget, setAgentTarget] = useState<{
     tagName: string; text?: string; selector?: string; section?: string; intent?: string; revisionId?: string | null;
     scopeAncestors?: import('@/services/editScopeResolver').ScopeAncestors;
-    provenance?: { sourceTable?: string | null; rowId?: string | null; field?: string | null; bindingId?: string | null; targetPath?: string | null };
+    provenance?: { sourceTable?: string | null; rowId?: string | null; field?: string | null; bindingId?: string | null; targetPath?: string | null; resource?: string | null };
   } | null>(null);
   useEffect(() => {
     const onTarget = (event: Event) => {
