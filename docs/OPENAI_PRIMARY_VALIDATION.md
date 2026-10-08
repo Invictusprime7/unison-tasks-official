@@ -1,5 +1,7 @@
 # OpenAI as Primary AI Service - Configuration Validation
 
+> **Historical, superseded setup instructions.** Provider ordering and managed-service configuration below are not current guidance. Do not apply this checklist to the current workspace. Use [AI providers](ai-providers.md) and [AI setup](AI_SETUP_GUIDE.md); this record does not verify current credentials or deployment.
+
 ## ✅ Setup Checklist
 
 ### 1. Supabase Secrets Configuration

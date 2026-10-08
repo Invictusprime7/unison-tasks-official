@@ -1,5 +1,7 @@
 # OpenAI Primary Configuration - Restoration Report
 
+> **Historical implementation report, not current provider policy.** Its success claims apply only to the recorded change. Use [AI providers](ai-providers.md) and [Architecture](ARCHITECTURE.md) for current ownership and routing; current deployment and funded usage require separate verification.
+
 ## Summary
 Successfully restored OpenAI as the PRIMARY AI provider for the System Launcher wizard and entire application. Lovable AI Gateway is now configured as FALLBACK only.
 

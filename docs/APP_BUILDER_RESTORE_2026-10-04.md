@@ -1,5 +1,7 @@
 # App Builder restoration — October 4, 2026
 
+> **Dated restoration evidence.** Provider priority, funding and test results below describe the restoration snapshot, not current hosted state. See [Architecture](ARCHITECTURE.md), [AI providers](ai-providers.md) and [roadmap](../roadmap.md) for current ownership and remaining verification.
+
 Restoration source: `d6c053ea68ada2b6ca4691d465fa33d5dbf0fc4d`, the latest October 2 snapshot (8:49 p.m. America/Chicago), titled **Wired auth and saved data**.
 
 The application authoring contracts, generation context, design-source selection/materialization, candidate validator, page authoring and repair loops, launch integration, and Composer authoring lane were restored together. Their matching tests were restored as well. The experimental Wizard-intention module and its new validation rules were archived outside the repository.

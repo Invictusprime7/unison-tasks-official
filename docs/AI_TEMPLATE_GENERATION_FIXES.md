@@ -1,5 +1,7 @@
 # AI Template Generation Fixes - December 24, 2025
 
+> **Historical incident record.** The diagnosis and deployment commands below describe the December 2025 system, not current launch ownership or hosted settings. Use [AI setup](AI_SETUP_GUIDE.md) and [Architecture](ARCHITECTURE.md); do not redeploy old functions from this checklist.
+
 ## ⚠️ CRITICAL ISSUE IDENTIFIED
 
 **ERROR:** "Failed to generate: Failed to send a request to the Edge Function"

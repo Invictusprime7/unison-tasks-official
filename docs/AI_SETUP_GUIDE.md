@@ -1,165 +1,35 @@
-# AI Features Setup Guide
+# Unison AI setup and diagnosis
 
-Your application has comprehensive AI capabilities that require API keys to function properly. This guide will help you get everything working.
+Active guide, reviewed 2026-10-08. Managed Lovable AI is supported without asking users to supply a personal provider key. Existing direct text/image integrations can require separate funded credentials; their presence is not evidence they are usable.
 
-## 🔧 Quick Setup
+## Configure the correct surface
 
-Run the automated setup script:
+- App Builder page authoring/repair and Builder source edits use `ai-code-assistant` and the shared task-specific provider router.
+- Image generation uses the existing `generate-image` function and its image-provider/storage path.
+- The floating toolbar sends AI source requests through AI Builder rather than owning a separate provider configuration.
+- Public frontend connection values come from the intended backend configuration; privileged/provider keys remain server-side.
 
-```bash
-./scripts/setup-ai-keys.sh
-```
+See [AI providers](ai-providers.md) for hybrid launch lead, direct Gemini editing, mode overrides, model source defaults and quota cooldown. Do not apply historical OpenAI-primary or 50/50 instructions as a universal current policy.
 
-This script will:
-- Guide you through entering your API keys
-- Update your `.env` file
-- Configure Supabase secrets (if using Supabase locally)
-- Update Vercel environment variables (optional)
+## Diagnose by failure class
 
-## 🔑 Required API Keys
+| Symptom | Inspect |
+| --- | --- |
+| Failed to send request | Function reachability, CORS preflight/origin/client headers, network and session |
+| Provider timed out / `ai_unavailable` | Actual task deadline, planned providers, server logs and usable fallback budget |
+| Provider quota/billing response | Funded provider availability; a configured key alone is insufficient |
+| Unauthorized/refused edit | Session, resource/business permissions and operation validation |
+| Missing item | Provenance, registered resource, business scope and successful read response |
+| Saved but preview unchanged | Accepted revision, projection, displayed route, preview load signal and live record binding |
 
-### 1. OpenAI API Key
-- **Required for**: DALL-E image generation
-- **Get it from**: [OpenAI Platform](https://platform.openai.com/api-keys)
-- **Format**: Starts with `sk-`
-- **Usage**: Image generation via the `generate-image` edge function
+Shared CORS allows supported Lovable preview origins and platform/runtime client headers. A transport error is not proof that a saved record does not exist.
 
-### 2. Gemini text generation
-- **Used for**: Builder and Wizard text/code generation through Supabase Edge Functions
-- **Runtime**: A configurable weighted distribution with OpenAI, with automatic fallback
-- **Secret**: `GEMINI_API_KEY` (or `GOOGLE_API_KEY`) on Supabase only
+## Managed versus local operation
 
-## 🚀 AI Features Available
+Use Lovable Cloud secret/deployment controls for this managed project. Do not use outdated guides containing an old backend URL or request unavailable managed database passwords/service-role keys. Local or independently hosted functions require their own server-only configuration; inspect existing scripts before use, because historical setup scripts are not a statement of current managed settings.
 
-Once configured, your app will have:
+## Verification
 
-### Image Generation
-- **Component**: `AIImageGeneratorDialog`
-- **Service**: `generateAIImage()` in `openaiService.ts`
-- **Edge Function**: `generate-image`
-- **Uses**: OpenAI DALL-E 3
+A model identifier, configured credential, passing unit test or increased timeout does not prove a live launch. Verify a full authenticated site creation through preview opening and revision reload. For edits, load the real site, select the intended item, apply the request and read back the saved result. Record editing additionally needs save/preview/Undo verification.
 
-### Code Assistant
-- **Component**: `AICodeAssistant`
-- **Service**: `generateAICode()` in `openaiService.ts`
-- **Edge Function**: `ai-code-assistant`
-- **Uses**: Direct Gemini/OpenAI runtime with configurable traffic distribution
-
-### Copy Rewriting
-- **Service**: `rewriteCopy()` in `openaiService.ts`
-- **Edge Function**: `copy-rewrite`
-- **Uses**: Direct OpenAI API
-
-### Page Generation
-- **Service**: `generatePage()` in `openaiService.ts`
-- **Edge Function**: `generate-page`
-- **Uses**: Direct OpenAI API
-
-### Web Builder AI
-- **Edge Function**: `web-builder-ai`
-- **Uses**: Direct OpenAI API
-
-## 📁 Environment Files
-
-### Local Development (`.env`)
-```bash
-# Supabase Configuration
-VITE_SUPABASE_URL=your_supabase_url
-VITE_SUPABASE_PUBLISHABLE_KEY=your_key
-VITE_SUPABASE_PROJECT_ID=your_project_id
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
-
-# AI provider keys belong in Supabase Edge Function secrets, never VITE_ variables.
-```
-
-### Supabase Secrets (Edge Functions)
-```bash
-# Set these in your Supabase project. Provider keys are server-only.
-supabase secrets set GEMINI_API_KEY="your_gemini_key" OPENAI_API_KEY="sk-your_key_here" AI_PROVIDER_DISTRIBUTION="gemini=50,openai=50"
-```
-
-### Vercel Environment Variables
-```bash
-# Configure only frontend-safe VITE_SUPABASE_* values in Vercel.
-# Keep provider keys in Supabase Edge Function secrets.
-```
-
-## 🛠️ Manual Setup
-
-If you prefer to set things up manually:
-
-### 1. Configure Supabase Secrets and deploy the provider runtime
-```bash
-supabase secrets set GEMINI_API_KEY="your_gemini_key" OPENAI_API_KEY="sk-your_key_here" AI_PROVIDER_DISTRIBUTION="gemini=50,openai=50"
-supabase functions deploy ai-code-assistant --no-verify-jwt
-```
-
-### 2. Update Vercel (if deployed)
-```bash
-./scripts/update-vercel-env.sh
-```
-
-## 🔍 Testing AI Features
-
-### Check Service Status
-```typescript
-import { getAIServiceStatus } from '@/services/openaiService';
-
-const status = await getAIServiceStatus();
-console.log(status.message);
-```
-
-### Test Image Generation
-```typescript
-import { generateAIImage } from '@/services/openaiService';
-
-const result = await generateAIImage({
-  prompt: "A beautiful sunset over mountains",
-  style: "digital-art"
-});
-```
-
-### Test Code Generation
-```typescript
-import { generateAICode } from '@/services/openaiService';
-
-const result = await generateAICode({
-  messages: [
-    { role: 'user', content: 'Create a React button component' }
-  ],
-  mode: 'component'
-});
-```
-
-## 🐛 Troubleshooting
-
-### "AI features unavailable in local development"
-- Configure provider keys as Supabase Edge Function secrets
-- Configure Supabase secrets with `supabase secrets set`
-- Restart your local Supabase instance: `supabase stop && supabase start`
-
-### "Failed to send request to Edge Function"
-- Ensure edge functions are deployed: `supabase functions deploy`
-- Check that secrets are set in Supabase project
-- Verify API keys are valid and have sufficient credits
-
-### Rate Limits or Credit Issues
-- **OpenAI**: Check your OpenAI account billing and usage limits
-- **Direct providers**: Check the provider dashboard for usage limits and billing
-
-## 📚 Development Notes
-
-- Edge functions handle API key validation and availability checks
-- Client-side services in `openaiService.ts` provide typed interfaces
-- All AI calls go through Supabase Edge Functions for security
-- Error handling includes rate limiting and credit management
-- Local development supports the same features as production
-
-## 🎯 Next Steps
-
-1. Run `./scripts/setup-ai-keys.sh` to get started
-2. Test AI features in your application
-3. Deploy to production with `vercel --prod`
-4. Monitor API usage and costs in your provider dashboards
-
-Your AI features should now be fully functional! 🎉
+This documentation update did not change secrets, deploy functions or rerun a full generation. Hosted browser verification remains outstanding. Track evidence and blockers in [roadmap](../roadmap.md).

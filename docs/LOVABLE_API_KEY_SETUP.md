@@ -1,5 +1,7 @@
 # Lovable API Key Setup Instructions
 
+> **Superseded credential instructions.** Do not use the steps below to obtain a managed AI gateway key. Managed Lovable AI does not require a user-supplied key; optional direct-provider secrets remain server-side. Platform API keys are a separate integration. Use [AI setup](AI_SETUP_GUIDE.md) and [AI providers](ai-providers.md).
+
 ## How to Get Your Lovable API Key
 
 Since you're working in a Lovable workspace, you can get your API key through the Lovable platform:

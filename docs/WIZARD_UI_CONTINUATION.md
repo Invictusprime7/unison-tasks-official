@@ -1,5 +1,7 @@
 # Wizard UI continuation — September 15, 2026
 
+> **Dated UI implementation evidence.** These results describe that revision, not the current Wizard's complete flow or verification status. See [Architecture](ARCHITECTURE.md) and [roadmap](../roadmap.md) for current authorship and open checks.
+
 Recovered the latest workspace Copilot conversation. Its final UI request was a less cluttered, Replit/Lovable-style Launcher with plain-language build progress and the existing canonical runtime.
 
 Implemented a prompt-first opening screen, multiline idea input, example prompts, a concise suggested starting point, and expandable industry/import sections. The four steps remain available as Idea, Goals, Layout, and Style. Layout and style guidance now uses customer-facing language; the design inspector is expandable. Building hides the selection form and shows the existing pipeline timeline, with technical status and degradation messages available under Build details. No generation ownership, theme resolution, or canonical handoff changed.

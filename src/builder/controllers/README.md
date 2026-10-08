@@ -3,6 +3,8 @@
 Headless controllers extracted from the monolithic `WebBuilder.tsx` and
 `AIBuilderPanel.tsx` shells. See the builder architecture documentation for the full sequencing.
 
+Reviewed 2026-10-08. The table tracks controller extraction, not service availability. `vfsCommitService.ts` already owns canonical revisions; its pending row means separate facade extraction. See [Architecture](../../../docs/ARCHITECTURE.md) and [Agentic IDE](../../../docs/AGENTIC_IDE.md) for current terminal/toolbar coordination.
+
 ## Phase A status
 
 | # | Controller                     | Status   | Notes |
@@ -13,7 +15,7 @@ Headless controllers extracted from the monolithic `WebBuilder.tsx` and
 | 4 | `PlaygroundSyncController`     | **done** | Façade over `playgroundHydrator` + `playgroundCompiler`. Caches last hydrate/compile result with subscriber API. Call-site migration in WebBuilder is incremental. |
 | 5 | `IntentReadinessController`    | pending  | Façade over `intentReadinessService`. |
 | 6 | `LaunchStateController`        | pending  | Publish gate + deploy state. |
-| 7 | `VFSCommitService`             | pending  | Final commit seam — Phase B plugs in here. |
+| 7 | `VFSCommitService` facade      | pending  | Canonical service is implemented; separate controller extraction remains pending. |
 
 ## Rules
 

@@ -1,501 +1,110 @@
-# Unison — Architecture Documentation
+# Unison — current architecture
 
-> **Fresh-launch authority (2026-09-30):** `LauncherWizard → runLaunchPipeline → launchOrchestrator → UnisonAppBuilder → candidate gates → commitMutation`. The Wizard captures intent; App Builder authors the candidate; canonical services own contracts, protected infrastructure and revision promotion.
+Source-reviewed 2026-10-08. This is the current architecture map, not a claim that all release or live verification gates have passed. Older plans and incident reports preserve their dated evidence; start with [docs index](README.md).
 
-## Framework Foundation
+## Authority hierarchy
 
-**React 18.3 + TypeScript 5.9** application built on **Vite + SWC** with a hooks-first, context-driven architecture.
-
-| Layer | Technology | Config |
-|-------|-----------|--------|
-| **Runtime** | React 18.3 + ReactDOM | Function components, hooks-first, no class components |
-| **Type System** | TypeScript 5.9 (relaxed strict) | `react-jsx` transform, bundler moduleResolution, `@/*` path alias |
-| **Build** | Vite + @vitejs/plugin-react-swc | ESNext target, manual chunk splitting, 1000kb warning limit |
-| **State** | TanStack React Query 5 + React Context | 3 contexts: VFSProvider, CloudProvider, DirectionProvider |
-| **UI** | Radix UI (30+) + Shadcn/ui (50+) + Tailwind 3.4 | CVA for variants, Lucide icons, Framer Motion animations |
-| **Canvas** | Fabric.js 7.2 | Scene model, layers, drag-drop, arrangement tools |
-| **Editors** | Monaco Editor 4.7 + CodeMirror 6 | Full IntelliSense + lightweight syntax editing |
-| **Preview** | Sandpack 2.20 + Docker Vite | In-browser bundler + containerized HMR dev server |
-| **Backend** | Supabase (PostgreSQL + Deno Edge) | 45+ functions, RLS, JWT auth, Realtime WebSockets |
-| **Orchestration** | Inngest + Trigger.dev | Durable workflows + background jobs (reports, imports) |
-| **AI** | Google Gemini 2.5 Flash + HuggingFace Transformers | Server-side generation + browser-local inference |
-
-## Phase 2 & 3 Implementation: Complete ✅ | Phase 4+ Systems: Active
-
-### System Integration Map
-
-```
-┌──────────────────────────────────────────────────────────────────┐
-│                     Unison Platform                         │
-│                  React 18 + TypeScript 5.9 + Vite                │
-├──────────┬──────────┬──────────┬──────────┬──────────┬──────────┤
-│ System   │ AI Web   │ Automa-  │ CRM &    │ VFS      │ Enter-   │
-│ Launcher │ Builder  │ tion     │ Commerce │ Preview  │ prise    │
-│ Wizard   │ Play-    │ Engine   │ Pipeline │ Runtime  │ RBAC &   │
-│ (4-step  │ ground   │ (Inngest │ (Leads,  │ (3-Tier) │ Multi-   │
-│ guided)  │ (Monaco  │ + DAG +  │ Deals,   │ Sandpack │ Tenant   │
-│ + Biz    │ +Fabric  │ Trigger  │ Booking) │ +Docker  │ + Audit  │
-│ Setup    │ +VFS)    │ .dev)    │          │ +Static) │          │
-└──────────┴──────────┴──────────┴──────────┴──────────┴──────────┘
-     ▲           ▲          ▲          ▲          ▲          ▲
-     └───────────┴──────────┴──────────┴──────────┴──────────┘
-              Supabase (PostgreSQL + 45+ Deno Edge Functions)
-              + Inngest (Durable Execution) + Trigger.dev (Jobs)
+```text
+Canonical contracts → schemas → accepted SiteBundleSnapshot
+  → runtime projections → UI / preview / publish
 ```
 
-### User Journey Flow
+| Concern | Authority |
+| --- | --- |
+| Launch choices | Chat/Wizard shared plan, finalized selections |
+| Launch orchestration | `src/services/launch/launchOrchestrator.ts` |
+| Fresh application source | `src/services/app-builder/UnisonAppBuilder.ts` isolated candidate |
+| Topology and routes | Canonical page identity + Playground PageRegistry |
+| Section presence/content/layout | SiteBundle composition; not topology or style variation |
+| Tokens and Art Direction | Stage 4b, sealed SiteDesignContract and design-system contracts |
+| Source acceptance | `src/services/vfsCommitService.ts` `commitMutation` |
+| Saved identity | Accepted revision + `ProjectRuntimeEnvelope` |
+| Catalog operation authority | `agentOperations` → `catalogOps` → `cms-records`; Resource Runtime catalog adapter shares that gateway |
+| Resource storage semantics | Resource registry + catalog/content/profile adapters |
+| Runtime actions | Canonical intents, bindings, manifest and permission-checked executors |
+| Preview | Projection of accepted/current source, never an independent author |
 
-```
-System Launcher Wizard                    Web Builder Playground
-┌─────────────────────┐                  ┌──────────────────────┐
-│ 1. Industry Select  │                  │ Monaco Code Editor   │
-│ 2. Goals & Needs    │──LauncherHandoff─│ Fabric.js Canvas     │
-│ 3. Template Browse  │  (VFS files +    │ VFS File Explorer    │
-│ 4. Theme & Launch   │  RuntimeManifest)│ Live Sandpack Preview│
-└─────────────────────┘                  └──────────┬───────────┘
-         │                                          │
-         ▼                                          ▼
-┌─────────────────────┐                  ┌──────────────────────┐
-│ Project Setup       │                  │ Publish / Deploy     │
-│ (8-section guide)   │                  │ (Vercel / CDN)       │
-│ Payments, DB, Email │                  │ Preview → Production │
-│ Calendar, Domain... │                  │                      │
-└─────────────────────┘                  └──────────────────────┘
-```
+## Runtime baseline
 
-### Architecture Overview
+The manifest declares React/ReactDOM 19.2, TypeScript 5.9, Vite 7.3, React Router 7, Sandpack 2.20, Fabric 7.2 and Playwright 1.56.1. `main.tsx` uses `createRoot`, the application mounts React Router `BrowserRouter`, and app CSS uses Tailwind 3 directives. Additional installed TanStack/Tailwind packages do not establish a migrated active runtime. Generated-site preview routing is a separate canonical HashRouter concern.
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                         User Input (AI Prompt)                   │
-└───────────────────────────────┬─────────────────────────────────┘
-                                │
-                                ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    Supabase Edge Function                        │
-│                       (web-builder-ai)                           │
-│                                                                   │
-│  • Lovable AI (google/gemini-2.5-flash)                         │
-│  • Generates structured template schema                          │
-└───────────────────────────────┬─────────────────────────────────┘
-                                │
-                                ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                   Template Schema (Source of Truth)              │
-│                                                                   │
-│  AIGeneratedTemplate {                                           │
-│    sections: TemplateSection[]                                   │
-│    components: TemplateComponent[]                               │
-│    brandKit: TemplateBrandKit                                    │
-│    data: TemplateData                                            │
-│  }                                                                │
-└────────────────┬──────────────────────────┬─────────────────────┘
-                 │                          │
-                 ▼                          ▼
-┌────────────────────────────┐  ┌──────────────────────────────────┐
-│   Fabric.js Canvas         │  │   HTML/CSS Export                │
-│   (Editing Mode)           │  │   (Preview Mode)                 │
-│                            │  │                                  │
-│  TemplateRenderer          │  │  TemplateToHTMLExporter          │
-│  • Validates schema        │  │  • Applies design tokens         │
-│  • Preloads assets         │  │  • Semantic HTML tags            │
-│  • Renders to Fabric       │  │  • Google Fonts integration      │
-│  • User can edit objects   │  │  • Sanitizes output              │
-└────────────────────────────┘  └──────────────┬───────────────────┘
-                                               │
-                                               ▼
-                                  ┌─────────────────────────────────┐
-                                  │  SecureIframePreview            │
-                                  │  • Sandboxed execution          │
-                                  │  • RPC messaging                │
-                                  │  • VFS file system              │
-                                  │  • Live HTML preview            │
-                                  └─────────────────────────────────┘
+## Shared launch plan and application authorship
+
+`chatLaunchPlan.ts` synchronizes the homepage chat brief and Wizard. `buildSyncedVisionBrief` gives final selections precedence; page briefs lead with their own composition targets and design contracts rather than unrelated global content.
+
+```text
+LauncherWizard (selections only)
+  → runLaunchPipeline / launchOrchestrator
+  → canonical planning and contracts
+  → app-build: UnisonAppBuilder
+      → page authorship inside one isolated application candidate
+      → candidate validation / bounded repair / site-wide closure
+  → protected infrastructure and canonical promotion
+  → commitMutation → accepted revision → Builder handoff
 ```
 
-## Key Components
+Fresh-launch authorship occurs in `app-build`; deprecated page-author callbacks are not a second downstream author stage. Intermediate page/repair progress is not a canonical revision. Canonical planning supplies topology, capabilities, intents, bindings, tokens, Art Direction and protected foundation; it must not recompose competing page bodies after App Builder acceptance. Failed fresh generation is reported, not silently replaced by a generic deterministic site.
 
-### 1. State Management (`useTemplateState.ts`)
+Launch provisioning links business, site, project, draft, build and runtime setup through the existing authenticated provisioner. Source acceptance and launch provisioning have their own boundaries; do not describe all storage/backend side effects as one universal atomic transaction.
 
-**Single Source of Truth**: Template schema drives both rendering modes.
+## Design authority
 
-```typescript
-const templateState = useTemplateState(fabricCanvas);
+Unison resolves Industry × Theme Family × Art Direction Pack × Page Archetype × Experience × Brand × Intent × Content × Seed. Families classify packs; resolved packs remain sealed. Brand overrides must not replace the pack or topology. Page-local hero/alignment/rhythm/variants may differ while shared chrome and legal vocabulary remain coherent.
 
-// Update template → triggers dual rendering
-await templateState.updateTemplate(aiTemplate);
+The attached library is `src/design-system/unison-x-loveable-design-d5be96/`. The application loads its tokens after base CSS, uses `src/styles/unison-theme.css` for app-only roles and loads library font links in `main.tsx`. Managed library files are not consumer-editable. `src/sections/unison/` is the existing authoring/toolkit integration, not a competing canonical registry.
 
-// Access synchronized state
-const { template, html, css, isRendering } = templateState;
-```
+A stable seed makes deterministic planning reproducible. AI-produced page bytes are not guaranteed identical across new calls. The curated registry is the preferred executable vocabulary; contract-valid local authored artifacts are allowed. Provenance, legality, accessibility and dependency requirements still apply. See [Affinity](UNISON_AFFINITY.md) and toolkit references.
 
-**Features:**
-- ✅ Template schema as source of truth
-- ✅ Automatic dual rendering (Fabric + HTML)
-- ✅ Asset preloading before render
-- ✅ HTML sanitization before iframe injection
-- ✅ Data binding support
+## Saved-project spine and recovery
 
-### 2. Template Rendering Pipeline
+`BuilderSessionProvider` carries `ProjectRuntimeEnvelope`, assembled from a persisted revision and its canonical snapshot. Authority is persisted envelope → legacy compatibility → route/browser hints. Navigation hints cannot overwrite identity. A revision adoption advances the envelope before downstream controllers consume its snapshot.
 
-#### A. Fabric Canvas (Editing)
-**File**: `src/utils/templateRenderer.ts`
+`PageTopologyController`, `PlaygroundSyncController` and `PreviewRuntimeController` wrap existing services. Their directory README distinguishes delivered controllers from still-pending extraction; no new custom hook files are introduced.
 
-```typescript
-const renderer = new TemplateRenderer(fabricCanvas);
-await renderer.renderTemplate(template);
-```
+Saved projects hydrate accepted files without regeneration. `builder_drafts` is the draft association/cache and revision pointer; canonical revisions and their snapshot are durable authority. Recovery journals preserve interrupted local work but are not permission to overwrite a newer accepted remote revision. Legacy conversion can reconstruct from explicit saved selections, with reconstruction labeled rather than misrepresented as recovered original source.
 
-**5 Pillars of Reliability:**
-1. ✅ Schema validation (TemplateValidator)
-2. ✅ Deterministic layout (LayoutEngine)
-3. ✅ Safe adapter pattern (error isolation)
-4. ✅ Asset preloading (AssetPreloader)
-5. ✅ Error state rendering
+`snapshotProjector` prefers live VFS bytes for snapshot-owned paths and live `/src/**` additions when parsing the live VFS, avoiding stale embedded snapshot copies. The launch-handoff importer has its own dedupe ref so revision adoption cannot re-import initial launch files.
 
-#### B. HTML Export (Preview)
-**File**: `src/utils/templateToHTMLExporter.ts`
+## Canonical edits and checkpoints
 
-```typescript
-const exporter = new TemplateToHTMLExporter();
-const html = exporter.exportToHTML(template);
-```
+`builderMutationCoordinator.ts` serializes exclusive mutations and pauses autosave. Fingerprint rebase permits non-overlapping candidate changes; `aiApplyGate` retains conflict checks. AI/toolbar/code/terminal proposals enter existing mutation services and `commitMutation` rather than directly persisting or importing a second file set.
 
-**Features:**
-- ✅ Design tokens from `index.css`
-- ✅ Semantic HTML5 tags (`<header>`, `<section>`, `<footer>`)
-- ✅ Responsive CSS with token mapping
-- ✅ Google Fonts auto-loading
-- ✅ Framework-agnostic clean code
+User-driven `ai-builder`/`playground-edit` preflight disables quarantine and required-intent closure: invalid pages are refused, not replaced with stubs; style edits cannot inject unrelated required forms. AI intent-retarget checks run before acceptance. Scoped guards identify unrelated visible copy/side effects; Auto bypasses approval holds, not canonical validation/authorization.
 
-### 3. Integration with Existing Tools
+Background saves do not overlap an in-flight persist. The per-draft circuit breaker backs off identical failed payloads. Recoverable write timeouts reconcile saved revisions before bounded idempotent retry. Automated binding/GHL/republish saves are refused if their base predates a newer committed AI edit.
 
-#### AssetPreloader (`assetPreloader.ts`)
-```typescript
-// Automatically used in useTemplateState
-const assets = assetPreloader.extractAssetUrls(template);
-await assetPreloader.preloadFonts(assets.fonts);
-await assetPreloader.preloadImages(assets.images);
-```
+Checkpoint labels show the request, saved files/routes and grouped internal settings, not candidate IDs. Restoring accepted source still uses canonical preview validation but sets `requireReadinessPass: false`; incomplete publish connections block publication, not ordinary Builder editing or restore.
 
-**Benefits:**
-- ✅ Prevents "white flash" on render
-- ✅ Progress callbacks for UX
-- ✅ Caching for performance
+## Agentic editing surfaces
 
-#### LayoutEngine (`layoutEngine.ts`)
-```typescript
-// Used internally by TemplateRenderer
-const layout = layoutEngine.applyLayout(section);
-// Returns deterministic positions
-```
+See [Agentic IDE](AGENTIC_IDE.md) for typed inspections/proposals, node addresses, terminal behavior, Split workspace and activity signals. Toolbar AI is a front end to the same Builder panel and conversation. Click targeting carries route/element ownership and resource provenance; labels are not storage identity.
 
-**Benefits:**
-- ✅ Consistent positioning
-- ✅ Flexbox-based calculations
-- ✅ Auto-layout support
+`builder_chat_history` stores per-draft conversations with owner access; browser storage is a fast cache. Inline approval notices remain minimal. Full Auto proceeds through ordinary approval categories while retaining save/permission checks; terminal command confirmation remains independent.
 
-#### HTMLSanitizer (`htmlSanitizer.ts`)
-```typescript
-// Applied before iframe injection
-const clean = sanitizeHTML(exportedHtml);
-const safeCss = sanitizeCSS(rawCss);
-```
+File activity uses `vfsEventBus` `agent:event`. `ai-chat/FileActivityRibbon.tsx` shows emitted stages and file diffs; file links open Split editor tabs. Preview loaded, source saved and behavior verified are distinct events, not interchangeable success claims.
 
-**Security:**
-- ✅ DOMPurify integration
-- ✅ CSP headers in iframe
-- ✅ XSS prevention
+## Business data and runtime actions
 
-### 4. Secure Iframe Preview
+See [Resource Runtime](RESOURCE_RUNTIME.md). Catalog, Content and Business Profile share editing mechanics but retain separate adapters, tables, permissions and lifecycles. Catalog's sole client-operation surface is `agentOperations`; no legacy `catalogOperations` writer may be reintroduced. Record edits/undo are database operations, not site source revisions or an atomic source-plus-data transaction.
 
-**File**: `src/components/SecureIframePreview.tsx`
+Rendered `data-ut-resource` refs identify real records/fields. Bound sections refresh on invalidation; unmarked hardcoded pages do not acquire record editing automatically. Public content reads retain published-only semantics.
 
-**Security Architecture:**
-```html
-<iframe 
-  sandbox="allow-scripts allow-pointer-lock"
-  <!-- NO allow-same-origin for max isolation -->
-/>
-```
+See [Universal intents](UNIVERSAL_INTENT_SYSTEM.md). `data-ut-intent` carries canonical action vocabulary, slot/binding identity controls behavior, and intent definitions declare trigger type/capabilities. Source restyling cannot change destinations. Runtime execution and backend permissions remain authoritative.
 
-**Features:**
-- ✅ Sandboxed execution environment
-- ✅ RPC messaging layer (`rpc.ts`)
-- ✅ Virtual filesystem (`vfs.ts`)
-- ✅ Console/error interception
-- ✅ Content Security Policy
+## Preview and browser verification
 
-### 5. AI Integration
+`VFSPreview` uses the shared Sandpack preparation pipeline. Generated `/src/App.tsx` is the deterministic PageRegistry router, not AI-authored; pages own the required site chrome. Fabric is graphic-design tooling, not website state/render authority. Docker/static helpers do not define an accepted-site fallback.
 
-**Edge Function**: `supabase/functions/web-builder-ai/index.ts`
+`previewVerification` tracks compile/load state. Post-commit checks capture previously visible intents on the current route and compare after loading. Route changes, timeouts and unreachable probes report unconfirmed, not missing controls or unsaved work. Probes do not prove visitor handlers succeeded.
 
-**Model**: `google/gemini-2.5-flash` (FREE during Sept 29 - Oct 13, 2025)
+`BrowserVerifier`/`BrowserProbeProvider` are replaceable read-only observer seams. Local Playwright tooling runs outside the client bundle; the default in-preview adapter cannot click or genuinely extract arbitrary text. Hosted Playwright/candidate-preview support remains outstanding. See [Preview runtime](PREVIEW_RUNTIME_ARCHITECTURE.md).
 
-**Response Format:**
-```json
-{
-  "template": { /* AIGeneratedTemplate */ },
-  "explanation": "Created a modern landing page...",
-  "html": "<!DOCTYPE html>...",
-  "css": "/* Design tokens applied */"
-}
-```
+## Backend and AI
 
-## Design Token System
+Lovable Cloud supplies authenticated functions, Postgres access control, storage and realtime. Clients use the unified project integration. Public visitor endpoints and private editing commands have different authorization boundaries. CORS must allow supported preview origins and client platform/runtime headers; a failed preflight is transport failure, not an empty record.
 
-**Source**: `src/index.css`
+Composer modes share the existing `ai-code-assistant` function. Response shape is defined in `_shared/aiComposerContract.ts` and byte-mirrored in `src/contracts/aiComposerContract.ts`. Provider order is task/mode/configuration-dependent, not a universal Gemini/OpenAI weighted primary. See [AI providers](ai-providers.md).
 
-### Color Tokens (HSL)
-```css
---primary: 210 100% 50%;
---secondary: 0 0% 90%;
---accent: 200 90% 55%;
-```
+## Evidence and remaining work
 
-### Spacing Scale
-```css
---space-1: 0.25rem;  /* 4px */
---space-4: 1rem;     /* 16px */
---space-8: 2rem;     /* 32px */
-```
-
-### Typography
-```css
---font-size-base: 1rem;
---font-size-2xl: 1.5rem;
---font-size-4xl: 2.25rem;
-```
-
-**Usage in Exports:**
-```css
-.component-heading {
-  font-size: var(--font-size-4xl);
-  color: hsl(var(--primary));
-  padding: var(--space-8);
-}
-```
-
-## Data Flow
-
-### Template Generation
-```
-1. User: "Create a landing page"
-   ↓
-2. AI Assistant detects template request
-   ↓
-3. Edge function → Lovable AI → Structured schema
-   ↓
-4. useTemplateState.updateTemplate(schema)
-   ↓
-5. PARALLEL:
-   - TemplateRenderer → Fabric Canvas
-   - TemplateToHTMLExporter → HTML/CSS
-   ↓
-6. SecureIframePreview displays sanitized HTML
-```
-
-### Canvas Edits (Future)
-```
-1. User edits object on Fabric Canvas
-   ↓
-2. Canvas event listener detects change
-   ↓
-3. Update template schema
-   ↓
-4. Re-export HTML/CSS
-   ↓
-5. Update VFS → refresh iframe
-```
-
-## File Structure
-
-```
-src/
-├── hooks/                              # 50+ custom React hooks
-│   ├── useTemplateState.ts             # Canvas template state (source of truth)
-│   ├── useWebBuilder.ts                # Web builder state management
-│   ├── useWebBuilderAI.ts              # AI code generation in builder
-│   ├── useVirtualFileSystem.ts         # Core VFS logic
-│   ├── useVFSContext.ts                # VFS context consumers (useVFS, useVFSSafe, etc.)
-│   ├── usePreviewService.ts            # Preview backend control
-│   ├── usePreviewSession.ts            # Preview session lifecycle
-│   ├── useSetupWizard.ts               # 7-step business setup wizard
-│   ├── useCanvasHistory.ts             # Canvas undo/redo
-│   ├── useCreatorPlayground.ts         # Creator mode state
-│   ├── useSiteBuilder.ts               # Multi-page site building
-│   ├── usePageGenerator.ts             # AI page generation
-│   └── useAuth.ts                      # Authentication state
-├── contexts/
-│   ├── VFSContext.tsx                   # Virtual file system + preview + snapshots
-│   ├── CloudContext.tsx                 # Multi-tenant orgs, teams, usage stats
-│   └── CloudContextDef.ts              # Cloud context type definitions
-├── schemas/
-│   ├── BusinessBlueprint.ts            # Industry, page types, intents, brand tokens
-│   ├── SiteBundle.ts                   # Site identity, build provenance, UTP protocol
-│   └── templateSchema.ts              # Layer types (Text/Image/Shape/Group), frames
-├── services/                           # 45+ business logic modules
-│   ├── canonicalPipeline.ts            # Unified build pipeline
-│   ├── playgroundCompiler.ts           # Playground code compilation
-│   ├── playgroundHydrator.ts           # Playground state hydration
-│   ├── wizardCapabilityResolver.ts     # Wizard step resolution
-│   ├── wizardPlaygroundMaterializer.ts # Wizard → code materialization
-│   ├── automationOrchestrator.ts       # Workflow DAG orchestration
-│   ├── inngestService.ts               # Inngest event/task integration
-│   ├── previewSession.ts               # Preview session lifecycle
-│   └── ...                             # 35+ more services
-├── runtime/                            # Universal intent system
-│   ├── intentRouter.ts                 # Main orchestrator
-│   ├── actionCatalog.ts                # Fixed handlers for 25+ intents
-│   ├── intentResolver.ts               # Build-time resolution
-│   └── intentClassifier.ts             # Intent type detection
-├── sections/                           # Template sections & variants
-│   ├── index.ts                        # Public API (registry, themes, compositions)
-│   ├── registry.ts                     # Section registry with intelligent matching
-│   ├── themes.ts                       # Design token registry
-│   ├── PageRenderer.tsx                # Template composition → React renderer
-│   ├── components/                     # Reusable section components
-│   ├── templates/                      # Industry-specific compositions
-│   ├── variants/                       # hero/, features/, cta/, footer/, navbar/...
-│   └── references/                     # Industry-specific reference components
-├── utils/
-│   ├── templateRenderer.ts             # Fabric canvas rendering
-│   ├── templateToHTMLExporter.ts       # HTML/CSS export pipeline
-│   ├── sandpackFilePrep.ts             # VFS → Sandpack file compiler
-│   ├── assetPreloader.ts               # Font/image preloading
-│   ├── htmlSanitizer.ts                # DOMPurify security
-│   └── ...                             # 95+ more utilities
-├── components/
-│   ├── onboarding/
-│   │   └── wizard/LauncherWizard.tsx   # Selection-only launcher and orchestration handoff
-│   ├── creatives/
-│   │   ├── WebBuilder.tsx              # Main playground (1000+ lines)
-│   │   └── web-builder/
-│   │       └── AIBuilderPanel.tsx      # AI assistant panel
-│   ├── VFSPreview.tsx                  # Sandpack + Docker preview
-│   ├── SimplePreview.tsx               # Lightweight srcdoc fallback
-│   ├── crm/                            # CRM UI components
-│   ├── ai-agent/                       # AI assistant interface
-│   └── ui/                             # 50+ Radix + Shadcn primitives
-├── pages/
-│   ├── BusinessSettings.tsx            # Business profile management
-│   ├── ProjectSetup.tsx                # 8-section contextual setup
-│   ├── WebBuilderPage.tsx              # Web builder route wrapper
-│   └── ...                             # 20+ route components
-├── trigger/
-│   └── jobs.ts                         # Trigger.dev background tasks
-├── integrations/
-│   └── supabase/                       # Supabase client + types
-└── types/                              # TypeScript definitions
-```
-
-## Testing the Feature
-
-1. **Navigate to Web Builder**
-2. **Click "AI Assistant" button**
-3. **Try a full template prompt:**
-   - "Create a landing page for a SaaS product"
-   - "Generate a portfolio website template"
-4. **Observe dual rendering:**
-   - ✅ Fabric Canvas shows editable objects
-   - ✅ Preview dialog shows live HTML
-5. **Edit on canvas** → changes reflected immediately
-
-## Performance Optimizations
-
-### Asset Preloading
-- Images cached in `AssetPreloader`
-- Fonts loaded before render
-- Progress feedback to user
-
-### Lazy Rendering
-- Only visible sections rendered
-- Virtual scrolling for large templates
-- Debounced updates
-
-### Memory Management
-- Canvas disposal on unmount
-- Asset cache clearing
-- VFS cleanup
-
-## Security Considerations
-
-### Iframe Sandbox
-- ✅ No `allow-same-origin` (maximum isolation)
-- ✅ CSP headers restrict scripts
-- ✅ RPC for controlled communication
-
-### HTML Sanitization
-- ✅ DOMPurify on all user content
-- ✅ Whitelist approach for CSS
-- ✅ No inline scripts allowed
-
-### API Security
-- ✅ Edge functions validate input
-- ✅ Rate limiting (429 errors)
-- ✅ Payment checks (402 errors)
-
-## Next Steps (Phase 4+)
-
-### Recently Implemented
-- [x] Virtual File System (VFS) with Sandpack preview — see [VFS_PREVIEW_ARCHITECTURE.md](VFS_PREVIEW_ARCHITECTURE.md)
-- [x] Three-tier preview runtime (ECS → Sandpack → Static) — see [PREVIEW_RUNTIME_ARCHITECTURE.md](PREVIEW_RUNTIME_ARCHITECTURE.md)
-- [x] Universal Intent System with build-time annotation — see [UNIVERSAL_INTENT_SYSTEM.md](UNIVERSAL_INTENT_SYSTEM.md)
-- [x] Inngest durable workflow orchestration — see [WORKFLOW_ORCHESTRATION_COMPARISON.md](WORKFLOW_ORCHESTRATION_COMPARISON.md)
-- [x] Trigger.dev background jobs (CRM reports, batch import, data export, AI content)
-- [x] AI Agent Runner for autonomous research and code tasks
-- [x] Enterprise RBAC, multi-tenancy, and audit logging — see [ENTERPRISE_HARDENING.md](ENTERPRISE_HARDENING.md)
-- [x] System Launcher Wizard (4-step guided onboarding with industry/goals/template/aesthetic)
-- [x] Business Setup & Project Configuration (8-section contextual guide)
-- [x] Web Builder Playground with dual-mode editing (Monaco + Fabric.js + VFS)
-- [x] HuggingFace Transformers local inference integration
-- [x] GoHighLevel CRM synchronization
-- [x] Stripe subscription management and checkout flows
-
-### Bidirectional Sync
-- [ ] Canvas edits → update template schema
-- [ ] Schema changes → re-render both views
-- [ ] Real-time collaboration (Supabase Realtime)
-
-### Advanced Export
-- [ ] React component generation
-- [ ] Vue/Svelte templates
-- [ ] Tailwind CSS option
-- [ ] Component library integration
-
-### Enhanced Preview
-- [ ] Live editing in iframe
-- [ ] Device frame simulation
-- [ ] Network throttling
-- [ ] Accessibility testing
-
-## Troubleshooting
-
-### Template not rendering
-1. Check console for validation errors
-2. Verify template schema structure
-3. Check asset URLs are accessible
-
-### Iframe shows blank
-1. Check HTML sanitization didn't strip content
-2. Verify CSP headers
-3. Check browser console for errors
-
-### Slow rendering
-1. Check image sizes (optimize before upload)
-2. Reduce number of components
-3. Clear asset cache
-
-## API Reference
-
-See inline JSDoc comments in:
-- `src/hooks/useTemplateState.ts`
-- `src/utils/templateToHTMLExporter.ts`
-- `src/utils/templateRenderer.ts`
-
----
-
-**Framework**: React 18.3 + TypeScript 5.9 + Vite + SWC
-**Status**: ✅ Phase 2 & 3 Complete | Phase 4+ Systems Active
-**Active**: System Launcher Wizard, Web Builder Playground, VFS Preview, Intent System, Inngest + Trigger.dev Orchestration, Enterprise RBAC, AI Agents
-**Next**: Phase 5 — Bidirectional Sync, Real-time Collaboration, Advanced Export
+This documentation refresh does not deploy functions, migrate data, rerun all suites or certify a live launch. `roadmap.md` keeps open: broader structured change sets/edge activity, hosted browser worker and candidate previews, and authenticated click-to-edit/resource save/read-back/undo verification. Previously reported route/button and provider-limit incidents need fresh site-specific verification; documentation is not evidence those incidents are resolved.
