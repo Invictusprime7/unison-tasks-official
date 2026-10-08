@@ -10,6 +10,7 @@
  * no preview runtime, no writer and no store — it is a small observation
  * point the transaction layer can await.
  */
+import { emitAgentEvent } from '@/services/agent-runtime/agentEvents';
 
 export type PreviewVerificationState = 'idle' | 'pending' | 'running' | 'error';
 
@@ -55,10 +56,12 @@ export function markPreviewPending(): void {
   state = 'pending';
   lastError = undefined;
   revision += 1;
+  emitAgentEvent({ kind: 'verification', message: 'Waiting for the preview to update', status: 'running' });
 }
 
 /** Reported by the preview runtime when it compiled and is rendering. */
 export function reportPreviewRunning(): void {
+  if (state === 'pending') emitAgentEvent({ kind: 'verification', message: 'Preview updated', status: 'ok' });
   state = 'running';
   lastError = undefined;
   revision += 1;
@@ -67,6 +70,7 @@ export function reportPreviewRunning(): void {
 
 /** Reported by the preview runtime on a fatal compile or render error. */
 export function reportPreviewError(message: string): void {
+  if (state === 'pending') emitAgentEvent({ kind: 'error', message: 'Preview could not show the change', status: 'failed' });
   state = 'error';
   lastError = message || 'The preview reported an error.';
   revision += 1;
