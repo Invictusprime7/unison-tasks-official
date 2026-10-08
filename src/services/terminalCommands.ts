@@ -24,6 +24,7 @@ import { buildSystemGraph, renderSystemGraphForPrompt } from '@/services/agent-r
 import { resolveMutableNode } from '@/services/agent-runtime/nodeAddress';
 import { runPreviewProbe, parseProbeArgs, formatProbeReport } from '@/services/agent-runtime/previewProbe';
 import { removeSection, restyleSection, moveSection } from '@/services/agent-runtime/sectionActions';
+import { matchNaturalLanguage, looksLikeNaturalLanguage } from '@/services/terminal/naturalLanguage';
 import { SANDPACK_DEPENDENCIES, isSandpackAllowedImport } from '@/utils/sandpackDependencies';
 
 // ============================================================================
