@@ -131,6 +131,7 @@ const ProductCardView: React.FC<ProductCardViewProps> = ({
       data-ut-product-id={product.productId}
       data-ut-source-table="products"
       data-ut-row-id={product.productId}
+      data-ut-resource={\`products#\${product.productId}\`}
     >
       <div className="relative aspect-square bg-muted">
         {product.imageUrl ? (
