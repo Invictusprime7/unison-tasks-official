@@ -3,7 +3,7 @@
  * Catalog surfaces and the Business Profile are registered statically;
  * content types are exposed dynamically from the content_types records.
  */
-import { listCatalogSurfaces, type CatalogFieldType, type CatalogSurface } from '@/platform/core/catalogSurfaceRegistry';
+import { getCatalogSurface, listCatalogSurfaces, type CatalogFieldType, type CatalogSurface } from '@/platform/core/catalogSurfaceRegistry';
 import type { ResourceDefinition, ResourceFieldDefinition, ResourceFieldType } from './resourceTypes';
 
 export const BUSINESS_PROFILE_RESOURCE_KEY = 'business-profile';
@@ -57,6 +57,7 @@ export const BUSINESS_PROFILE_RESOURCE: ResourceDefinition = {
 
 /** Shape of a content_types row as returned by the cms-records function. */
 export interface ContentTypeRow {
+  id?: string;
   slug?: string;
   key?: string;
   name?: string;
@@ -84,7 +85,7 @@ export function contentTypeToResource(row: ContentTypeRow): ResourceDefinition |
     cardinality: 'collection',
     label: String(row.name ?? slug),
     schema,
-    storage: { adapter: 'content', contentType: slug },
+    storage: { adapter: 'content', contentType: slug, contentTypeId: row.id ? String(row.id) : undefined },
     capabilities: { publishing: true, ordering: true },
     lifecycle: { statuses: CONTENT_STATUSES, publicStatus: 'published' },
   };
@@ -113,5 +114,6 @@ export function listResources(): ResourceDefinition[] {
 export function getResource(key: string): ResourceDefinition | null {
   if (key === BUSINESS_PROFILE_RESOURCE_KEY) return BUSINESS_PROFILE_RESOURCE;
   if (key.startsWith('content:')) return contentDefs.get(key) ?? null;
-  return listResources().find((r) => r.key === key || r.storage.table === key) ?? null;
+  const surface = getCatalogSurface(key);
+  return surface && surface.editableFields.length > 0 ? catalogSurfaceToResource(surface) : null;
 }

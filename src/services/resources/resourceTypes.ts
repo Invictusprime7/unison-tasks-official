@@ -36,6 +36,8 @@ export interface ResourceStorageDefinition {
   table?: string;
   /** Content type slug for content resources. */
   contentType?: string;
+  /** content_types.id, required by the content command gateway. */
+  contentTypeId?: string;
 }
 
 export interface ResourceDefinition {
