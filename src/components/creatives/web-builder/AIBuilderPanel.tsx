@@ -3352,12 +3352,11 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
               <LaunchReadinessCard vfsFiles={vfsFiles} className="-mx-3" />
               <LayoutSnapshotCard vfsFiles={vfsFiles} />
               {pendingCapabilityProposal && (
-                <div className="mb-3 min-w-0 max-w-full overflow-hidden border-l-2 border-amber-500/60 py-1 pl-3 text-xs">
-                  <div className="flex items-center gap-2 font-semibold text-foreground">
-                    <Database className="h-4 w-4 text-amber-500" />
+                <div className="mb-3 min-w-0 max-w-full overflow-hidden py-1 text-xs text-muted-foreground" role="status" aria-live="polite">
+                  <p className="break-words text-foreground">
                     Turn on {pendingCapabilityProposal.plan.packs.map((pack) => pack.name).join(', ') || 'this feature'} for your site?
-                  </div>
-                  <p className="mt-2 text-muted-foreground">{pendingCapabilityProposal.plan.proposal.summary}</p>
+                  </p>
+                  <p className="mt-1 break-words">{pendingCapabilityProposal.plan.proposal.summary}</p>
                   <details className="mt-2">
                     <summary className="cursor-pointer text-muted-foreground">Show details</summary>
                   {pendingCapabilityProposal.plan.packs.length > 0 && (
@@ -3402,9 +3401,9 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
                   {pendingCapabilityProposal.resolution.unresolved.length > 0 && (
                     <p className="mt-2 text-destructive">Cannot approve until these targets exist: {pendingCapabilityProposal.resolution.unresolved.map((binding) => binding.target).join(', ')}</p>
                   )}
-                  <div className="mt-3 flex gap-2">
-                    <Button
-                      size="sm"
+                  <div className="mt-2 flex items-baseline gap-3">
+                    <button
+                      type="button"
                       disabled={pendingCapabilityProposal.isApplying || pendingCapabilityProposal.resolution.unresolved.length > 0 || !onApproveCapabilityPlan}
                       onClick={async () => {
                         if (!onApproveCapabilityPlan) return;
@@ -3421,12 +3420,19 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
                           setPendingCapabilityProposal((current) => current ? { ...current, isApplying: false } : current);
                         }
                       }}
+                      className="inline-flex items-center gap-1 text-foreground underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
                     >
-                      {pendingCapabilityProposal.isApplying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Turn on'}
-                    </Button>
-                    <Button size="sm" variant="outline" disabled={pendingCapabilityProposal.isApplying} onClick={() => setPendingCapabilityProposal(null)}>
+                      {pendingCapabilityProposal.isApplying && <Loader2 className="h-3 w-3 animate-spin" />}
+                      Turn on
+                    </button>
+                    <button
+                      type="button"
+                      disabled={pendingCapabilityProposal.isApplying}
+                      onClick={() => setPendingCapabilityProposal(null)}
+                      className="underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+                    >
                       Not now
-                    </Button>
+                    </button>
                   </div>
                 </div>
               )}
