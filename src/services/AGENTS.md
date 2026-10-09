@@ -6,3 +6,4 @@
 - `snapshotProjector` prefers the live VFS byte for snapshot-owned paths (plus live `/src/**` additions) when the snapshot was parsed from the live VFS; why: the embedded snapshot copy is not rewritten on every save, so committed edits rendered stale.
 - Draft hydration self-heals a missing/invalid `last_revision_id` read-only from the newest non-empty committed revision of the same draft only; why: a lost pointer once blanked a project that still owned saved revisions.
 - `commitMutation` refuses to persist a revision that drops a non-empty `/src/App.tsx` present in its parent unless `explicitAuthorityReset` is set; why: blank saves must never become the accepted revision.
+- Playground "Manage → Assets" is a read-only projection (`resources/assetCatalog.ts`) over the Resource Runtime; launch seeds planned catalog items/business details once via `resources/seedLaunchAssets.ts`. Why: one editor path, no parallel asset store.
