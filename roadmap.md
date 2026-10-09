@@ -42,3 +42,5 @@
 
 - [x] AI Builder live file activity ribbon above input (clickable files open in editor)
 - [x] AI Builder detects and shows when preview updated after its edits
+
+- [ ] Live Assets: include case studies, portfolio projects, team, gallery; Playground shows only asset types relevant to the site's industry and composed sections
