@@ -95,7 +95,7 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.cms-records]
-verify_jwt = true
+verify_jwt = false
 
 [functions.create-lead]
 verify_jwt = false
