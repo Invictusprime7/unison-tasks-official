@@ -188,9 +188,8 @@ export function selectPageContextFiles(files: Record<string, string>, page: Auth
 export async function authorSitePages(input: SiteAuthoringInput): Promise<SiteAuthoringResult> {
   const now = input.now ?? (() => Date.now());
   const deadline = now() + (input.budgetMs ?? 240_000);
-  // Default: after Home, write every remaining page at once (max 5) so a typical
-  // site finishes in two rounds instead of three or more.
-  const concurrency = Math.max(1, Math.floor(input.concurrency ?? 5));
+  // Default: after Home, write up to 4 pages at once — fast, within the shared rate limit.
+  const concurrency = Math.max(1, Math.floor(input.concurrency ?? 4));
   const ordered = orderAuthoringPages(input.pages, input.homePageId).slice(0, input.maxPages ?? Infinity);
   const routes = ordered.map((p) => ({ title: p.title, route: p.route }));
   let files = input.files;
