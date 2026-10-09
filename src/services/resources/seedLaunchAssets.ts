@@ -158,3 +158,41 @@ function longform(data: CreatorData, field: string, type: string) {
       : { slug: slugify(title), client: a.client, category: a.category, excerpt: a.excerpt ?? a.description, results: a.results, body: a.body, image_url: a.image },
   }));
 }
+
+/**
+ * Adopt articles / case studies a live site already shows (source scan) into
+ * saved content. Idempotent: creates the type on demand, dedupes by title,
+ * never overwrites. Works for any industry and pre-existing sites.
+ */
+export async function adoptLongformFromSite(input: { businessId: string; vfsFiles: Record<string, string> }): Promise<number> {
+  const { extractLongformFromSource } = await import('./longformPages');
+  const found = extractLongformFromSource(input.vfsFiles);
+  if (!found.length) return 0;
+  const types = await listContentTypes({ businessId: input.businessId }).catch(() => [] as Array<Record<string, unknown>>);
+  const typeIdByKey = new Map<string, string>();
+  for (const t of types) if (t.api_key && t.id) typeIdByKey.set(String(t.api_key), String(t.id));
+  let created = 0;
+  for (const key of ['articles', 'case-studies'] as const) {
+    const items = found.filter((f) => f.kind === key);
+    if (!items.length) continue;
+    if (!typeIdByKey.has(key)) {
+      const def = SEED_CONTENT_TYPES[key];
+      const res = await mutateContentRecord({ action: 'content-type-create', businessId: input.businessId, values: { apiKey: key, displayName: def.displayName, fieldSchema: { fields: def.fields } } }).catch(() => null);
+      if (res?.record?.id) typeIdByKey.set(key, String(res.record.id));
+    }
+    const typeId = typeIdByKey.get(key);
+    if (!typeId) continue;
+    const existing = await listContentRecords({ businessId: input.businessId, contentTypeId: typeId }).catch(() => [] as Array<Record<string, unknown>>);
+    const titles = new Set(existing.map((e) => String(e.title ?? '').trim().toLowerCase()));
+    for (const f of items) {
+      if (titles.has(f.title.toLowerCase())) continue;
+      await createContentRecord({
+        businessId: input.businessId, contentTypeId: typeId, status: 'published',
+        values: { title: f.title, data: { slug: slugify(f.title), category: f.category, published_on: f.date, read_time: f.readTime, excerpt: f.excerpt } },
+      });
+      titles.add(f.title.toLowerCase());
+      created += 1;
+    }
+  }
+  return created;
+}

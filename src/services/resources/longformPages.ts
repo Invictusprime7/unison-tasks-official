@@ -184,3 +184,45 @@ export function planLongformPage(args: {
   const linked = linkReadButtons(args.files, title, path, pageId, filePath);
   return { pageId, title, path, filePath, files: { [filePath]: page, ...linked }, linkedFiles: Object.keys(linked) };
 }
+
+export interface FoundLongform { kind: LongformKind; title: string; excerpt?: string; category?: string; date?: string; readTime?: string; file: string }
+
+const lastMatch = (re: RegExp, s: string) => { let m: RegExpExecArray | null; let last: RegExpExecArray | null = null; const g = new RegExp(re.source, re.flags.includes('g') ? re.flags : re.flags + 'g'); while ((m = g.exec(s))) last = m; return last; };
+const clean = (t: string) => t.replace(/\s+/g, ' ').trim();
+
+/**
+ * Finds articles / case studies a page already shows by their read controls
+ * (e.g. "Read Essay", "View case study"). Source-based, so it works for any
+ * industry and for sites generated before content was saved.
+ */
+export function extractLongformFromSource(files: Record<string, string>): FoundLongform[] {
+  const out: FoundLongform[] = [];
+  const seen = new Set<string>();
+  for (const [file, src] of Object.entries(files)) {
+    if (!/^\/src\/pages\/.*\.tsx$/.test(file)) continue;
+    const re = new RegExp(READ_LABEL.source, 'gi');
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(src))) {
+      if (/learn\s+more/i.test(m[0])) continue;
+      const before = src.slice(Math.max(0, m.index - 3000), m.index);
+      const h = lastMatch(/<h[1-4][^>]*>\s*([^<{]{6,200}?)\s*<\/h[1-4]>/, before);
+      const d = lastMatch(/\btitle\s*:\s*['"`]([^'"`]{6,200})['"`]/, before);
+      const pick = h && d ? (h.index > d.index ? h : d) : h ?? d;
+      if (!pick) continue;
+      const title = clean(pick[1]);
+      if (seen.has(title.toLowerCase())) continue;
+      seen.add(title.toLowerCase());
+      const tail = before.slice(pick.index);
+      const near = before.slice(Math.max(0, pick.index - 600));
+      const kind: LongformKind = /case\s+study|project|story/i.test(m[0]) || /\/(Work|CaseStudies|Portfolio|Projects)\.tsx$/.test(file) ? 'case-studies' : 'articles';
+      out.push({
+        kind, title, file,
+        excerpt: clean(tail.match(/<p[^>]*>\s*([^<{]{30,600}?)\s*<\/p>/)?.[1] ?? tail.match(/\b(?:excerpt|summary|description)\s*:\s*['"`]([^'"`]{30,600})['"`]/)?.[1] ?? '') || undefined,
+        date: near.match(/\b([A-Z][a-z]{2,8}\.? \d{1,2}, \d{4})\b/)?.[1],
+        readTime: near.match(/\b(\d+\s*min(?:ute)?s?\s*read)\b/i)?.[1],
+        category: clean(near.match(/<span[^>]*>\s*([A-Z][A-Za-z &]{2,30})\s*<\/span>/)?.[1] ?? '') || undefined,
+      });
+    }
+  }
+  return out;
+}
