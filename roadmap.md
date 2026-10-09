@@ -62,6 +62,6 @@
 - [x] P0.1 launch task contract + PlaygroundService read facade
 - [x] P0.3 launch dialog shows canonical tasks (no fake ticks)
 - [x] P0.5 capability-aware setup plan
-- [ ] P0.2 fold control-plane publish blockers into dialog
-- [ ] P0.4 Playground Launch panel on same task model
+- [x] P0.2 control-plane publish blockers feed launch tasks
+- [x] P0.4 Playground Launch shows same task list
 - [ ] P0.6-P0.20 per milestone doc
