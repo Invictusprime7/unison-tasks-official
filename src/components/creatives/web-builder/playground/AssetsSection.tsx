@@ -103,9 +103,10 @@ function AssetList({ type, businessId, projectId, liveIndex, onReveal }: { type:
   );
 }
 
-export function AssetsSection({ businessId, projectId, industry, vfsFiles = {}, formsSlot, onReveal }: Props) {
+export function AssetsSection({ businessId, projectId, industry, vfsFiles = {}, formsSlot, onReveal, creatorData }: Props) {
   const [contentReady, setContentReady] = useState(0);
   const [showMore, setShowMore] = useState(false);
+  const backfillTried = useRef<string | null>(null);
 
   useEffect(() => {
     if (!businessId) return;
@@ -115,6 +116,31 @@ export function AssetsSection({ businessId, projectId, industry, vfsFiles = {}, 
       .catch(() => undefined);
     return () => { alive = false; };
   }, [businessId, projectId]);
+
+  // Backfill: sites generated before launch seeding existed have planned
+  // assets in their saved playground data but nothing in the catalog. Seed
+  // once per business, only when the catalog is still completely empty, so
+  // deliberately deleted items are never resurrected.
+  useEffect(() => {
+    if (!businessId || !creatorData || backfillTried.current === businessId) return;
+    const hasPlanned =
+      Object.keys(creatorData.products ?? {}).length > 0 ||
+      Object.keys(creatorData.services ?? {}).length > 0 ||
+      Object.keys(creatorData.testimonials ?? {}).length > 0 ||
+      Object.keys(creatorData.faqs ?? {}).length > 0 ||
+      Object.keys(creatorData.team ?? {}).length > 0;
+    if (!hasPlanned) return;
+    backfillTried.current = businessId;
+    let alive = true;
+    listCatalog(businessId, ["products", "services", "testimonials"])
+      .then(async (rows) => {
+        if (!alive || rows.length > 0) return;
+        await seedLaunchAssets({ businessId, creatorData });
+        if (alive) setContentReady((n) => n + 1);
+      })
+      .catch(() => undefined);
+    return () => { alive = false; };
+  }, [businessId, creatorData]);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const types = useMemo(() => listAssetTypes({ industry, vfsFiles }), [industry, vfsFiles, contentReady]);
