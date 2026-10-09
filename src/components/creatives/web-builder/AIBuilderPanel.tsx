@@ -56,7 +56,7 @@ import { LaunchReadinessCard } from './ai-chat/LaunchReadinessCard';
 import { AIConversationInput } from './ai-chat/AIConversationInput';
 import { AgentActivityFeed } from './ai-chat/AgentActivityFeed';
 import { FileActivityRibbon } from './ai-chat/FileActivityRibbon';
-import { emitAgentEvent } from '@/services/agent-runtime/agentEvents';
+import { emitAgentEvent, lineDelta } from '@/services/agent-runtime/agentEvents';
 import { buildSystemGraph, renderSystemGraphForPrompt } from '@/services/agent-runtime/systemGraph';
 import { AgentCommandPalette } from './ai-chat/AgentCommandPalette';
 import { CatalogPanel } from './ai-chat/CatalogPanel';
