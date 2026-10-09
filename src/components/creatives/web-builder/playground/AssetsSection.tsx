@@ -39,6 +39,36 @@ function recordTitle(r: ResourceRecord): string {
   return String(r.name ?? r.title ?? r.question ?? r.author_name ?? r.client_name ?? r.id);
 }
 
+/** Renders a record's real on-site appearance: the preview sends back the
+ *  actual rendered markup plus the page's own CSS, shown in a sealed frame. */
+function LiveSnippet({ mark }: { mark: string }) {
+  const [shot, setShot] = useState<{ html: string; css: string } | null | "missing">(null);
+  useEffect(() => {
+    setShot(null);
+    const onMsg = (e: MessageEvent) => {
+      const d = e.data as { type?: string; mark?: string; html?: string | null; css?: string | null };
+      if (d?.type !== "RESOURCE_SNAPSHOT" || d.mark !== mark) return;
+      setShot(d.html ? { html: d.html, css: d.css ?? "" } : "missing");
+    };
+    window.addEventListener("message", onMsg);
+    const ask = () => document.querySelectorAll("iframe").forEach((f) => f.contentWindow?.postMessage({ type: "SNAPSHOT_RESOURCE", mark }, "*"));
+    ask();
+    const retry = setTimeout(ask, 800);
+    return () => { window.removeEventListener("message", onMsg); clearTimeout(retry); };
+  }, [mark]);
+  if (shot === "missing") return null;
+  if (!shot) return <p className="text-xs text-muted-foreground">Loading live look…</p>;
+  return (
+    <iframe
+      title="Live appearance"
+      sandbox=""
+      className="pointer-events-none w-full border border-border"
+      style={{ height: "12rem", background: "white" }}
+      srcDoc={`<!doctype html><html><head><style>${shot.css}</style><style>body{margin:0}</style></head><body>${shot.html}</body></html>`}
+    />
+  );
+}
+
 function AssetList({ type, businessId, projectId, liveIndex, onReveal, onPlace }: { type: AssetType; businessId: string; projectId?: string | null; liveIndex: Map<string, string[]>; onReveal?: Props['onReveal']; onPlace?: Props['onPlace'] }) {
   const [rows, setRows] = useState<ResourceRecord[] | null>(null);
   const [open, setOpen] = useState<string | null>(null);
