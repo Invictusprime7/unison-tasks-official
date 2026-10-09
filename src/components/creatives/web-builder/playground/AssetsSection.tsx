@@ -32,6 +32,8 @@ interface Props {
   onReveal?: (mark: string, files: string[]) => void;
   /** Ask the AI Builder to place a saved record onto a page (closes Playground, prefills the request). */
   onPlace?: (prompt: string) => void;
+  /** Create real pages for saved articles/case studies and link their read buttons (canonical save). */
+  onPublishLongform?: (items: { record: ResourceRecord; kind: "articles" | "case-studies"; resourceKey: string }[]) => Promise<void>;
   /** Saved launch data; used to backfill assets for sites generated before launch seeding existed. */
   creatorData?: CreatorData | null;
 }
@@ -152,12 +154,11 @@ const LONGFORM = /^content:(articles|case-studies)$/;
 
 /** Article / case-study actions: AI-drafted full text (saved as Draft) and a
  *  per-item page with linked "Read" buttons via the AI Builder save flow. */
-function LongformActions({ type, record, businessId, projectId, onPlace }: { type: AssetType; record: ResourceRecord; businessId: string; projectId?: string | null; onPlace?: Props['onPlace'] }) {
+function LongformActions({ type, record, businessId, projectId, onPublish }: { type: AssetType; record: ResourceRecord; businessId: string; projectId?: string | null; onPublish?: Props['onPublishLongform'] }) {
   const [busy, setBusy] = useState(false);
   const isArticle = type.key === "content:articles";
   const title = recordTitle(record);
   const slug = String(record.slug ?? "") || title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-  const base = isArticle ? "/insights" : "/work";
   const write = async () => {
     setBusy(true);
     try {
@@ -171,20 +172,21 @@ function LongformActions({ type, record, businessId, projectId, onPlace }: { typ
       toast.error("Couldn't write the article", { description: e instanceof Error ? e.message : String(e) });
     } finally { setBusy(false); }
   };
-  const page = () => onPlace?.(
-    `Create a page at ${base}/${slug} for the saved ${isArticle ? "article" : "case study"} "${title}" (resource ${type.key}#${record.id}). ` +
-    `Render its saved fields (title, category, date, author, reading time, summary, image and full text as formatted paragraphs/headings) using the site's existing nav, footer and design, and mark elements with data-ut-resource="${type.key}#${record.id}.<field>". ` +
-    `Then make every "Read ${isArticle ? "Essay" : "case study"}" / "Read more" button for "${title}" navigate to ${base}/${slug} with data-ut-intent="nav.goto". Keep all other content and button destinations unchanged.`,
-  );
+  const page = async () => {
+    if (!onPublish) return;
+    setBusy(true);
+    try { await onPublish([{ record: { ...record, slug }, kind: isArticle ? "articles" : "case-studies", resourceKey: type.key }]); }
+    finally { setBusy(false); }
+  };
   return (
     <div className="flex flex-wrap gap-2">
       <Button variant="outline" size="sm" disabled={busy} onClick={write}>{busy ? "Writing…" : record.body ? "Rewrite full text" : "Write full text"}</Button>
-      {onPlace && <Button variant="outline" size="sm" onClick={page}>Create page &amp; link button</Button>}
+      {onPublish && <Button variant="outline" size="sm" disabled={busy} onClick={page}>Create page &amp; link button</Button>}
     </div>
   );
 }
 
-function AssetList({ type, businessId, projectId, liveIndex, onReveal, onPlace }: { type: AssetType; businessId: string; projectId?: string | null; liveIndex: Map<string, string[]>; onReveal?: Props['onReveal']; onPlace?: Props['onPlace'] }) {
+function AssetList({ type, businessId, projectId, liveIndex, onReveal, onPlace, onPublishLongform }: { type: AssetType; businessId: string; projectId?: string | null; liveIndex: Map<string, string[]>; onReveal?: Props['onReveal']; onPlace?: Props['onPlace']; onPublishLongform?: Props['onPublishLongform'] }) {
   const [rows, setRows] = useState<ResourceRecord[] | null>(null);
   const [open, setOpen] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
@@ -217,7 +219,14 @@ function AssetList({ type, businessId, projectId, liveIndex, onReveal, onPlace }
           {type.used && <Badge variant="secondary">On site</Badge>}
           {rows && <span className="text-xs text-muted-foreground">{rows.length}</span>}
         </div>
-        <Button variant="ghost" size="sm" onClick={add}><Plus className="h-3.5 w-3.5" /> Add</Button>
+        <div className="flex items-center gap-1">
+          {LONGFORM.test(type.key) && onPublishLongform && rows && rows.length > 0 && (
+            <Button variant="ghost" size="sm" onClick={() => void onPublishLongform(rows.map((record) => ({ record, kind: type.key === "content:articles" ? "articles" : "case-studies", resourceKey: type.key })))}>
+              Create all pages
+            </Button>
+          )}
+          <Button variant="ghost" size="sm" onClick={add}><Plus className="h-3.5 w-3.5" /> Add</Button>
+        </div>
       </header>
       {rows === null && <p className="text-xs text-muted-foreground">Loading…</p>}
       {rows?.length === 0 && <p className="text-xs text-muted-foreground">Nothing saved yet.</p>}
@@ -249,7 +258,7 @@ function AssetList({ type, businessId, projectId, liveIndex, onReveal, onPlace }
               {open === r.id && (
                 <div className="space-y-2 pt-2">
                   <LiveSnippet mark={mark} name={live ? undefined : recordTitle(r)} />
-                  {LONGFORM.test(type.key) && <LongformActions type={type} record={r} businessId={businessId} projectId={projectId} onPlace={onPlace} />}
+                  {LONGFORM.test(type.key) && <LongformActions type={type} record={r} businessId={businessId} projectId={projectId} onPublish={onPublishLongform} />}
                   <RecordFieldsEditor mark={mark} businessId={businessId} projectId={projectId} />
                 </div>
               )}
@@ -261,7 +270,7 @@ function AssetList({ type, businessId, projectId, liveIndex, onReveal, onPlace }
   );
 }
 
-export function AssetsSection({ businessId, projectId, industry, vfsFiles = {}, formsSlot, onReveal, onPlace, creatorData }: Props) {
+export function AssetsSection({ businessId, projectId, industry, vfsFiles = {}, formsSlot, onReveal, onPlace, onPublishLongform, creatorData }: Props) {
   const [contentReady, setContentReady] = useState(0);
   const [showMore, setShowMore] = useState(false);
   const backfillTried = useRef<string | null>(null);
@@ -314,7 +323,7 @@ export function AssetsSection({ businessId, projectId, industry, vfsFiles = {}, 
     return (
       <div className="space-y-6">
         <SiteScanList group={group} businessId={businessId} onSaved={() => setContentReady((n) => n + 1)} />
-        {relevant.map((t) => <AssetList key={t.key} type={t} businessId={businessId} projectId={projectId} liveIndex={liveIndex} onReveal={onReveal} onPlace={onPlace} />)}
+        {relevant.map((t) => <AssetList key={t.key} type={t} businessId={businessId} projectId={projectId} liveIndex={liveIndex} onReveal={onReveal} onPlace={onPlace} onPublishLongform={onPublishLongform} />)}
         {group === "content" && formsSlot}
         {relevant.length === 0 && group === "catalog" && <p className="text-sm text-muted-foreground">This site doesn't sell or list items yet.</p>}
         {rest.length > 0 && (
@@ -322,7 +331,7 @@ export function AssetsSection({ businessId, projectId, industry, vfsFiles = {}, 
             <Button variant="ghost" size="sm" onClick={() => setShowMore((v) => !v)}>
               {showMore ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />} Add more types ({rest.length})
             </Button>
-            {showMore && <div className="space-y-6 pt-3">{rest.map((t) => <AssetList key={t.key} type={t} businessId={businessId} projectId={projectId} liveIndex={liveIndex} onReveal={onReveal} onPlace={onPlace} />)}</div>}
+            {showMore && <div className="space-y-6 pt-3">{rest.map((t) => <AssetList key={t.key} type={t} businessId={businessId} projectId={projectId} liveIndex={liveIndex} onReveal={onReveal} onPlace={onPlace} onPublishLongform={onPublishLongform} />)}</div>}
           </div>
         )}
       </div>

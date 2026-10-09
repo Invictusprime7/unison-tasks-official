@@ -187,6 +187,7 @@ interface CreatorPlaygroundModalProps {
   vfsFiles?: Record<string, string>;
   setupSnapshot?: PlaygroundSetupSnapshot;
   wizardSelections?: WizardSelections | null;
+  onPublishLongform?: React.ComponentProps<typeof AssetsSection>["onPublishLongform"];
 }
 
 function formatIntentPackLabel(wizardSelections?: WizardSelections | null): string | null {
@@ -434,7 +435,7 @@ export function CreatorPlaygroundModal({
                     if (page) onPageSelect?.(page.pageId);
                     onOpenChange(false);
                     setTimeout(() => document.querySelectorAll("iframe").forEach((f) => f.contentWindow?.postMessage({ type: "REVEAL_RESOURCE", mark }, "*")), 400);
-                  }} onPlace={(prompt) => {
+                  }} onPublishLongform={onPublishLongform} onPlace={(prompt) => {
                     onOpenChange(false);
                     setTimeout(() => window.dispatchEvent(new CustomEvent("unison:builder-prompt", { detail: { prompt } })), 300);
                   }} />
