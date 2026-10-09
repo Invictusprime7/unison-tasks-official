@@ -162,7 +162,7 @@ export function AssetsSection({ businessId, projectId, industry, vfsFiles = {}, 
     const rest = all.filter((t) => !isRelevantAsset(t));
     return (
       <div className="space-y-6">
-        {relevant.map((t) => <AssetList key={t.key} type={t} businessId={businessId} projectId={projectId} liveIndex={liveIndex} onReveal={onReveal} />)}
+        {relevant.map((t) => <AssetList key={t.key} type={t} businessId={businessId} projectId={projectId} liveIndex={liveIndex} onReveal={onReveal} onPlace={onPlace} />)}
         {group === "content" && formsSlot}
         {relevant.length === 0 && group === "catalog" && <p className="text-sm text-muted-foreground">This site doesn't sell or list items yet.</p>}
         {rest.length > 0 && (
@@ -170,7 +170,7 @@ export function AssetsSection({ businessId, projectId, industry, vfsFiles = {}, 
             <Button variant="ghost" size="sm" onClick={() => setShowMore((v) => !v)}>
               {showMore ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />} Add more types ({rest.length})
             </Button>
-            {showMore && <div className="space-y-6 pt-3">{rest.map((t) => <AssetList key={t.key} type={t} businessId={businessId} projectId={projectId} liveIndex={liveIndex} onReveal={onReveal} />)}</div>}
+            {showMore && <div className="space-y-6 pt-3">{rest.map((t) => <AssetList key={t.key} type={t} businessId={businessId} projectId={projectId} liveIndex={liveIndex} onReveal={onReveal} onPlace={onPlace} />)}</div>}
           </div>
         )}
       </div>
