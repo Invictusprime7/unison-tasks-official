@@ -31,12 +31,14 @@ function fromDraft(f: ResourceFieldDefinition, s: string): unknown {
 
 export function RecordFieldsEditor({ mark, businessId, projectId }: { mark?: string | null; businessId?: string | null; projectId?: string | null }) {
   const ref = useMemo(() => parseResourceProvenance(mark), [mark]);
-  const def = ref ? getResource(ref.resourceKey) : undefined;
+  const recordId = ref?.recordId;
+  // getResource builds a fresh definition per call; memo on the key so effects don't loop.
+  const def = useMemo(() => (ref ? getResource(ref.resourceKey) : undefined), [ref?.resourceKey]);
   const fields = useMemo(() => {
     const all = (def?.schema ?? []).filter((f) => f.editable && !SKIP.includes(f.type));
     // Clicked field first so the most likely edit is on top.
     return ref?.field ? [...all.filter((f) => f.key === ref.field), ...all.filter((f) => f.key !== ref.field)] : all;
-  }, [def, ref]);
+  }, [def, ref?.field]);
   const [record, setRecord] = useState<ResourceRecord | null>(null);
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
@@ -57,7 +59,8 @@ export function RecordFieldsEditor({ mark, businessId, projectId }: { mark?: str
       .catch((e) => alive && toast.error('Could not load this item', { description: e instanceof Error ? e.message : String(e) }))
       .finally(() => alive && setLoading(false));
     return () => { alive = false; };
-  }, [open, ref, def, businessId, projectId, fields]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, def, recordId, businessId, projectId]);
 
   if (!ref || !def || !businessId) return null;
 
