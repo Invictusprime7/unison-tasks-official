@@ -3861,6 +3861,29 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     effectiveRouteState?.setupSnapshot,
   ]);
 
+  // Required-for-publish blockers for the launch dialog, from the canonical
+  // control-plane resolver (computed only while the dialog is open).
+  const launchPublishBlockers = useMemo(() => {
+    if (!showBusinessSetup) return undefined;
+    try {
+      const plane = resolvePlaygroundControlPlane({
+        state: {
+          creatorData: creatorPlayground.creatorData,
+          pageRegistry: creatorPlayground.pageRegistry,
+          bindings: playgroundBindings,
+          calendars: playgroundCalendars,
+          popups: playgroundPopups,
+        } as PlaygroundState,
+        vfsFiles: virtualFS.getSandpackFiles(),
+        setupSnapshot: playgroundSetupSnapshot,
+      });
+      return plane.overview.blockedLaunchTasks;
+    } catch {
+      return undefined;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showBusinessSetup, creatorPlayground.creatorData, creatorPlayground.pageRegistry, playgroundBindings, playgroundCalendars, playgroundPopups, playgroundSetupSnapshot]);
+
   const playgroundReadinessReport = useMemo(() => buildIntentReadinessReport(
     {
       creatorData: creatorPlayground.creatorData,
