@@ -57,6 +57,8 @@ serve(async (req) => {
     
     if (purpose === "seo") {
       systemPrompt += " Make it SEO-friendly with relevant keywords naturally integrated. Focus on search intent and readability.";
+    } else if (purpose === "article") {
+      systemPrompt = "You are an expert long-form writer. Write the complete article described below (title, category, summary). 900-1400 words, clear section headings in markdown (##), concrete examples, no filler, no invented statistics or quotes attributed to real people. Return only the article body in markdown, without the title.";
     } else if (purpose === "cta") {
       systemPrompt += " Transform it into a compelling call-to-action that drives user engagement and conversions. Use action verbs and create urgency.";
     }
