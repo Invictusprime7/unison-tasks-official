@@ -45,3 +45,19 @@ describe('longform pages', () => {
     expect(plan.linkedFiles).toEqual([]);
   });
 });
+
+import { extractLongformFromSource } from '@/services/resources/longformPages';
+describe('extractLongformFromSource', () => {
+  it('finds essays by their read control', () => {
+    const src = `<article><span>Brand Identity</span><time>March 24, 2026</time><span>7 min read</span>
+      <h2 className="x">The Sovereign Brand: Why Commodity Templates Silently Destroy Enterprise Trust</h2>
+      <p className="y">In an era dominated by ubiquitous web patterns and interchangeable tech components.</p>
+      <a href="#">Read Essay</a></article>`;
+    const [f] = extractLongformFromSource({ '/src/pages/Insights.tsx': src });
+    expect(f.kind).toBe('articles');
+    expect(f.title).toMatch(/^The Sovereign Brand/);
+    expect(f.date).toBe('March 24, 2026');
+    expect(f.readTime).toBe('7 min read');
+    expect(f.excerpt).toMatch(/^In an era/);
+  });
+});
