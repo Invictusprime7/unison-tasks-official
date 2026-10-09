@@ -78,7 +78,7 @@ const SCAN_LABEL: Record<string, string> = { products: "Products & menu", servic
  *  page, whether or not they are saved. Saving goes through seedLaunchAssets. */
 function SiteScanList({ group, businessId, onSaved }: { group: "catalog" | "content"; businessId: string; onSaved: () => void }) {
   const [scan, setScan] = useState<{ items: ScannedItem[]; css: string } | null>(null);
-  const [open, setOpen] = useState<number | null>(null);
+  const [open, setOpen] = useState<number | null>(-1);
   const [saved, setSaved] = useState<Set<number>>(new Set());
   const [tick, setTick] = useState(0);
   useEffect(() => {
@@ -130,7 +130,7 @@ function SiteScanList({ group, businessId, onSaved }: { group: "catalog" | "cont
               </button>
               {saved.has(i) ? <Badge variant="secondary">Saved</Badge> : <Button variant="ghost" size="sm" onClick={() => save(it, i)}>Save to assets</Button>}
             </div>
-            {open === i && (
+            {(open === -1 || open === i) && (
               <iframe
                 title="Live appearance"
                 sandbox=""
