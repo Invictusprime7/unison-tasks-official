@@ -39,7 +39,7 @@ function recordTitle(r: ResourceRecord): string {
   return String(r.name ?? r.title ?? r.question ?? r.author_name ?? r.client_name ?? r.id);
 }
 
-function AssetList({ type, businessId, projectId, liveIndex, onReveal }: { type: AssetType; businessId: string; projectId?: string | null; liveIndex: Map<string, string[]>; onReveal?: Props['onReveal'] }) {
+function AssetList({ type, businessId, projectId, liveIndex, onReveal, onPlace }: { type: AssetType; businessId: string; projectId?: string | null; liveIndex: Map<string, string[]>; onReveal?: Props['onReveal']; onPlace?: Props['onPlace'] }) {
   const [rows, setRows] = useState<ResourceRecord[] | null>(null);
   const [open, setOpen] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
@@ -91,6 +91,11 @@ function AssetList({ type, businessId, projectId, liveIndex, onReveal }: { type:
                 </button>
                 {live && onReveal && (
                   <Button variant="ghost" size="icon" aria-label="Show on site" onClick={() => onReveal(mark, liveIndex.get(mark) ?? [])}><Eye className="h-3.5 w-3.5" /></Button>
+                )}
+                {!live && onPlace && (
+                  <Button variant="ghost" size="sm" aria-label="Place on page" onClick={() => onPlace(
+                    `Add the saved ${type.label.toLowerCase()} "${recordTitle(r)}" (resource ${mark}) to the most relevant page of the site, rendering it with its saved fields. Keep all existing content and button destinations unchanged.`,
+                  )}>Place on page</Button>
                 )}
                 {type.def && type.def.kind !== "content" && (
                   <Button variant="ghost" size="icon" aria-label="Remove" onClick={() => remove(r.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
