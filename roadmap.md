@@ -44,3 +44,4 @@
 - [x] AI Builder detects and shows when preview updated after its edits
 
 - [ ] Live Assets: include case studies, portfolio projects, team, gallery; Playground shows only asset types relevant to the site's industry and composed sections
+- [ ] Playground: Build (Pages/Layers/Design) + Manage (Assets: Catalog/Content/Business/Media; Operations: Bookings/Orders/Leads); assets shown in their real on-site appearance

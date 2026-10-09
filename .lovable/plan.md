@@ -3,6 +3,17 @@
 ## Goal
 Every freshly launched site immediately has real, saved items (products, services, menu, forms, FAQs, testimonials, images, business details) that the AI and the Builder can read and edit live, per business and project. No duplicate editors.
 
+## Playground layout
+```text
+Build   Pages · Layers · Design
+Manage  Assets      Catalog · Content · Business · Media
+        Operations  Bookings · Reservations · Calendar · Orders · Leads
+```
+Operations reuse the existing booking, order and lead views; nothing new is stored for them.
+
+## Real appearance, not generic tiles
+When an item already appears on the site, the Assets panel shows it the way the site draws it (a live snippet of that section from the preview), with its edit fields beside it. Items not yet placed show a simple row with "Place on page".
+
 ## What the user will see
 A single "Assets" panel in the Playground (replacing today's combined Products + Services tab), split into three groups:
 
@@ -52,6 +63,9 @@ Only gap fixes are added (e.g. a project column or image tag where missing). Not
 - Migration only for missing scoping columns/indexes plus GRANTs and RLS via `is_business_member`.
 - AI context: list_resources returns counts per group so the AI knows assets exist.
 - Tests: registry covers all groups; seeding is idempotent; published mode hides drafts; panel edit invalidates only matching sections.
+
+- Playground API: a thin facade over resourceRuntime, preview runtime and asset storage; it stores nothing itself.
+- RenderedResourceIndex: built from `data-ut-resource` marks in the current preview, mapping record -> page/section/selector, used for the live snippet (rendered via the preview runtime in single-section mode) and the "Live" dot.
 
 ## Order
 1. Registry + storage gaps
