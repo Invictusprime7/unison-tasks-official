@@ -7,7 +7,25 @@
  */
 import { createCatalogItem, listCatalog } from '@/services/agent-runtime/catalogOps';
 import { loadBusinessProfile, saveBusinessProfile, type BusinessProfilePatch } from '@/services/businessProfileService';
+import { createContentRecord, listContentRecords, listContentTypes, mutateContentRecord } from '@/services/cmsRecordService';
 import type { CreatorData } from '@/types/creatorData';
+
+/** Content types a fresh launch can seed, mapped from CreatorData collections. */
+const SEED_CONTENT_TYPES: Record<string, { displayName: string; fields: { key: string; label: string; type: string }[] }> = {
+  faq: { displayName: 'FAQs', fields: [
+    { key: 'question', label: 'Question', type: 'text' },
+    { key: 'answer', label: 'Answer', type: 'textarea' },
+    { key: 'category', label: 'Category', type: 'text' },
+  ] },
+  team: { displayName: 'Team', fields: [
+    { key: 'role', label: 'Role', type: 'text' },
+    { key: 'bio', label: 'Bio', type: 'textarea' },
+  ] },
+  gallery: { displayName: 'Gallery', fields: [
+    { key: 'caption', label: 'Caption', type: 'text' },
+    { key: 'category', label: 'Category', type: 'text' },
+  ] },
+};
 
 export interface SeedLaunchAssetsResult { created: number; profileFields: string[] }
 
@@ -46,6 +64,52 @@ export async function seedLaunchAssets(input: { businessId: string; creatorData?
     if (Object.keys(patch).length) {
       await saveBusinessProfile(input.businessId, patch as BusinessProfilePatch);
       result.profileFields = Object.keys(patch);
+    }
+  }
+
+  // Seed FAQs, team members and gallery items as content entries. Content
+  // types are created on demand per business; entries are deduped by title.
+  const contentPlans: { type: string; title: string; data: Record<string, unknown> }[] = [
+    ...Object.values(data.faqs ?? {}).filter((f) => f.question?.trim()).map((f) => ({
+      type: 'faq', title: f.question,
+      data: { question: f.question, answer: f.answer, category: f.category, sort_order: f.sortOrder },
+    })),
+    ...Object.values(data.team ?? {}).filter((m) => m.name?.trim()).map((m) => ({
+      type: 'team', title: m.name,
+      data: { role: m.role, bio: m.bio, sort_order: m.sortOrder },
+    })),
+    ...Object.values(data.gallery ?? {}).filter((g) => g.caption?.trim() || g.assetId).map((g) => ({
+      type: 'gallery', title: g.caption?.trim() || 'Gallery item',
+      data: { caption: g.caption, category: g.category, sort_order: g.sortOrder },
+    })),
+  ];
+  if (contentPlans.length) {
+    const types = await listContentTypes({ businessId: input.businessId }).catch(() => [] as Array<Record<string, unknown>>);
+    const typeIdByKey = new Map<string, string>();
+    for (const t of types) {
+      const key = String(t.api_key ?? '').trim();
+      if (key && t.id) typeIdByKey.set(key, String(t.id));
+    }
+    for (const [key, def] of Object.entries(SEED_CONTENT_TYPES)) {
+      if (typeIdByKey.has(key) || !contentPlans.some((p) => p.type === key)) continue;
+      const created = await mutateContentRecord({
+        action: 'content-type-create', businessId: input.businessId,
+        values: { apiKey: key, displayName: def.displayName, fieldSchema: { fields: def.fields } },
+      }).catch(() => null);
+      const id = created?.record?.id;
+      if (id) typeIdByKey.set(key, String(id));
+    }
+    for (const plan of contentPlans) {
+      const typeId = typeIdByKey.get(plan.type);
+      if (!typeId) continue;
+      const existingEntries = await listContentRecords({ businessId: input.businessId, contentTypeId: typeId }).catch(() => [] as Array<Record<string, unknown>>);
+      const titles = new Set(existingEntries.map((e) => String(e.title ?? '').trim().toLowerCase()));
+      if (titles.has(plan.title.toLowerCase())) continue;
+      await createContentRecord({
+        businessId: input.businessId, contentTypeId: typeId, status: 'published',
+        values: { title: plan.title, data: plan.data },
+      });
+      result.created += 1;
     }
   }
   return result;
