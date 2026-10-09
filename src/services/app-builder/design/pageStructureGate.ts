@@ -5,22 +5,43 @@
  * (one level deep), so chrome and sections authored as project components count.
  */
 
+import { CONTEXTUAL_IMAGES } from '@/utils/sandpackFilePrep';
+
 export interface PageStructureRequirement {
   role: string;
   /** Minimum rendered body sections (excluding nav/footer). */
   minSections: number;
   /** Whether this page must show real photography. */
   imageLed: boolean;
+  /** Verified photo URLs the author may use (named in the repair message). */
+  photoUrls?: readonly string[];
 }
 
 const IMAGE_LED_ROLES = new Set(['home', 'gallery', 'work', 'portfolio', 'about', 'shop', 'products', 'collection', 'menu']);
 
-export function pageStructureRequirement(role: string, contractMinSections?: number): PageStructureRequirement {
+export function isImageLedRole(role: string): boolean {
+  return IMAGE_LED_ROLES.has(role);
+}
+
+/**
+ * Verified, reachable photos for an industry. The author has no image catalog
+ * of its own, so without these it either ships a text-only page (rejected by
+ * this gate) or invents ids that 404.
+ */
+export function verifiedPhotosFor(industry: string | undefined, count = 6): string[] {
+  const key = (industry ?? '').toLowerCase();
+  const pool = CONTEXTUAL_IMAGES[key] ?? [];
+  const merged = [...pool, ...CONTEXTUAL_IMAGES.default, ...CONTEXTUAL_IMAGES.agency, ...CONTEXTUAL_IMAGES.portfolio];
+  return [...new Set(merged)].slice(0, count).map((url) => url.replace(/\?.*$/, '?w=1600&q=80'));
+}
+
+export function pageStructureRequirement(role: string, contractMinSections?: number, photoUrls?: readonly string[]): PageStructureRequirement {
   const floor = role === 'home' ? 3 : 2;
   return {
     role,
     minSections: Math.max(floor, Math.min(contractMinSections ?? floor, 4)),
     imageLed: IMAGE_LED_ROLES.has(role),
+    photoUrls,
   };
 }
 
@@ -96,7 +117,10 @@ export function findPageStructureIssues(
     const hasImagery = IMAGE_SIGNAL.test(source) || usedSources.some((s) => IMAGE_SIGNAL.test(s))
       || used.some((c) => c.specifier.includes('/unison/design-sources/') && /Gallery|Hero(?!PageTitle|Underline|Centered)|AboutImage|Team|BeforeAfter/.test(c.name));
     if (!hasImagery) {
-      issues.push(`${path} shows no photography. The ${requirement.role} page is image-led: use real business-appropriate photos (an image-led hero, gallery or media split), never a text-only page.`);
+      const examples = requirement.photoUrls?.length
+        ? ` Render them as <img src="..."> with these verified URLs (copy exactly, do not invent others): ${requirement.photoUrls.slice(0, 4).join(' , ')}`
+        : '';
+      issues.push(`${path} shows no photography. The ${requirement.role} page is image-led: use real business-appropriate photos (an image-led hero, gallery or media split), never a text-only page.${examples}`);
     }
   }
   return issues;
