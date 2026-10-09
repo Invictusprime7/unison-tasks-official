@@ -45,5 +45,6 @@
 
 - [x] Live Assets: include case studies, portfolio projects, team, gallery; Playground shows only asset types relevant to the site's industry and composed sections
 - [x] Playground: Build (Pages/Layers/Design) + Manage (Assets: Catalog/Content/Business/Media; Operations: Bookings/Orders/Leads); assets shown in their real on-site appearance
-- [ ] Assets: live section snippets (real on-site look) and "Place on page"
+- [x] Assets: "Show on site" reveals the real rendered item
+- [ ] Assets: inline live snippets and "Place on page"
 - [ ] Assets: seed FAQ/testimonials/case studies at launch (needs content types per business)

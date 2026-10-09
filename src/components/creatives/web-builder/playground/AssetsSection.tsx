@@ -5,7 +5,7 @@
  */
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Plus, Trash2, ChevronDown, ChevronRight, Circle } from "lucide-react";
+import { Plus, Trash2, ChevronDown, ChevronRight, Circle, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -24,13 +24,15 @@ interface Props {
   industry?: string | null;
   vfsFiles?: Record<string, string>;
   formsSlot?: React.ReactNode;
+  /** Show a record's real on-site instance (closes Playground, reveals in preview). */
+  onReveal?: (mark: string, files: string[]) => void;
 }
 
 function recordTitle(r: ResourceRecord): string {
   return String(r.name ?? r.title ?? r.question ?? r.author_name ?? r.client_name ?? r.id);
 }
 
-function AssetList({ type, businessId, projectId, liveIndex }: { type: AssetType; businessId: string; projectId?: string | null; liveIndex: Map<string, string[]> }) {
+function AssetList({ type, businessId, projectId, liveIndex, onReveal }: { type: AssetType; businessId: string; projectId?: string | null; liveIndex: Map<string, string[]>; onReveal?: Props['onReveal'] }) {
   const [rows, setRows] = useState<ResourceRecord[] | null>(null);
   const [open, setOpen] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
@@ -80,6 +82,9 @@ function AssetList({ type, businessId, projectId, liveIndex }: { type: AssetType
                   {live && <Circle className="h-2 w-2 fill-primary text-primary" aria-label="Shown on site" />}
                   {typeof r.status === "string" && <Badge variant="outline">{r.status}</Badge>}
                 </button>
+                {live && onReveal && (
+                  <Button variant="ghost" size="icon" aria-label="Show on site" onClick={() => onReveal(mark, liveIndex.get(mark) ?? [])}><Eye className="h-3.5 w-3.5" /></Button>
+                )}
                 {type.def && type.def.kind !== "content" && (
                   <Button variant="ghost" size="icon" aria-label="Remove" onClick={() => remove(r.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
                 )}
@@ -93,7 +98,7 @@ function AssetList({ type, businessId, projectId, liveIndex }: { type: AssetType
   );
 }
 
-export function AssetsSection({ businessId, projectId, industry, vfsFiles = {}, formsSlot }: Props) {
+export function AssetsSection({ businessId, projectId, industry, vfsFiles = {}, formsSlot, onReveal }: Props) {
   const [contentReady, setContentReady] = useState(0);
   const [showMore, setShowMore] = useState(false);
 
@@ -119,7 +124,7 @@ export function AssetsSection({ businessId, projectId, industry, vfsFiles = {}, 
     const rest = all.filter((t) => !isRelevantAsset(t));
     return (
       <div className="space-y-6">
-        {relevant.map((t) => <AssetList key={t.key} type={t} businessId={businessId} projectId={projectId} liveIndex={liveIndex} />)}
+        {relevant.map((t) => <AssetList key={t.key} type={t} businessId={businessId} projectId={projectId} liveIndex={liveIndex} onReveal={onReveal} />)}
         {group === "content" && formsSlot}
         {relevant.length === 0 && group === "catalog" && <p className="text-sm text-muted-foreground">This site doesn't sell or list items yet.</p>}
         {rest.length > 0 && (
@@ -127,7 +132,7 @@ export function AssetsSection({ businessId, projectId, industry, vfsFiles = {}, 
             <Button variant="ghost" size="sm" onClick={() => setShowMore((v) => !v)}>
               {showMore ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />} Add more types ({rest.length})
             </Button>
-            {showMore && <div className="space-y-6 pt-3">{rest.map((t) => <AssetList key={t.key} type={t} businessId={businessId} projectId={projectId} liveIndex={liveIndex} />)}</div>}
+            {showMore && <div className="space-y-6 pt-3">{rest.map((t) => <AssetList key={t.key} type={t} businessId={businessId} projectId={projectId} liveIndex={liveIndex} onReveal={onReveal} />)}</div>}
           </div>
         )}
       </div>
