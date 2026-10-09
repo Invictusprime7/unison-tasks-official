@@ -57,6 +57,13 @@ const markDirectQuotaExhausted = (provider: 'gemini' | 'openai') => {
 /** Test hook: forget remembered out-of-credit keys. */
 export const resetDirectQuotaCooldown = () => { directQuotaCooldownUntil.gemini = 0; directQuotaCooldownUntil.openai = 0; };
 const directOnCooldown = (provider: 'gemini' | 'openai') => Date.now() < directQuotaCooldownUntil[provider];
+// A timed-out direct Gemini makes the gateway lead (full window) for a while.
+const DIRECT_GEMINI_SLOW_MS = 10 * 60_000;
+let directGeminiSlowUntil = 0;
+const markDirectGeminiSlow = () => { directGeminiSlowUntil = Date.now() + DIRECT_GEMINI_SLOW_MS; };
+const directGeminiSlow = () => Date.now() < directGeminiSlowUntil;
+/** Test hook: forget a remembered Gemini timeout. */
+export const resetDirectGeminiSlow = () => { directGeminiSlowUntil = 0; };
 
 /** The gateway's own 402 message names the remedy (top-up, temporary hold); never replace it with generic text. */
 export function gatewayErrorMessage(errText: string): string {
@@ -558,7 +565,11 @@ export async function runProviderLoop(opts: {
     }
   };
 
-  if (hasLastResortGateway && (!hasDirectGemini || providerPlan.gatewayLeads)) {
+  // A direct Gemini that just timed out would burn the whole window again and
+  // leave the gateway only the tail; let the gateway lead until it recovers.
+  const geminiRecentlySlow = hasDirectGemini && directGeminiSlow();
+  if (geminiRecentlySlow) console.warn('[AI-Hybrid] Direct Gemini timed out recently; managed gateway leads this turn.');
+  if (hasLastResortGateway && (!hasDirectGemini || providerPlan.gatewayLeads || geminiRecentlySlow)) {
     gatewayTriedFirst = true;
     // Hybrid page writing keeps a real window for the Gemini backup.
     // A full page needs ~90 s; a backup squeezed into the last 30-45 s can
@@ -786,9 +797,10 @@ export async function runProviderLoop(opts: {
         break;
       } catch (err) {
         throwIfCancelled();
-        if (err instanceof Error && err.name === 'AbortError') {
+        if (err instanceof Error && (err.name === 'AbortError' || err.name === 'TimeoutError')) {
           console.warn(`[AI-Hybrid] ${model.label} timed out, trying next...`);
           recordProviderError(model.label, 'timeout');
+          if (isGeminiModelId(model.id)) markDirectGeminiSlow();
           continue;
         }
         console.warn(`[AI-Hybrid] ${model.label} failed:`, err);
