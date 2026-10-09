@@ -110,7 +110,7 @@ function AssetList({ type, businessId, projectId, liveIndex, onReveal, onPlace }
   );
 }
 
-export function AssetsSection({ businessId, projectId, industry, vfsFiles = {}, formsSlot, onReveal, creatorData }: Props) {
+export function AssetsSection({ businessId, projectId, industry, vfsFiles = {}, formsSlot, onReveal, onPlace, creatorData }: Props) {
   const [contentReady, setContentReady] = useState(0);
   const [showMore, setShowMore] = useState(false);
   const backfillTried = useRef<string | null>(null);
