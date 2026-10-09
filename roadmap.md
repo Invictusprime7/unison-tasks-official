@@ -65,3 +65,5 @@
 - [x] P0.2 control-plane publish blockers feed launch tasks
 - [x] P0.4 Playground Launch shows same task list
 - [ ] P0.6-P0.20 per milestone doc
+- [x] Deterministic article/case-study pages + Read button wiring (Create page & link button / Create all pages)
+- [ ] Run it on SPARK (needs user click: Assets → Content → Articles)

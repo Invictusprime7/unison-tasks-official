@@ -7,3 +7,4 @@
 - Draft hydration self-heals a missing/invalid `last_revision_id` read-only from the newest non-empty committed revision of the same draft only; why: a lost pointer once blanked a project that still owned saved revisions.
 - `commitMutation` refuses to persist a revision that drops a non-empty `/src/App.tsx` present in its parent unless `explicitAuthorityReset` is set; why: blank saves must never become the accepted revision.
 - Playground "Manage → Assets" is a read-only projection (`resources/assetCatalog.ts`) over the Resource Runtime; launch seeds planned catalog items/business details once via `resources/seedLaunchAssets.ts`. Why: one editor path, no parallel asset store.
+- Article/case-study pages are built deterministically by `resources/longformPages.ts` and committed with an `add_page` route op; why: AI-prompted page creation timed out on large sites.
