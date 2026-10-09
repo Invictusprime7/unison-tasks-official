@@ -15,16 +15,23 @@ export async function seedLaunchAssets(input: { businessId: string; creatorData?
   const data = input.creatorData;
   const result: SeedLaunchAssetsResult = { created: 0, profileFields: [] };
   if (!data) return result;
-  const existing = await listCatalog(input.businessId, ['products', 'services']).catch(() => []);
+  const existing = await listCatalog(input.businessId, ['products', 'services', 'testimonials']).catch(() => []);
   const have = new Set(existing.map((i) => `${i.surfaceId}:${i.name.trim().toLowerCase()}`));
-  const plans: { surface: string; name: string; description?: string; price?: number | null }[] = [
+  const plans: { surface: string; name: string; description?: string; price?: number | null; extra?: Record<string, unknown> }[] = [
     ...Object.values(data.products ?? {}).map((p) => ({ surface: 'products', name: p.name, description: p.description, price: p.price })),
     ...Object.values(data.services ?? {}).map((s) => ({ surface: 'services', name: s.name, description: s.description, price: s.price ?? null })),
+    ...Object.values(data.testimonials ?? {}).filter((t) => t.content?.trim()).map((t) => ({
+      surface: 'testimonials', name: t.author, description: t.content,
+      extra: { author_role: [t.role, t.company].filter(Boolean).join(', ') || undefined, rating: t.rating, sort_order: t.sortOrder },
+    })),
   ];
   for (const p of plans) {
     const name = String(p.name ?? '').trim();
+    const isTestimonial = p.surface === 'testimonials';
     if (!name || have.has(`${p.surface}:${name.toLowerCase()}`)) continue;
-    await createCatalogItem(input.businessId, p.surface, { name, description: p.description ?? null, price: p.price ?? null, active: true });
+    await createCatalogItem(input.businessId, p.surface, isTestimonial
+      ? { name, description: p.description ?? null, ...(p.extra ?? {}) }
+      : { name, description: p.description ?? null, price: p.price ?? null, active: true });
     have.add(`${p.surface}:${name.toLowerCase()}`);
     result.created += 1;
   }

@@ -47,4 +47,5 @@
 - [x] Playground: Build (Pages/Layers/Design) + Manage (Assets: Catalog/Content/Business/Media; Operations: Bookings/Orders/Leads); assets shown in their real on-site appearance
 - [x] Assets: "Show on site" reveals the real rendered item
 - [ ] Assets: inline live snippets and "Place on page"
-- [ ] Assets: seed FAQ/testimonials/case studies at launch (needs content types per business)
+- [x] Assets: seed testimonials at launch
+- [ ] Assets: seed FAQ/team/gallery at launch (needs content types per business)
