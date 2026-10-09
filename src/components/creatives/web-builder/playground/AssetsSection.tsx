@@ -41,7 +41,7 @@ function recordTitle(r: ResourceRecord): string {
 
 /** Renders a record's real on-site appearance: the preview sends back the
  *  actual rendered markup plus the page's own CSS, shown in a sealed frame. */
-function LiveSnippet({ mark }: { mark: string }) {
+function LiveSnippet({ mark, name }: { mark: string; name?: string }) {
   const [shot, setShot] = useState<{ html: string; css: string } | null | "missing">(null);
   useEffect(() => {
     setShot(null);
@@ -51,11 +51,11 @@ function LiveSnippet({ mark }: { mark: string }) {
       setShot(d.html ? { html: d.html, css: d.css ?? "" } : "missing");
     };
     window.addEventListener("message", onMsg);
-    const ask = () => document.querySelectorAll("iframe").forEach((f) => f.contentWindow?.postMessage({ type: "SNAPSHOT_RESOURCE", mark }, "*"));
+    const ask = () => document.querySelectorAll("iframe").forEach((f) => f.contentWindow?.postMessage({ type: "SNAPSHOT_RESOURCE", mark, name }, "*"));
     ask();
     const retry = setTimeout(ask, 800);
     return () => { window.removeEventListener("message", onMsg); clearTimeout(retry); };
-  }, [mark]);
+  }, [mark, name]);
   if (shot === "missing") return null;
   if (!shot) return <p className="text-xs text-muted-foreground">Loading live look…</p>;
   return (
@@ -133,7 +133,7 @@ function AssetList({ type, businessId, projectId, liveIndex, onReveal, onPlace }
               </div>
               {open === r.id && (
                 <div className="space-y-2 pt-2">
-                  {live && <LiveSnippet mark={mark} />}
+                  <LiveSnippet mark={mark} name={live ? undefined : recordTitle(r)} />
                   <RecordFieldsEditor mark={mark} businessId={businessId} projectId={projectId} />
                 </div>
               )}

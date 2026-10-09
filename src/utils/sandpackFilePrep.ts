@@ -518,12 +518,26 @@ const PREVIEW_NAV_BRIDGE = `function __initUnisonPreviewNavBridge() {
       var snapTries = 0;
       var snap = function () {
         var el = document.querySelector('[data-ut-resource^="' + snapMark.replace(/"/g, '') + '"]');
+        // Older sites carry no marks: fall back to the record's visible name.
+        if (!el && typeof event.data.name === 'string' && event.data.name.trim().length > 2) {
+          var want = event.data.name.trim().toLowerCase();
+          var cands = document.querySelectorAll('h1,h2,h3,h4,h5,h6,p,span,strong,dt,figcaption,blockquote,a');
+          for (var k = 0; k < cands.length; k++) {
+            var t = (cands[k].textContent || '').trim().toLowerCase();
+            if (t === want || (t.length < want.length + 40 && t.indexOf(want) !== -1)) { el = cands[k]; break; }
+          }
+          if (el) {
+            var card = el.closest('article, li, [data-ut-section] > * > *');
+            if (!card) { card = el; while (card.parentElement && (card.parentElement.textContent || '').length < 600 && card.parentElement.tagName !== 'SECTION') card = card.parentElement; }
+            el = card;
+          }
+        }
         if (!el) {
           if (++snapTries < 20) { setTimeout(snap, 150); return; }
           window.parent.postMessage({ type: 'RESOURCE_SNAPSHOT', mark: snapMark, html: null, css: null }, '*');
           return;
         }
-        var host = el.closest('article, li, section, [data-ut-section]') || el;
+        var host = el.matches('article, li') ? el : (el.closest('article, li, section, [data-ut-section]') || el);
         var css = '';
         try {
           for (var i = 0; i < document.styleSheets.length; i++) {
