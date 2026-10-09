@@ -49,3 +49,4 @@
 - [ ] Assets: inline live snippets and "Place on page"
 - [x] Assets: seed testimonials at launch
 - [ ] Assets: seed FAQ/team/gallery at launch (needs content types per business)
+- [x] Assets: "Place on page" hands a grounded request to the AI Builder for items not yet on the site
