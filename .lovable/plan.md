@@ -13,6 +13,8 @@ Assets
 └─ Business     Brand name · Logo · Tagline · Phone · Email · Address · Hours · Socials
 ```
 
+- Catalog and Content also include, when relevant: Portfolio Projects, Case Studies, Team, Gallery, Offers.
+- **Relevant only:** the panel shows the asset types the generated site actually uses (from its pages' sections), ranked by its industry. A salon sees Services, Team, Gallery; an agency sees Case Studies, Portfolio, Testimonials; a restaurant sees Menu. Other types sit under a collapsed "Add more" list instead of cluttering the panel.
 - Each list shows saved items with inline edit, add, remove, reorder and a "Live" dot when the item appears on a page.
 - Clicking an item highlights where it shows in the preview; clicking a marked element in the preview opens it here.
 - Edits save to the item itself and the preview refreshes only the sections using it.
