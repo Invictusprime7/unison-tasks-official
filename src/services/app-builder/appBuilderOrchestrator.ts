@@ -112,7 +112,12 @@ export async function orchestrateAppBuild(
         instruction: repairInstruction,
         baseFiles: candidateFiles,
         baseRevisionId: input.baseRevisionId,
-        sourceTargets: pages.map((page) => page.filePath),
+        // Send only the pages the diagnostics name: resending every page (~150k
+        // chars) made the repair time out and the launch fail on one page.
+        sourceTargets: (() => {
+          const failing = pages.filter((page) => diagnostics.some((d) => d.includes(page.filePath) || d.includes(page.filePath.replace('/src/', './'))));
+          return (failing.length ? failing : pages).map((page) => page.filePath);
+        })(),
         routes: pages.map((page) => ({ title: page.title, route: page.route })),
         registryContext: input.contract.design.registryContext,
         runtimeContext: `${generation.runtimeContext}`.slice(0, 12000),
