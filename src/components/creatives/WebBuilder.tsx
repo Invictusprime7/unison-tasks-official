@@ -187,6 +187,7 @@ import { isValidAesthetic } from '@/utils/aestheticToCSS';
 import { buildCanonicalArtifacts } from '@/utils/webBuilderArtifacts';
 import { getTemplateReactCodeWithCSS } from '@/data/templates';
 import type { LauncherHandoff, RuntimeManifest } from '@/types/runtimeManifest';
+import { resolvePlaygroundControlPlane } from '@/services/playgroundControlPlaneResolver';
 import type { PlaygroundCompileResult, PlaygroundSetupSnapshot, PlaygroundState, WizardSelections } from '@/types/playground';
 import { vfsSnapshotManager } from '@/services/vfsSnapshotManager';
 import { diagnosticsAggregator } from '@/services/diagnosticsAggregator';
