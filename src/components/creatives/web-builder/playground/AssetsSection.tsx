@@ -10,7 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RecordFieldsEditor } from "../RecordFieldsEditor";
-import { listContentTypes } from "@/services/cmsRecordService";
+import { listContentTypes, transitionContentRecord } from "@/services/cmsRecordService";
+import { supabase } from "@/integrations/supabase/client";
 import { registerContentTypes, BUSINESS_PROFILE_RESOURCE_KEY, type ContentTypeRow } from "@/services/resources/resourceRegistry";
 import { applyResourceOp, onResourceInvalidated, queryResource } from "@/services/resources/resourceRuntime";
 import type { ResourceRecord } from "@/services/resources/resourceTypes";
@@ -147,6 +148,42 @@ function SiteScanList({ group, businessId, onSaved }: { group: "catalog" | "cont
   );
 }
 
+const LONGFORM = /^content:(articles|case-studies)$/;
+
+/** Article / case-study actions: AI-drafted full text (saved as Draft) and a
+ *  per-item page with linked "Read" buttons via the AI Builder save flow. */
+function LongformActions({ type, record, businessId, projectId, onPlace }: { type: AssetType; record: ResourceRecord; businessId: string; projectId?: string | null; onPlace?: Props['onPlace'] }) {
+  const [busy, setBusy] = useState(false);
+  const isArticle = type.key === "content:articles";
+  const title = recordTitle(record);
+  const slug = String(record.slug ?? "") || title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  const base = isArticle ? "/insights" : "/work";
+  const write = async () => {
+    setBusy(true);
+    try {
+      const brief = [`Title: ${title}`, record.category && `Category: ${record.category}`, record.client && `Client: ${record.client}`, record.excerpt && `Summary: ${record.excerpt}`, record.results && `Results: ${record.results}`].filter(Boolean).join("\n");
+      const { data, error } = await supabase.functions.invoke("copy-rewrite", { body: { text: brief, purpose: "article", tone: "authoritative" } });
+      if (error || !data?.rewrittenText) throw new Error(data?.error || error?.message || "No text came back");
+      await applyResourceOp({ op: "update", ref: { resourceKey: type.key, kind: "content", recordId: record.id }, values: { body: data.rewrittenText, slug } }, { businessId, projectId, mode: "builder" });
+      if (record.status !== "draft") await transitionContentRecord({ businessId, projectId, recordId: record.id, status: "draft", changeSummary: "AI wrote full text" }).catch(() => undefined);
+      toast.success("Full text written and saved as Draft", { description: "Review it below, then publish." });
+    } catch (e) {
+      toast.error("Couldn't write the article", { description: e instanceof Error ? e.message : String(e) });
+    } finally { setBusy(false); }
+  };
+  const page = () => onPlace?.(
+    `Create a page at ${base}/${slug} for the saved ${isArticle ? "article" : "case study"} "${title}" (resource ${type.key}#${record.id}). ` +
+    `Render its saved fields (title, category, date, author, reading time, summary, image and full text as formatted paragraphs/headings) using the site's existing nav, footer and design, and mark elements with data-ut-resource="${type.key}#${record.id}.<field>". ` +
+    `Then make every "Read ${isArticle ? "Essay" : "case study"}" / "Read more" button for "${title}" navigate to ${base}/${slug} with data-ut-intent="nav.goto". Keep all other content and button destinations unchanged.`,
+  );
+  return (
+    <div className="flex flex-wrap gap-2">
+      <Button variant="outline" size="sm" disabled={busy} onClick={write}>{busy ? "Writing…" : record.body ? "Rewrite full text" : "Write full text"}</Button>
+      {onPlace && <Button variant="outline" size="sm" onClick={page}>Create page &amp; link button</Button>}
+    </div>
+  );
+}
+
 function AssetList({ type, businessId, projectId, liveIndex, onReveal, onPlace }: { type: AssetType; businessId: string; projectId?: string | null; liveIndex: Map<string, string[]>; onReveal?: Props['onReveal']; onPlace?: Props['onPlace'] }) {
   const [rows, setRows] = useState<ResourceRecord[] | null>(null);
   const [open, setOpen] = useState<string | null>(null);
@@ -212,6 +249,7 @@ function AssetList({ type, businessId, projectId, liveIndex, onReveal, onPlace }
               {open === r.id && (
                 <div className="space-y-2 pt-2">
                   <LiveSnippet mark={mark} name={live ? undefined : recordTitle(r)} />
+                  {LONGFORM.test(type.key) && <LongformActions type={type} record={r} businessId={businessId} projectId={projectId} onPlace={onPlace} />}
                   <RecordFieldsEditor mark={mark} businessId={businessId} projectId={projectId} />
                 </div>
               )}
