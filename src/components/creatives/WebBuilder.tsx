@@ -188,6 +188,7 @@ import { buildCanonicalArtifacts } from '@/utils/webBuilderArtifacts';
 import { getTemplateReactCodeWithCSS } from '@/data/templates';
 import type { LauncherHandoff, RuntimeManifest } from '@/types/runtimeManifest';
 import { resolvePlaygroundControlPlane } from '@/services/playgroundControlPlaneResolver';
+import { planLongformPage } from '@/services/resources/longformPages';
 import type { PlaygroundCompileResult, PlaygroundSetupSnapshot, PlaygroundState, WizardSelections } from '@/types/playground';
 import { vfsSnapshotManager } from '@/services/vfsSnapshotManager';
 import { diagnosticsAggregator } from '@/services/diagnosticsAggregator';
@@ -7502,6 +7503,36 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
         vfsFiles={virtualFS.getSandpackFiles()}
         setupSnapshot={playgroundSetupSnapshot}
         wizardSelections={effectiveRouteState?.wizardSelections || null}
+        onPublishLongform={async (items) => {
+          await runExclusive('catalog', async () => {
+            let files = { ...virtualFS.getSandpackFiles() };
+            const registry = creatorPlayground.pageRegistry.pages;
+            const paths = Object.values(registry).map((pg) => pg.path);
+            const changed: Record<string, string> = {};
+            const routeOps: TopologyChange[] = [];
+            const linked: string[] = [];
+            for (const item of items) {
+              const plan = planLongformPage({ ...item, files, existingPaths: paths, industry: effectiveRouteState?.wizardSelections?.industryOverlay || null });
+              Object.assign(files, plan.files);
+              Object.assign(changed, plan.files);
+              linked.push(...plan.linkedFiles);
+              const exists = Object.values(registry).some((pg) => pg.path === plan.path) || routeOps.some((op) => op.route === plan.path);
+              if (!exists) routeOps.push({ type: 'add_page', pageId: plan.pageId, title: plan.title, route: plan.path, pageType: 'custom', showInNav: false, createdBy: 'manual' });
+            }
+            const label = items.length === 1 ? `"${String(items[0].record.name ?? items[0].record.title ?? 'item')}"` : `${items.length} items`;
+            const committed = await commitBuilderFiles(changed, {
+              source: 'playground-edit',
+              summary: `Created page${items.length === 1 ? '' : 's'} for ${label}${linked.length ? ' and linked read buttons' : ''}`,
+              routeOps: routeOps.length ? routeOps : undefined,
+              failureMessage: 'Could not create the page',
+            });
+            if (committed) {
+              toast.success(`Page${items.length === 1 ? '' : 's'} created for ${label}`, {
+                description: linked.length ? `Read buttons now open ${items.length === 1 ? 'it' : 'them'}.` : 'No matching Read button was found on your pages, so none was changed.',
+              });
+            }
+          });
+        }}
         onPageSelect={(pageId) => {
           const page = creatorPlayground.pageRegistry.pages[pageId];
           if (!page?.path) return;
