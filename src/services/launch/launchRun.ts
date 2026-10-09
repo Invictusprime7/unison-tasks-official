@@ -124,7 +124,8 @@ export class LaunchFatalError extends Error {
 function launchStageErrorCode(stage: LaunchStageName, error: unknown): string {
   const message = launchErrorMessage(error);
   if (/stalled after \d+s/i.test(message)) return `${stage}.timeout`;
-  if (/auth|session|jwt|token|sign in/i.test(message)) return `${stage}.auth`;
+  // Word-bounded: "authored"/"authoring" in App Builder diagnostics is not a sign-in problem.
+  if (/\b(?:auth|unauthori[sz]ed|session|jwt|sign in)\b|\btoken (?:expired|invalid|missing)\b/i.test(message)) return `${stage}.auth`;
   const nestedStage = typeof error === 'object' && error !== null
     ? (error as { stage?: unknown }).stage
     : null;

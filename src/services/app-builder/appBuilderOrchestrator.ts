@@ -8,7 +8,7 @@ import { findDesignSourceUsageIssues, validateAppBuildCandidate } from './appBui
 import { evaluateDesignQuality } from './design/designQualityClosure';
 import { applyDesignSources } from './design/designSourceMaterializer';
 import { buildAppBuilderGenerationContext, reportDesignSourceUsage } from './appBuilderGenerationContext';
-import { findPageStructureIssues, pageStructureRequirement } from './design/pageStructureGate';
+import { findPageStructureIssues, pageStructureRequirement, verifiedPhotosFor } from './design/pageStructureGate';
 
 export interface AppBuilderOrchestratorDependencies {
   authorSite: (input: SiteAuthoringInput) => Promise<SiteAuthoringResult>;
@@ -42,11 +42,12 @@ export async function orchestrateAppBuild(
   const manifestSource = baseFiles['/.unison/design-source-manifest.json'];
   const contractPages = input.contract.design.resolvedSiteDesignContext.contract.pages;
   const roleByPath = new Map(pages.map((page) => [page.filePath, page.role]));
+  const photoUrls = verifiedPhotosFor(input.contract.design.resolvedSiteDesignContext?.contract.industry ?? input.contract.business.industry);
   const pageCheck = (path: string, source: string, files?: Readonly<Record<string, string>>) => {
     const messages = findDesignSourceUsageIssues(manifestSource, source).map((issue) => issue.message);
     const role = roleByPath.get(path);
     if (role) {
-      const requirement = pageStructureRequirement(role, contractPages[role]?.densityBudget?.min);
+      const requirement = pageStructureRequirement(role, contractPages[role]?.densityBudget?.min, photoUrls);
       messages.push(...findPageStructureIssues(path, source, files ?? { [path]: source }, requirement));
     }
     return messages;

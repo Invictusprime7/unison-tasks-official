@@ -21,6 +21,7 @@ import { runComposerRepairLoop, type ComposerInvoke, type ComposerLoopResult, ty
 import { buildAICandidateChangeSet, type AICandidateChangeSet } from '@/services/builder/aiCandidateChangeSet';
 import { assembleCanonicalAuthoringRequest } from '@/services/builder/canonicalAuthoringRequest';
 import { selectSourceKnowledge } from '@/services/builder/sourceKnowledgeContext';
+import { isImageLedRole, verifiedPhotosFor } from '@/services/app-builder/design/pageStructureGate';
 import {
   extractHomepageVisualLanguage,
   renderHomepageInheritanceContract,
@@ -166,6 +167,9 @@ export function renderPageBrief(
     `EXPERIENCE: ${ctx.contract.experience}`,
     `DESIGN CONTRACT:\n${summaryLines.join('\n')}`,
     `PAGE STRUCTURE (enforced): render the shared site nav first and the shared footer last (one shared component each, e.g. /src/project-components/site/SiteNav.tsx and SiteFooter.tsx, linking every route; create them once if missing, reuse them otherwise). Body: at least ${Math.max(page.role === 'home' ? 3 : 2, Math.min(pageMin ?? 0, 4))} distinct sections following the COMPOSITION TARGET, varying layout (split, full-bleed media, grid, editorial rows) — never a lone centered hero. Use real photography wherever the page is media-led.`,
+    isImageLedRole(page.role)
+      ? `PHOTO LIBRARY (required on this page — it is image-led and is rejected without photos): render at least one <img src="..."> in the page itself using these verified URLs, copied exactly; never invent other image URLs:\n${verifiedPhotosFor(ctx.contract.industry).join('\n')}`
+      : '',
     preferred.length ? `PREFERRED CANONICAL VOCABULARY:\n${preferred.join('\n')}` : '',
     forbidden.length ? `FORBIDDEN IMPLEMENTATIONS (never use):\n${forbidden.join('\n')}` : '',
     `CREATIVE AUTHORITY: ${ctx.creativeRecommendation.guidance}`,
