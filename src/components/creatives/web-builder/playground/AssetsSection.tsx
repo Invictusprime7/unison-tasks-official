@@ -29,6 +29,8 @@ interface Props {
   formsSlot?: React.ReactNode;
   /** Show a record's real on-site instance (closes Playground, reveals in preview). */
   onReveal?: (mark: string, files: string[]) => void;
+  /** Ask the AI Builder to place a saved record onto a page (closes Playground, prefills the request). */
+  onPlace?: (prompt: string) => void;
   /** Saved launch data; used to backfill assets for sites generated before launch seeding existed. */
   creatorData?: CreatorData | null;
 }
