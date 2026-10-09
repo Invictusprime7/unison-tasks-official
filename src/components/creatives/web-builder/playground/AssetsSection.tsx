@@ -18,7 +18,7 @@ import type { ResourceRecord } from "@/services/resources/resourceTypes";
 import {
   buildRenderedResourceIndex, isRelevantAsset, listAssetTypes, listSiteImages, type AssetType,
 } from "@/services/resources/assetCatalog";
-import { seedLaunchAssets } from "@/services/resources/seedLaunchAssets";
+import { adoptLongformFromSite, seedLaunchAssets } from "@/services/resources/seedLaunchAssets";
 import { listCatalog } from "@/services/agent-runtime/catalogOps";
 import type { CreatorData } from "@/types/creatorData";
 
@@ -308,6 +308,19 @@ export function AssetsSection({ businessId, projectId, industry, vfsFiles = {}, 
       .catch(() => undefined);
     return () => { alive = false; };
   }, [businessId, creatorData]);
+
+  // Adopt articles / case studies the site already shows (once per business per session).
+  const longformTried = useRef<string | null>(null);
+  useEffect(() => {
+    if (!businessId || longformTried.current === businessId || !Object.keys(vfsFiles).length) return;
+    longformTried.current = businessId;
+    let alive = true;
+    adoptLongformFromSite({ businessId, vfsFiles })
+      .then(() => listContentTypes({ businessId, projectId: projectId ?? undefined } as never))
+      .then((rows) => { if (!alive) return; registerContentTypes(rows as ContentTypeRow[]); setContentReady((n) => n + 1); })
+      .catch(() => undefined);
+    return () => { alive = false; };
+  }, [businessId, projectId, vfsFiles]);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const types = useMemo(() => listAssetTypes({ industry, vfsFiles }), [industry, vfsFiles, contentReady]);
