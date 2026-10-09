@@ -54,6 +54,6 @@
 
 ## Articles & case studies (production-ready)
 - [x] 1. Articles / Case studies content types; launch seeding; live scan + "Save to assets"
-- [ ] 2. Article detail page per saved item (/insights/:slug) reading saved content
-- [ ] 3. Bind "Read Essay"/"Read case study" buttons to the item's page
-- [ ] 4. "Write full article" in Assets: AI drafts body, saved as Draft
+- [x] 2. Article detail page per saved item (/insights/:slug) reading saved content
+- [x] 3. Bind "Read Essay"/"Read case study" buttons to the item's page
+- [x] 4. "Write full article" in Assets: AI drafts body, saved as Draft
