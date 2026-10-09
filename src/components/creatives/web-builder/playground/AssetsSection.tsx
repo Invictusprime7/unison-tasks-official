@@ -69,6 +69,83 @@ function LiveSnippet({ mark, name }: { mark: string; name?: string }) {
   );
 }
 
+
+interface ScannedItem { kind: string; section: string; name: string; description: string; price: string | null; image: string | null; html: string }
+const SCAN_GROUP: Record<string, "catalog" | "content"> = { products: "catalog", services: "catalog", testimonials: "content", faqs: "content", team: "content", gallery: "content" };
+const SCAN_LABEL: Record<string, string> = { products: "Products & menu", services: "Services", testimonials: "Testimonials", faqs: "FAQs", team: "Team", gallery: "Gallery & portfolio" };
+
+/** Read-only Live Preview scan: lists items actually rendered on the current
+ *  page, whether or not they are saved. Saving goes through seedLaunchAssets. */
+function SiteScanList({ group, businessId, onSaved }: { group: "catalog" | "content"; businessId: string; onSaved: () => void }) {
+  const [scan, setScan] = useState<{ items: ScannedItem[]; css: string } | null>(null);
+  const [open, setOpen] = useState<number | null>(null);
+  const [saved, setSaved] = useState<Set<number>>(new Set());
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const requestId = `scan-${Date.now()}`;
+    const onMsg = (e: MessageEvent) => {
+      const d = e.data as { type?: string; requestId?: string; items?: ScannedItem[]; css?: string };
+      if (d?.type !== "ASSET_SCAN" || d.requestId !== requestId) return;
+      setScan({ items: d.items ?? [], css: d.css ?? "" });
+    };
+    window.addEventListener("message", onMsg);
+    const ask = () => document.querySelectorAll("iframe").forEach((f) => f.contentWindow?.postMessage({ type: "SCAN_ASSETS", requestId }, "*"));
+    ask();
+    const retry = setTimeout(ask, 900);
+    return () => { window.removeEventListener("message", onMsg); clearTimeout(retry); };
+  }, [tick]);
+  const items = (scan?.items ?? []).map((it, i) => ({ it, i })).filter(({ it }) => SCAN_GROUP[it.kind] === group);
+  const save = async (it: ScannedItem, i: number) => {
+    const price = it.price ? Number(it.price.replace(/[^0-9.]/g, "")) || null : null;
+    const one = { x: { name: it.name, description: it.description, price } };
+    const data: Record<string, unknown> = {};
+    if (it.kind === "products" || it.kind === "services") data[it.kind] = one;
+    else if (it.kind === "testimonials") data.testimonials = { x: { author: it.name, content: it.description } };
+    else if (it.kind === "faqs") data.faqs = { x: { question: it.name, answer: it.description } };
+    else if (it.kind === "team") data.team = { x: { name: it.name, bio: it.description } };
+    else data.gallery = { x: { caption: it.name } };
+    try {
+      await seedLaunchAssets({ businessId, creatorData: data as unknown as CreatorData });
+      setSaved((s) => new Set(s).add(i));
+      onSaved();
+      toast.success(`Saved "${it.name}"`);
+    } catch { toast.error("Couldn't save this item"); }
+  };
+  return (
+    <section className="space-y-2">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-medium text-foreground">Found on this page</h3>
+        <Button variant="ghost" size="sm" onClick={() => setTick((n) => n + 1)}>Rescan</Button>
+      </div>
+      {!scan && <p className="text-xs text-muted-foreground">Scanning the live preview…</p>}
+      {scan && items.length === 0 && <p className="text-xs text-muted-foreground">Nothing of this kind is showing on the current page.</p>}
+      <ul className="divide-y divide-border">
+        {items.map(({ it, i }) => (
+          <li key={i} className="py-2">
+            <div className="flex items-center gap-2">
+              <button type="button" className="flex flex-1 items-center gap-2 text-left text-sm text-foreground" onClick={() => setOpen(open === i ? null : i)}>
+                {open === i ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                <span className="truncate">{it.name}</span>
+                <Badge variant="outline">{SCAN_LABEL[it.kind]}</Badge>
+              </button>
+              {saved.has(i) ? <Badge variant="secondary">Saved</Badge> : <Button variant="ghost" size="sm" onClick={() => save(it, i)}>Save to assets</Button>}
+            </div>
+            {open === i && (
+              <iframe
+                title="Live appearance"
+                sandbox=""
+                className="pointer-events-none mt-2 w-full border border-border"
+                style={{ height: "12rem", background: "white" }}
+                srcDoc={`<!doctype html><html><head><style>${scan?.css ?? ""}</style><style>body{margin:0}</style></head><body>${it.html}</body></html>`}
+              />
+            )}
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 function AssetList({ type, businessId, projectId, liveIndex, onReveal, onPlace }: { type: AssetType; businessId: string; projectId?: string | null; liveIndex: Map<string, string[]>; onReveal?: Props['onReveal']; onPlace?: Props['onPlace'] }) {
   const [rows, setRows] = useState<ResourceRecord[] | null>(null);
   const [open, setOpen] = useState<string | null>(null);
@@ -197,6 +274,7 @@ export function AssetsSection({ businessId, projectId, industry, vfsFiles = {}, 
     const rest = all.filter((t) => !isRelevantAsset(t));
     return (
       <div className="space-y-6">
+        <SiteScanList group={group} businessId={businessId} onSaved={() => setContentReady((n) => n + 1)} />
         {relevant.map((t) => <AssetList key={t.key} type={t} businessId={businessId} projectId={projectId} liveIndex={liveIndex} onReveal={onReveal} onPlace={onPlace} />)}
         {group === "content" && formsSlot}
         {relevant.length === 0 && group === "catalog" && <p className="text-sm text-muted-foreground">This site doesn't sell or list items yet.</p>}
