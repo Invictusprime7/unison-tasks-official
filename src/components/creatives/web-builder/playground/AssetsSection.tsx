@@ -131,7 +131,12 @@ function AssetList({ type, businessId, projectId, liveIndex, onReveal, onPlace }
                   <Button variant="ghost" size="icon" aria-label="Remove" onClick={() => remove(r.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
                 )}
               </div>
-              {open === r.id && <div className="pt-2"><RecordFieldsEditor mark={mark} businessId={businessId} projectId={projectId} /></div>}
+              {open === r.id && (
+                <div className="space-y-2 pt-2">
+                  {live && <LiveSnippet mark={mark} />}
+                  <RecordFieldsEditor mark={mark} businessId={businessId} projectId={projectId} />
+                </div>
+              )}
             </li>
           );
         })}
