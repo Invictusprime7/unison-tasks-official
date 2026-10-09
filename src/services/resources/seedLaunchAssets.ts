@@ -7,7 +7,25 @@
  */
 import { createCatalogItem, listCatalog } from '@/services/agent-runtime/catalogOps';
 import { loadBusinessProfile, saveBusinessProfile, type BusinessProfilePatch } from '@/services/businessProfileService';
+import { createContentRecord, listContentRecords, listContentTypes, mutateContentRecord } from '@/services/cmsRecordService';
 import type { CreatorData } from '@/types/creatorData';
+
+/** Content types a fresh launch can seed, mapped from CreatorData collections. */
+const SEED_CONTENT_TYPES: Record<string, { displayName: string; fields: { key: string; label: string; type: string }[] }> = {
+  faq: { displayName: 'FAQs', fields: [
+    { key: 'question', label: 'Question', type: 'text' },
+    { key: 'answer', label: 'Answer', type: 'textarea' },
+    { key: 'category', label: 'Category', type: 'text' },
+  ] },
+  team: { displayName: 'Team', fields: [
+    { key: 'role', label: 'Role', type: 'text' },
+    { key: 'bio', label: 'Bio', type: 'textarea' },
+  ] },
+  gallery: { displayName: 'Gallery', fields: [
+    { key: 'caption', label: 'Caption', type: 'text' },
+    { key: 'category', label: 'Category', type: 'text' },
+  ] },
+};
 
 export interface SeedLaunchAssetsResult { created: number; profileFields: string[] }
 
