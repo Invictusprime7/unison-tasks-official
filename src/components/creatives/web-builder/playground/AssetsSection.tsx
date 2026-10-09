@@ -70,9 +70,9 @@ function LiveSnippet({ mark, name }: { mark: string; name?: string }) {
 }
 
 
-interface ScannedItem { kind: string; section: string; name: string; description: string; price: string | null; image: string | null; html: string }
-const SCAN_GROUP: Record<string, "catalog" | "content"> = { products: "catalog", services: "catalog", testimonials: "content", faqs: "content", team: "content", gallery: "content" };
-const SCAN_LABEL: Record<string, string> = { products: "Products & menu", services: "Services", testimonials: "Testimonials", faqs: "FAQs", team: "Team", gallery: "Gallery & portfolio" };
+interface ScannedItem { meta?: { date?: string | null; readTime?: string | null; author?: string | null } | null; kind: string; section: string; name: string; description: string; price: string | null; image: string | null; html: string }
+const SCAN_GROUP: Record<string, "catalog" | "content"> = { products: "catalog", services: "catalog", testimonials: "content", articles: "content", faqs: "content", team: "content", gallery: "content" };
+const SCAN_LABEL: Record<string, string> = { products: "Products & menu", services: "Services", testimonials: "Testimonials", articles: "Articles", faqs: "FAQs", team: "Team", gallery: "Gallery & portfolio" };
 
 /** Read-only Live Preview scan: lists items actually rendered on the current
  *  page, whether or not they are saved. Saving goes through seedLaunchAssets. */
@@ -101,6 +101,7 @@ function SiteScanList({ group, businessId, onSaved }: { group: "catalog" | "cont
     const data: Record<string, unknown> = {};
     if (it.kind === "products" || it.kind === "services") data[it.kind] = one;
     else if (it.kind === "testimonials") data.testimonials = { x: { author: it.name, content: it.description } };
+    else if (it.kind === "articles") data.articles = { x: { title: it.name, excerpt: it.description, date: it.meta?.date ?? undefined, readTime: it.meta?.readTime ?? undefined, author: it.meta?.author ?? undefined, image: it.image ?? undefined } };
     else if (it.kind === "faqs") data.faqs = { x: { question: it.name, answer: it.description } };
     else if (it.kind === "team") data.team = { x: { name: it.name, bio: it.description } };
     else data.gallery = { x: { caption: it.name } };

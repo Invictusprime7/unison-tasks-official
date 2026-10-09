@@ -25,7 +25,29 @@ const SEED_CONTENT_TYPES: Record<string, { displayName: string; fields: { key: s
     { key: 'caption', label: 'Caption', type: 'text' },
     { key: 'category', label: 'Category', type: 'text' },
   ] },
+  articles: { displayName: 'Articles', fields: [
+    { key: 'slug', label: 'Link name', type: 'text' },
+    { key: 'category', label: 'Category', type: 'text' },
+    { key: 'published_on', label: 'Date', type: 'text' },
+    { key: 'author', label: 'Author', type: 'text' },
+    { key: 'read_time', label: 'Reading time', type: 'text' },
+    { key: 'excerpt', label: 'Summary', type: 'textarea' },
+    { key: 'body', label: 'Full text', type: 'textarea' },
+    { key: 'image_url', label: 'Image', type: 'text' },
+  ] },
+  'case-studies': { displayName: 'Case studies', fields: [
+    { key: 'slug', label: 'Link name', type: 'text' },
+    { key: 'client', label: 'Client', type: 'text' },
+    { key: 'category', label: 'Category', type: 'text' },
+    { key: 'excerpt', label: 'Summary', type: 'textarea' },
+    { key: 'results', label: 'Results', type: 'textarea' },
+    { key: 'body', label: 'Full story', type: 'textarea' },
+    { key: 'image_url', label: 'Image', type: 'text' },
+  ] },
 };
+
+export const slugify = (t: string) => t.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 80);
+interface LongformPlan { title?: string; name?: string; excerpt?: string; description?: string; category?: string; author?: string; date?: string; readTime?: string; body?: string; client?: string; results?: string; image?: string }
 
 export interface SeedLaunchAssetsResult { created: number; profileFields: string[] }
 
@@ -91,6 +113,8 @@ export async function seedLaunchAssets(input: { businessId: string; creatorData?
       type: 'gallery', title: g.caption?.trim() || 'Gallery item',
       data: { caption: g.caption, category: g.category, sort_order: g.sortOrder },
     })),
+    ...longform(data, 'articles', 'articles'),
+    ...longform(data, 'caseStudies', 'case-studies'),
   ];
   if (contentPlans.length) {
     const types = await listContentTypes({ businessId: input.businessId }).catch(() => [] as Array<Record<string, unknown>>);
@@ -122,4 +146,15 @@ export async function seedLaunchAssets(input: { businessId: string; creatorData?
     }
   }
   return result;
+}
+
+/** Articles / case studies: optional launch collections (not all industries plan them). */
+function longform(data: CreatorData, field: string, type: string) {
+  const bag = ((data as unknown as Record<string, Record<string, LongformPlan> | undefined>)[field]) ?? {};
+  return Object.values(bag).map((a) => ({ a, title: String(a.title ?? a.name ?? '').trim() })).filter((x) => x.title).map(({ a, title }) => ({
+    type, title,
+    data: type === 'articles'
+      ? { slug: slugify(title), category: a.category, published_on: a.date, author: a.author, read_time: a.readTime, excerpt: a.excerpt ?? a.description, body: a.body, image_url: a.image }
+      : { slug: slugify(title), client: a.client, category: a.category, excerpt: a.excerpt ?? a.description, results: a.results, body: a.body, image_url: a.image },
+  }));
 }
