@@ -552,6 +552,54 @@ const PREVIEW_NAV_BRIDGE = `function __initUnisonPreviewNavBridge() {
       };
       snap();
     }
+    // Live Preview asset scan (Playground Assets): read-only discovery of
+    // repeated items actually rendered on the page, saved or not.
+    if (event.data?.type === 'SCAN_ASSETS') {
+      var KINDS = [
+        ['testimonials', /testimonial|review|what (our )?(clients|customers)|kind words/i],
+        ['faqs', /faq|frequently asked|questions/i],
+        ['team', /team|our (people|staff|stylists|barbers|experts)|meet (the|our)/i],
+        ['gallery', /gallery|portfolio|our work|lookbook|case stud/i],
+        ['products', /product|shop|menu|collection|store|featured/i],
+        ['services', /service|treatment|what we (do|offer)|pricing|packages/i]
+      ];
+      var txt = function (n) { return n ? (n.textContent || '').replace(/[ ]+/g, ' ').trim() : ''; };
+      var css = '';
+      try { for (var a = 0; a < document.styleSheets.length; a++) { try { var rr = document.styleSheets[a].cssRules; for (var b = 0; b < rr.length; b++) css += rr[b].cssText + ' '; } catch (e) {} } } catch (e) {}
+      var out = [];
+      var sections = document.querySelectorAll('section, [data-ut-section]');
+      for (var si = 0; si < sections.length; si++) {
+        var sec = sections[si];
+        var head = sec.querySelector('h1,h2,h3');
+        var sig = (sec.getAttribute('id') || '') + ' ' + (sec.getAttribute('data-ut-section') || '') + ' ' + txt(head);
+        var kind = null;
+        for (var ki = 0; ki < KINDS.length; ki++) { if (KINDS[ki][1].test(sig)) { kind = KINDS[ki][0]; break; } }
+        if (!kind) continue;
+        // Largest group of same-tag siblings with text = the repeated items.
+        var best = [], all = sec.querySelectorAll('*');
+        for (var ci = 0; ci < all.length; ci++) {
+          var kids = Array.prototype.filter.call(all[ci].children, function (c) { return txt(c).length > 2; });
+          if (kids.length < 2) continue;
+          var tag = kids[0].tagName;
+          var same = kids.filter(function (c) { return c.tagName === tag; });
+          if (same.length >= 2 && same.length > best.length && same.length === kids.length) best = same;
+        }
+        for (var ii = 0; ii < best.length && ii < 24; ii++) {
+          var it = best[ii];
+          var h = it.querySelector('h2,h3,h4,h5,h6,dt,summary,strong,figcaption');
+          var paras = it.querySelectorAll('p, blockquote, dd');
+          var body = paras.length ? txt(paras[0]) : '';
+          var all2 = txt(it);
+          var price = all2.match(/[$£€][ ]?[0-9][0-9.,]*/);
+          var img = it.querySelector('img');
+          var name = txt(h) || body.slice(0, 60);
+          if (!name) continue;
+          if (kind === 'testimonials') { var cite = it.querySelector('cite, figcaption, footer, strong'); name = txt(cite) || name; body = txt(it.querySelector('blockquote, p')) || body; }
+          out.push({ kind: kind, section: txt(head), name: name.slice(0, 120), description: body.slice(0, 500), price: price ? price[0] : null, image: img ? img.getAttribute('src') : null, html: it.outerHTML.slice(0, 20000) });
+        }
+      }
+      window.parent.postMessage({ type: 'ASSET_SCAN', requestId: event.data.requestId, items: out, css: css, route: window.location.hash }, '*');
+    }
     // Handle intent-based scroll/focus commands from parent
     if (event.data?.type === 'INTENT_COMMAND') {
       const { command, requestId: cmdReqId } = event.data;
