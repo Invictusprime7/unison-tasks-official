@@ -59,6 +59,16 @@ export default function Social() { return <footer><Instagram /></footer>; }`;
     expect(twice.match(/const Instagram\s*=/g)).toHaveLength(1);
   });
 
+  it('never injects an icon lookup that collides with a typed page component', () => {
+    const source = `import React from 'react';
+export const Home: React.FC = () => { return <div />; };
+export default Home;`;
+    const prepared = processCode(source, '/src/pages/Home.tsx');
+    assertCompiles(prepared);
+    expect(prepared).not.toMatch(/const Home\s*=/);
+    assertCompiles(processCode(prepared, '/src/pages/Home.tsx'));
+  });
+
   it('removes stale generated lookups when a real facade import supplies the icon', () => {
     const source = `import React from 'react';
 import { Instagram } from '@/unison/ui/icons';
