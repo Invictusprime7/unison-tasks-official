@@ -33,7 +33,7 @@ export async function loadLaunchReadinessInput(args: LoadLaunchReadinessArgs): P
       : Promise.resolve([] as { step_id: string; status: string }[]),
   ]);
 
-  const profile = (profileRows[0] as { values?: Record<string, unknown> } | undefined)?.values ?? (profileRows[0] as Record<string, unknown> | undefined) ?? null;
+  const profile = profileRows[0] ?? null;
   return {
     businessProfile: profile,
     usedResources: used.map((t, i) => ({ key: t.key, label: t.label, count: counts[i] })),
