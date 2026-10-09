@@ -103,13 +103,9 @@ const ACTION_HANDLERS: Record<string, ActionHandler> = {
     console.log(`[RecipeExecutor] send_email: template=${template} to=${to}`);
 
     return {
-      success: true,
-      output: {
-        template,
-        to,
-        sentAt: new Date().toISOString(),
-        provider: 'pending_setup', // Will be replaced when SMTP configured
-      },
+      success: false,
+      error: 'Email delivery is not set up yet; nothing was sent.',
+      output: { template, to, status: 'unconfigured', delivered: false },
     };
   },
 
@@ -124,13 +120,9 @@ const ACTION_HANDLERS: Record<string, ActionHandler> = {
     console.log(`[RecipeExecutor] send_sms: template=${template} to=${to}`);
 
     return {
-      success: true,
-      output: {
-        template,
-        to,
-        sentAt: new Date().toISOString(),
-        provider: 'pending_setup',
-      },
+      success: false,
+      error: 'SMS delivery is not set up yet; nothing was sent.',
+      output: { template, to, status: 'unconfigured', delivered: false },
     };
   },
 
