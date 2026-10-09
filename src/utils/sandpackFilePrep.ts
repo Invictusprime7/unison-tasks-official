@@ -556,6 +556,7 @@ const PREVIEW_NAV_BRIDGE = `function __initUnisonPreviewNavBridge() {
     // repeated items actually rendered on the page, saved or not.
     if (event.data?.type === 'SCAN_ASSETS') {
       var KINDS = [
+        ['articles', /insight|journal|blog|article|essay|news|writing|perspective/i],
         ['testimonials', /testimonial|review|what (our )?(clients|customers)|kind words/i],
         ['faqs', /faq|frequently asked|questions/i],
         ['team', /team|our (people|staff|stylists|barbers|experts)|meet (the|our)/i],
@@ -604,10 +605,12 @@ const PREVIEW_NAV_BRIDGE = `function __initUnisonPreviewNavBridge() {
           var all2 = txt(it);
           var price = all2.match(/[$£€][ ]?[0-9][0-9.,]*/);
           var img = it.querySelector('img');
-          var name = txt(h) || body.slice(0, 60);
+          var name = txt(it.querySelector('h1,h2,h3,h4')) || txt(h) || body.slice(0, 60);
           if (!name) continue;
           if (kind === 'testimonials') { var cite = it.querySelector('cite, figcaption, footer, strong'); name = txt(cite) || name; body = txt(it.querySelector('blockquote, p')) || body; }
-          out.push({ kind: kind, section: txt(head), name: name.slice(0, 120), description: body.slice(0, 500), price: price ? price[0] : null, image: img ? img.getAttribute('src') : null, html: it.outerHTML.slice(0, 20000) });
+          var meta = null;
+          if (kind === 'articles') { var tm = it.querySelector('time'); var by = it.querySelector('[class*="author"], address'); meta = { date: tm ? (tm.getAttribute('datetime') || txt(tm)) : (all2.match(/(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]* [0-9]{1,2},? [0-9]{4}/) || [null])[0], readTime: (all2.match(/[0-9]+ min read/i) || [null])[0], author: by ? txt(by).slice(0, 80) : null }; }
+          out.push({ meta: meta, kind: kind, section: txt(head), name: name.slice(0, 120), description: body.slice(0, 500), price: price ? price[0] : null, image: img ? img.getAttribute('src') : null, html: it.outerHTML.slice(0, 20000) });
         }
       }
       window.parent.postMessage({ type: 'ASSET_SCAN', requestId: event.data.requestId, items: out, css: css, route: window.location.hash }, '*');

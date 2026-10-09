@@ -30,9 +30,9 @@ const INDUSTRY_RANK: Record<string, string[]> = {
   salon: ['services', 'pricing', 'testimonials', 'team', 'gallery', 'offers'],
   restaurant: ['menu', 'offers', 'testimonials', 'gallery', 'faq'],
   ecommerce: ['products', 'offers', 'testimonials', 'faq'],
-  agency: ['portfolio', 'case-studies', 'services', 'testimonials', 'team', 'pricing'],
+  agency: ['portfolio', 'case-studies', 'articles', 'services', 'testimonials', 'team', 'pricing'],
   'local-service': ['services', 'pricing', 'testimonials', 'faq', 'gallery'],
-  coaching: ['services', 'pricing', 'testimonials', 'faq', 'case-studies'],
+  coaching: ['services', 'pricing', 'testimonials', 'faq', 'case-studies', 'articles'],
   fitness: ['pricing', 'services', 'team', 'testimonials', 'gallery'],
   photography: ['portfolio', 'gallery', 'pricing', 'testimonials'],
   'real-estate': ['portfolio', 'team', 'testimonials', 'faq'],
@@ -76,6 +76,7 @@ export function detectUsedAssetKeys(vfsFiles: Record<string, string>): Set<strin
     'content:team': /\bTeam[A-Z]\w*|team-member/,
     'content:case-studies': /CaseStud|case-stud/i,
     'content:gallery': /Gallery[A-Z]\w*/,
+    'content:articles': /Insight|Article|BlogPreview|Essay|Journal/,
   };
   for (const [k, re] of Object.entries(words)) if (re.test(source)) used.add(k);
   return used;
