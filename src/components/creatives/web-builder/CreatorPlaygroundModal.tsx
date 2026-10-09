@@ -241,6 +241,7 @@ export function CreatorPlaygroundModal({
   vfsFiles = {},
   setupSnapshot,
   wizardSelections = null,
+  onPublishLongform,
 }: CreatorPlaygroundModalProps) {
   const [activeSection, setActiveSection] = useState<Section>(
     initialSection || "overview",
