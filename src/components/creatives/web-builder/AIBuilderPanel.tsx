@@ -1954,7 +1954,10 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
               status: 'ok',
             });
           } catch { /* best-effort */ }
-          if (businessId) {
+          // Speed: only fetch saved catalog records when the request or the clicked item needs them.
+          const needsCatalog = /\b(product|service|menu|price|pricing|catalog|item|cart|shop|store|sku|stock|inventory)s?\b/i.test(_userContent)
+            || Boolean(selectedTarget?.provenance?.sourceTable);
+          if (businessId && needsCatalog) {
             try {
               const catalog = await agentOperations.inspect_catalog({ files: vfsFiles ?? {}, businessId });
               previewSnapshot = `${previewSnapshot ?? ''}\n\n${renderCatalogForPrompt(catalog)}`.trim();
@@ -2021,6 +2024,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
                   route: page.route,
                 })
               : '';
+            emitAgentEvent({ kind: 'plan', message: `Writing changes to ${page.filePath.split('/').pop()}`, status: 'running', path: page.filePath });
             const editResult = await unisonAppBuilder.edit({
               operationId: `builder:${generateId()}`,
               page,
@@ -2062,9 +2066,15 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
               timeoutMs: gatewayConfig?.timeoutMs,
             });
             if (editResult.candidate.status !== 'ready-for-commit' || !editResult.changeSet) {
+              emitAgentEvent({ kind: 'plan', message: 'Could not finish writing the change', status: 'failed' });
               throw new Error(editResult.candidate.diagnostics[0] ?? `App Builder stopped: ${editResult.stopReason}`);
             }
             const candidate = editResult.changeSet;
+            emitAgentEvent({ kind: 'plan', message: `Wrote changes to ${candidate.fileOps.length} file${candidate.fileOps.length === 1 ? '' : 's'}`, status: 'ok' });
+            for (const op of candidate.fileOps) {
+              const d = lineDelta(vfsFiles?.[op.path], op.type === 'delete' ? '' : op.content);
+              emitAgentEvent({ kind: 'file_change', message: `${op.type === 'delete' ? 'Removing' : 'Editing'} ${op.path}`, path: op.path, status: 'running', ...d });
+            }
             canonicalCandidate = candidate;
             canonicalRouteOps = candidate.routeOps;
             const files = Object.fromEntries(candidate.fileOps
