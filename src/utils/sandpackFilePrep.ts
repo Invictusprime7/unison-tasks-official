@@ -511,6 +511,33 @@ const PREVIEW_NAV_BRIDGE = `function __initUnisonPreviewNavBridge() {
       };
       reveal();
     }
+    // Send back a record's real rendered markup + the page's own CSS so the
+    // Playground Assets panel can show its actual on-site appearance.
+    if (event.data?.type === 'SNAPSHOT_RESOURCE' && typeof event.data.mark === 'string') {
+      var snapMark = event.data.mark;
+      var snapTries = 0;
+      var snap = function () {
+        var el = document.querySelector('[data-ut-resource^="' + snapMark.replace(/"/g, '') + '"]');
+        if (!el) {
+          if (++snapTries < 20) { setTimeout(snap, 150); return; }
+          window.parent.postMessage({ type: 'RESOURCE_SNAPSHOT', mark: snapMark, html: null, css: null }, '*');
+          return;
+        }
+        var host = el.closest('article, li, section, [data-ut-section]') || el;
+        var css = '';
+        try {
+          for (var i = 0; i < document.styleSheets.length; i++) {
+            var sheet = document.styleSheets[i];
+            try {
+              var rules = sheet.cssRules;
+              for (var j = 0; j < rules.length; j++) css += rules[j].cssText + '\\n';
+            } catch (e) { /* cross-origin sheet — skip */ }
+          }
+        } catch (e) { /* ignore */ }
+        window.parent.postMessage({ type: 'RESOURCE_SNAPSHOT', mark: snapMark, html: host.outerHTML, css: css }, '*');
+      };
+      snap();
+    }
     // Handle intent-based scroll/focus commands from parent
     if (event.data?.type === 'INTENT_COMMAND') {
       const { command, requestId: cmdReqId } = event.data;
