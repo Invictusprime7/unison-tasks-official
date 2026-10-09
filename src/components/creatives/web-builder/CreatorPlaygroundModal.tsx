@@ -417,6 +417,9 @@ export function CreatorPlaygroundModal({
                     if (page) onPageSelect?.(page.pageId);
                     onOpenChange(false);
                     setTimeout(() => document.querySelectorAll("iframe").forEach((f) => f.contentWindow?.postMessage({ type: "REVEAL_RESOURCE", mark }, "*")), 400);
+                  }} onPlace={(prompt) => {
+                    onOpenChange(false);
+                    setTimeout(() => window.dispatchEvent(new CustomEvent("unison:builder-prompt", { detail: { prompt } })), 300);
                   }} />
                 )}
                 {activeSection === "customization" && <CustomizationSection playground={playground} />}
