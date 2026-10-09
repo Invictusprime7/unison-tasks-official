@@ -98,15 +98,52 @@ const ACTION_HANDLERS: Record<string, ActionHandler> = {
       return { success: false, error: 'No contact email available' };
     }
 
-    // In production: call email service (SendGrid, Resend, etc.)
-    // For now: log and record for the automation_runs table
-    console.log(`[RecipeExecutor] send_email: template=${template} to=${to}`);
+    // Delivered by the backend `send-automation-email` function (Resend).
+    const baseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!baseUrl || !serviceKey) {
+      return {
+        success: false,
+        error: 'Email delivery is not set up yet; nothing was sent.',
+        output: { template, to, status: 'unconfigured', delivered: false },
+      };
+    }
 
-    return {
-      success: false,
-      error: 'Email delivery is not set up yet; nothing was sent.',
-      output: { template, to, status: 'unconfigured', delivered: false },
-    };
+    try {
+      const res = await fetch(`${baseUrl}/functions/v1/send-automation-email`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${serviceKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          template,
+          to,
+          businessId: ctx.businessId,
+          context: {
+            contactName: ctx.contactName,
+            service: ctx.service,
+            scheduledAt: ctx.scheduledAt,
+            orderId: ctx.orderId,
+          },
+        }),
+      });
+      const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+      if (!res.ok || data.delivered !== true) {
+        return {
+          success: false,
+          error: (data.error as string) || `Email was not sent (status ${res.status}).`,
+          output: { template, to, status: data.status ?? 'failed', delivered: false },
+        };
+      }
+      return {
+        success: true,
+        output: { template, to, status: 'sent', delivered: true, provider: 'resend', emailId: data.emailId },
+      };
+    } catch (err) {
+      return {
+        success: false,
+        error: `Email was not sent: ${err instanceof Error ? err.message : String(err)}`,
+        output: { template, to, status: 'failed', delivered: false },
+      };
+    }
   },
 
   send_sms: async (config, ctx) => {
