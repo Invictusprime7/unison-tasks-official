@@ -83,6 +83,23 @@ const DEFAULT_SITE_SETUP_PLAN: readonly SiteSetupPlanStep[] = [
   },
 ];
 
-export function buildSiteSetupPlan(_input: SiteSetupPlanInput = {}): SiteSetupPlanStep[] {
-  return DEFAULT_SITE_SETUP_PLAN.map((step) => ({ ...step }));
+/**
+ * Capability-aware: booking and payment steps appear only when the site
+ * actually books or sells; database is provided by the platform, so it is
+ * not a user task. With no capability/system info, the full plan is kept.
+ */
+export function buildSiteSetupPlan(input: SiteSetupPlanInput = {}): SiteSetupPlanStep[] {
+  const caps = new Set((input.capabilities ?? []).map((c) => c.toLowerCase()));
+  const sys = (input.systemType ?? "").toLowerCase();
+  if (caps.size === 0 && !sys) return DEFAULT_SITE_SETUP_PLAN.map((step) => ({ ...step }));
+  const books = caps.has("booking") || sys === "booking";
+  const sells = caps.has("commerce") || caps.has("payments") || caps.has("donation") || sys === "store";
+  return DEFAULT_SITE_SETUP_PLAN
+    .filter((step) => {
+      if (step.id === "database") return false;
+      if (step.id === "booking_calendar") return books;
+      if (step.id === "payments") return sells;
+      return true;
+    })
+    .map((step) => ({ ...step, required: (step.id === "booking_calendar" && books) || (step.id === "payments" && sells) }));
 }

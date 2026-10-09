@@ -57,3 +57,11 @@
 - [x] 2. Article detail page per saved item (/insights/:slug) reading saved content
 - [x] 3. Bind "Read Essay"/"Read case study" buttons to the item's page
 - [x] 4. "Write full article" in Assets: AI drafts body, saved as Draft
+
+## Launch control plane (2026-10-09 milestone)
+- [x] P0.1 launch task contract + PlaygroundService read facade
+- [x] P0.3 launch dialog shows canonical tasks (no fake ticks)
+- [x] P0.5 capability-aware setup plan
+- [ ] P0.2 fold control-plane publish blockers into dialog
+- [ ] P0.4 Playground Launch panel on same task model
+- [ ] P0.6-P0.20 per milestone doc

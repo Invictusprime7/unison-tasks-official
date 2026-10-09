@@ -634,7 +634,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
 
 
   const [playgroundModalOpen, setPlaygroundModalOpen] = useState(false);
-  const [playgroundInitialSection, setPlaygroundInitialSection] = useState<"launch" | "pages" | "funnels" | "overview" | "intent_registry" | "readiness" | "business" | "components" | undefined>(undefined);
+  const [playgroundInitialSection, setPlaygroundInitialSection] = useState<"launch" | "pages" | "funnels" | "overview" | "intent_registry" | "readiness" | "business" | "components" | "assets" | "calendars" | undefined>(undefined);
   const [playgroundInitialBindingId, setPlaygroundInitialBindingId] = useState<string | undefined>(undefined);
   const [playgroundBindings, setPlaygroundBindings] = useState<Record<string, import('@/types/playground').PlaygroundBinding>>({});
   const [playgroundCalendars, setPlaygroundCalendars] = useState<Record<string, import('@/types/playground').PlaygroundCalendar>>({});
@@ -9316,6 +9316,14 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
         templateName={currentTemplateName}
         projectId={projectId || undefined}
         businessId={businessId || undefined}
+        industry={effectiveRouteState?.wizardSelections?.industryOverlay || null}
+        vfsFiles={virtualFS.getSandpackFiles()}
+        notificationEmail={playgroundSetupSnapshot.notificationEmail || null}
+        customDomain={playgroundSetupSnapshot.customDomain || null}
+        onOpenTask={(task) => {
+          setPlaygroundInitialSection(task.target?.playgroundSection || "launch");
+          setPlaygroundModalOpen(true);
+        }}
         onOpenSetupWizard={() => {
           setPlaygroundInitialSection("launch");
           setPlaygroundModalOpen(true);
