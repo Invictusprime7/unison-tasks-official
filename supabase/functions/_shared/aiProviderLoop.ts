@@ -575,11 +575,11 @@ export async function runProviderLoop(opts: {
     // A full page needs ~90 s; a backup squeezed into the last 30-45 s can
     // never finish one, and starving the lead caused every page to time out.
     // The lead gets the whole window; backups still run if it fails fast.
-    const fallbackReserveMs = providerPlan.gatewayLeads
+    const fallbackReserveMs = providerPlan.gatewayLeads || geminiRecentlySlow
       ? 3_000
       : (hasDirectOpenAI || hasDirectGemini) && budgetRemaining() >= 90_000 ? 30_000 : 5_000;
     await runManagedGatewayAttempt(
-      providerPlan.gatewayLeads ? 'Lovable AI (hybrid lead)' : 'Lovable AI fallback (Gemini unavailable)',
+      providerPlan.gatewayLeads || geminiRecentlySlow ? 'Lovable AI (hybrid lead)' : 'Lovable AI fallback (Gemini unavailable)',
       Math.min(providerPlan.perModelTimeoutMs, budgetRemaining() - fallbackReserveMs));
   }
 
