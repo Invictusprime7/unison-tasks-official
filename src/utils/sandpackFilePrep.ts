@@ -3303,7 +3303,10 @@ function collectTopLevelBindingNames(code: string): Set<string> {
   // `export default function Home()` must count as a binding too — otherwise a
   // page component that shares a Lucide icon name (Home, Search, Map…) gets a
   // duplicate `const Home = …` injected and the file fails to parse.
-  const declarationRe = /^(?:export\s+(?:default\s+)?)?(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=|^(?:export\s+(?:default\s+)?)?(?:async\s+)?function\s*\*?\s*([A-Za-z_$][\w$]*)\s*\(|^(?:export\s+(?:default\s+)?)?class\s+([A-Za-z_$][\w$]*)\b/gm;
+  // Type annotations (`const Home: React.FC = …`) must count too — otherwise a
+  // typed page component sharing a Lucide icon name still gets a duplicate
+  // lookup injected. The annotation is non-greedy and stops at the first `=`.
+  const declarationRe = /^(?:export\s+(?:default\s+)?)?(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*(?::[^=;\n]*)?=|^(?:export\s+(?:default\s+)?)?(?:async\s+)?function\s*\*?\s*([A-Za-z_$][\w$]*)\s*\(|^(?:export\s+(?:default\s+)?)?class\s+([A-Za-z_$][\w$]*)\b/gm;
   while ((m = declarationRe.exec(code)) !== null) {
     const name = m[1] || m[2] || m[3];
     if (name) bindings.add(name);
