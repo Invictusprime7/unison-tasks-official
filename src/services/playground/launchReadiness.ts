@@ -134,14 +134,14 @@ export function deriveLaunchTasks(input: LaunchReadinessInput): LaunchTask[] {
     });
   }
 
-  const blockers = input.publishBlockers ?? 0;
+  const blockers = input.publishBlockers;
   tasks.push({
     id: 'publish',
     title: 'Ready to publish',
-    description: blockers ? `${blockers} button or form connection${blockers === 1 ? '' : 's'} still need fixing` : 'Every required connection works',
+    description: blockers === undefined ? 'Not checked yet' : blockers ? `${blockers} button or form connection${blockers === 1 ? '' : 's'} still need fixing` : 'Every required connection works',
     domain: 'publish',
     priority: 'required',
-    status: blockers ? 'blocked' : 'ready',
+    status: blockers === undefined ? 'pending_verification' : blockers ? 'blocked' : 'ready',
     verifiable: true,
     target: { playgroundSection: 'readiness' },
     dependencyIds: tasks.filter((t) => t.priority === 'required').map((t) => t.id),
