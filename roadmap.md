@@ -51,3 +51,9 @@
 - [ ] Assets: seed FAQ/team/gallery at launch (needs content types per business)
 - [x] Assets: "Place on page" hands a grounded request to the AI Builder for items not yet on the site
 - [x] Assets: live appearance snippet renders the record’s real preview markup+CSS in a sealed frame
+
+## Articles & case studies (production-ready)
+- [x] 1. Articles / Case studies content types; launch seeding; live scan + "Save to assets"
+- [ ] 2. Article detail page per saved item (/insights/:slug) reading saved content
+- [ ] 3. Bind "Read Essay"/"Read case study" buttons to the item's page
+- [ ] 4. "Write full article" in Assets: AI drafts body, saved as Draft
