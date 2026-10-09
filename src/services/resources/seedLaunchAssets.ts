@@ -58,8 +58,17 @@ export async function seedLaunchAssets(input: { businessId: string; creatorData?
   if (info && profile) {
     const patch: Record<string, unknown> = {};
     const cur = profile as unknown as Record<string, unknown>;
-    for (const [k, v] of [['tagline', info.tagline], ['description', info.description], ['phone', info.phone], ['email', info.email]] as const) {
+    for (const [k, v] of [['tagline', info.tagline], ['description', info.description], ['phone', info.phone], ['email', info.email], ['notificationEmail', info.notificationEmail]] as const) {
       if (v && !cur[k]) patch[k] = v;
+    }
+    // Brand and contact details: only fill fields the business has not set.
+    if (info.brandProfile?.primaryColor && !cur.brandColor) patch.brandColor = info.brandProfile.primaryColor;
+    if (info.socialLinks && Object.keys(info.socialLinks).length && !Object.keys((cur.socialLinks as Record<string, unknown>) ?? {}).length) {
+      patch.socialLinks = info.socialLinks;
+    }
+    if (info.hours?.length && !(cur.hours as unknown[])?.length) patch.hours = info.hours;
+    if (info.address && !Object.keys((cur.address as Record<string, unknown>) ?? {}).length) {
+      patch.address = { line1: info.address };
     }
     if (Object.keys(patch).length) {
       await saveBusinessProfile(input.businessId, patch as BusinessProfilePatch);
