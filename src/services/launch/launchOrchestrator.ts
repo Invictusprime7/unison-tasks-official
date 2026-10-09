@@ -813,6 +813,21 @@ export async function runLaunchPipeline(
     );
   }
 
+  try {
+    const { seedLaunchAssets } = await import("@/services/resources/seedLaunchAssets");
+    await seedLaunchAssets({
+      businessId: commit.confirmed.businessId,
+      creatorData: (commit.result.playground ?? materializedPlayground)?.creatorData ?? null,
+    });
+  } catch (error) {
+    run.degrade(
+      "commit",
+      "commit.assets_unavailable",
+      "Your products and business details will finish saving in the builder.",
+      error instanceof Error ? error.message : String(error),
+    );
+  }
+
   // ── Stage: handoff ────────────────────────────────────────────────────────
   // The App Builder generated the complete application in app-build BEFORE the
   // initial commit; revision 1 is final and no page rewrites occur after it.
