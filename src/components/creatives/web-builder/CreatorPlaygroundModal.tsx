@@ -37,6 +37,7 @@ import {
   CANONICAL_COMPONENT_DEFINITIONS,
   createCanonicalComponentInstance,
 } from "@/services/canonicalComponentRegistry";
+import { LaunchTasksPanel } from "./playground/LaunchTasksPanel";
 import { getProductSurfaces, getServiceSurfaces, buildCatalogTopology, type CatalogSurface } from "@/services/catalogTopology";
 import {
   AlertTriangle,
@@ -398,7 +399,23 @@ export function CreatorPlaygroundModal({
           <div className="flex-1 min-w-0 flex flex-col">
             <ScrollArea className="flex-1">
               <div className="p-5">
-                {activeSection === "launch" && <SetupWizardPanel wizard={setupWizard} businessId={businessId} siteId={siteId} />}
+                {activeSection === "launch" && (
+                  <>
+                    <LaunchTasksPanel
+                      businessId={businessId}
+                      projectId={projectId}
+                      siteId={siteId}
+                      industry={industry || wizardSelections?.industryOverlay || null}
+                      systemType={systemType}
+                      vfsFiles={vfsFiles}
+                      notificationEmail={setupSnapshot?.notificationEmail || null}
+                      customDomain={setupSnapshot?.customDomain || null}
+                      publishBlockers={controlPlane.overview.blockedLaunchTasks}
+                      onOpenTask={(task) => task.target?.playgroundSection && setActiveSection(task.target.playgroundSection as Section)}
+                    />
+                    <SetupWizardPanel wizard={setupWizard} businessId={businessId} siteId={siteId} />
+                  </>
+                )}
                 {activeSection === "overview" && (
                   <OverviewSection
                     playground={playground}

@@ -187,6 +187,7 @@ import { isValidAesthetic } from '@/utils/aestheticToCSS';
 import { buildCanonicalArtifacts } from '@/utils/webBuilderArtifacts';
 import { getTemplateReactCodeWithCSS } from '@/data/templates';
 import type { LauncherHandoff, RuntimeManifest } from '@/types/runtimeManifest';
+import { resolvePlaygroundControlPlane } from '@/services/playgroundControlPlaneResolver';
 import type { PlaygroundCompileResult, PlaygroundSetupSnapshot, PlaygroundState, WizardSelections } from '@/types/playground';
 import { vfsSnapshotManager } from '@/services/vfsSnapshotManager';
 import { diagnosticsAggregator } from '@/services/diagnosticsAggregator';
@@ -3860,6 +3861,29 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
     cloudState.project.publishStatus,
     effectiveRouteState?.setupSnapshot,
   ]);
+
+  // Required-for-publish blockers for the launch dialog, from the canonical
+  // control-plane resolver (computed only while the dialog is open).
+  const launchPublishBlockers = useMemo(() => {
+    if (!showBusinessSetup) return undefined;
+    try {
+      const plane = resolvePlaygroundControlPlane({
+        state: {
+          creatorData: creatorPlayground.creatorData,
+          pageRegistry: creatorPlayground.pageRegistry,
+          bindings: playgroundBindings,
+          calendars: playgroundCalendars,
+          popups: playgroundPopups,
+        } as PlaygroundState,
+        vfsFiles: virtualFS.getSandpackFiles(),
+        setupSnapshot: playgroundSetupSnapshot,
+      });
+      return plane.overview.blockedLaunchTasks;
+    } catch {
+      return undefined;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showBusinessSetup, creatorPlayground.creatorData, creatorPlayground.pageRegistry, playgroundBindings, playgroundCalendars, playgroundPopups, playgroundSetupSnapshot]);
 
   const playgroundReadinessReport = useMemo(() => buildIntentReadinessReport(
     {
