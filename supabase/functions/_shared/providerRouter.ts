@@ -429,7 +429,7 @@ export function buildProviderPlan(
     plan.gatewayModels = prioritizeProviderModels(plan.gatewayModels, plan.primaryProvider);
     // Hybrid: launch page writing/repair goes to the managed gateway first (the
     // model that produced the Oct 1 baseline); funded Gemini is the backup.
-    if ((task.type === 'site_page_author' || task.type === 'site_page_repair') && readEnv('LOVABLE_API_KEY') && readEnv('AI_PROVIDER_MODE') !== 'gemini-primary') {
+    if (isComposerTask && readEnv('LOVABLE_API_KEY') && readEnv('AI_PROVIDER_MODE') !== 'gemini-primary') {
       plan.gatewayLeads = true;
     }
   } else if (!hasExplicitModel) {
