@@ -50,3 +50,4 @@
 - [x] Assets: seed testimonials at launch
 - [ ] Assets: seed FAQ/team/gallery at launch (needs content types per business)
 - [x] Assets: "Place on page" hands a grounded request to the AI Builder for items not yet on the site
+- [x] Assets: live appearance snippet renders the record’s real preview markup+CSS in a sealed frame
