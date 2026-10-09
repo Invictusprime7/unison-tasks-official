@@ -3,7 +3,7 @@
  * Catalog, Content, Business and Media, filtered to what this site uses and
  * ranked by its industry. Reads/writes go through resourceRuntime only.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Plus, Trash2, ChevronDown, ChevronRight, Circle, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
