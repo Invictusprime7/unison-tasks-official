@@ -495,6 +495,22 @@ const PREVIEW_NAV_BRIDGE = `function __initUnisonPreviewNavBridge() {
     if (event.data?.type === 'NAV_ROUTE' && event.data.route) {
       window.location.hash = event.data.route;
     }
+    // Reveal a saved record's real rendered instance (Playground Assets).
+    if (event.data?.type === 'REVEAL_RESOURCE' && typeof event.data.mark === 'string') {
+      var mark = event.data.mark;
+      var tries = 0;
+      var reveal = function () {
+        var el = document.querySelector('[data-ut-resource^="' + mark.replace(/"/g, '') + '"]');
+        if (!el) { if (++tries < 20) setTimeout(reveal, 150); return; }
+        var host = el.closest('article, li, section, [data-ut-section]') || el;
+        host.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        var prev = host.style.outline;
+        host.style.outline = '2px solid hsl(var(--primary, 221 83% 53%))';
+        host.style.outlineOffset = '4px';
+        setTimeout(function () { host.style.outline = prev; }, 1800);
+      };
+      reveal();
+    }
     // Handle intent-based scroll/focus commands from parent
     if (event.data?.type === 'INTENT_COMMAND') {
       const { command, requestId: cmdReqId } = event.data;
