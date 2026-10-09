@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { AssetsSection } from "./playground/AssetsSection";
 import { isProductInStock } from "@/types/creatorData";
 import {
   Dialog,
@@ -108,22 +109,21 @@ type Section =
   | "customization"
   | "popups"
   | "services"
+  | "assets"
   | "business";
 
-const NAV_ITEMS: { id: Section; label: string; icon: React.ElementType; highlight?: boolean }[] = [
+const NAV_ITEMS: { id: Section; label: string; icon: React.ElementType; highlight?: boolean; group?: string }[] = [
   { id: "launch", label: "Launch Wizard", icon: Rocket, highlight: true },
   { id: "overview", label: "Overview", icon: Gauge },
-  { id: "pages", label: "Pages", icon: FileText },
+  { id: "pages", label: "Pages", icon: FileText, group: "Build" },
   { id: "funnels", label: "Funnels", icon: GitBranch },
   { id: "intent_registry", label: "Intent Registry", icon: Link2 },
   { id: "readiness", label: "Readiness", icon: ShieldCheck },
-  { id: "forms", label: "Forms", icon: FormInput },
   { id: "components", label: "Components", icon: Blocks },
-  { id: "calendars", label: "Calendars", icon: Calendar },
-  { id: "products", label: "Products", icon: ShoppingBag },
   { id: "customization", label: "Customization", icon: Star },
   { id: "popups", label: "Popups", icon: MessageSquare },
-  { id: "services", label: "Services", icon: Briefcase },
+  { id: "assets", label: "Assets", icon: Package, group: "Manage" },
+  { id: "calendars", label: "Calendars", icon: Calendar },
   { id: "business", label: "Business Setup", icon: Settings },
 ];
 
@@ -353,7 +353,9 @@ export function CreatorPlaygroundModal({
 
         <div className="flex flex-1 min-h-0">
           <nav className="w-48 flex-shrink-0 border-r border-emerald-500/15 bg-[#0a0a12] py-2">
-            {NAV_ITEMS.map(({ id, label, icon: Icon, highlight }) => (
+            {NAV_ITEMS.map(({ id, label, icon: Icon, highlight, group }) => (
+              <React.Fragment key={id}>
+              {group && <div className="px-4 pt-3 pb-1 text-[10px] uppercase tracking-wider text-muted-foreground">{group}</div>}
               <button
                 key={id}
                 onClick={() => openPlaygroundSection(id)}
@@ -377,7 +379,7 @@ export function CreatorPlaygroundModal({
                 )}
                 {id === "pages" && <Badge variant="outline" className="ml-auto text-[8px] h-4 px-1 border-border/40">{controlPlane.overview.totalPages}</Badge>}
                 {id === "funnels" && <Badge variant="outline" className="ml-auto text-[8px] h-4 px-1 border-border/40">{controlPlane.overview.totalFunnels}</Badge>}
-                {id === "products" && <Badge variant="outline" className="ml-auto text-[8px] h-4 px-1 border-border/40">{Object.keys(playground.creatorData.products).length}</Badge>}
+                
                 {id === "components" && <Badge variant="outline" className="ml-auto text-[8px] h-4 px-1 border-border/40">{Object.keys(playground.creatorData.componentInstances).length}</Badge>}
                 {id === "intent_registry" && controlPlane.intentRegistry.length > 0 && (
                   <Badge variant="outline" className="ml-auto text-[8px] h-4 px-1 border-border/40">{controlPlane.intentRegistry.length}</Badge>
@@ -389,6 +391,7 @@ export function CreatorPlaygroundModal({
                   <Badge variant="outline" className="ml-auto text-[8px] h-4 px-1 border-amber-500/40 text-amber-400 bg-amber-500/10">{readinessReport.summary.previewOnly}</Badge>
                 )}
               </button>
+              </React.Fragment>
             ))}
           </nav>
 
@@ -406,10 +409,10 @@ export function CreatorPlaygroundModal({
                 )}
                 {activeSection === "pages" && <PagesSection playground={playground} controlPlane={controlPlane} onPageSelect={onPageSelect} onPageAdd={onPageAdd} onPageRemove={onPageRemove} />}
                 {activeSection === "funnels" && <FunnelsSection playground={playground} controlPlane={controlPlane} onFunnelCreate={onFunnelCreate} />}
-                {activeSection === "products" && <ProductsSection playground={playground} vfsFiles={vfsFiles} onNavigateToPage={onPageSelect} />}
+                {(activeSection === "assets" || activeSection === "products" || activeSection === "services" || activeSection === "forms") && (
+                  <AssetsSection businessId={businessId} projectId={projectId} industry={industry ?? wizardSelections?.industryOverlay ?? null} vfsFiles={vfsFiles} formsSlot={<FormsSection playground={playground} />} />
+                )}
                 {activeSection === "customization" && <CustomizationSection playground={playground} />}
-                {activeSection === "services" && <ServicesSection playground={playground} vfsFiles={vfsFiles} onNavigateToPage={onPageSelect} />}
-                {activeSection === "forms" && <FormsSection playground={playground} />}
                 {activeSection === "components" && (
                   <ComponentsSection
                     playground={playground}
