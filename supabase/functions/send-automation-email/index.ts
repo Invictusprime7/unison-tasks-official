@@ -64,7 +64,7 @@ Deno.serve(async (req) => {
     const admin = createClient(Deno.env.get("SUPABASE_URL")!, serviceKey, { auth: { persistSession: false } });
     const [{ data: biz }, { data: settings }] = await Promise.all([
       admin.from("businesses").select("name").eq("id", businessId).maybeSingle(),
-      admin.from("business_settings").select("default_sender_name, default_sender_email").eq("business_id", businessId).maybeSingle(),
+      admin.from("business_automation_settings").select("default_sender_name, default_sender_email").eq("business_id", businessId).maybeSingle(),
     ]);
     if (biz?.name) businessName = biz.name;
     fromName = settings?.default_sender_name ?? null;
