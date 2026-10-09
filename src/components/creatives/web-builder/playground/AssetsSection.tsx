@@ -17,6 +17,9 @@ import type { ResourceRecord } from "@/services/resources/resourceTypes";
 import {
   buildRenderedResourceIndex, isRelevantAsset, listAssetTypes, listSiteImages, type AssetType,
 } from "@/services/resources/assetCatalog";
+import { seedLaunchAssets } from "@/services/resources/seedLaunchAssets";
+import { listCatalog } from "@/services/agent-runtime/catalogOps";
+import type { CreatorData } from "@/types/creatorData";
 
 interface Props {
   businessId?: string | null;
