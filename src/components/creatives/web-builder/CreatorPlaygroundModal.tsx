@@ -410,7 +410,7 @@ export function CreatorPlaygroundModal({
                 {activeSection === "pages" && <PagesSection playground={playground} controlPlane={controlPlane} onPageSelect={onPageSelect} onPageAdd={onPageAdd} onPageRemove={onPageRemove} />}
                 {activeSection === "funnels" && <FunnelsSection playground={playground} controlPlane={controlPlane} onFunnelCreate={onFunnelCreate} />}
                 {(activeSection === "assets" || activeSection === "products" || activeSection === "services" || activeSection === "forms") && (
-                  <AssetsSection businessId={businessId} projectId={projectId} industry={industry ?? wizardSelections?.industryOverlay ?? null} vfsFiles={vfsFiles} formsSlot={<FormsSection playground={playground} />} onReveal={(mark, files) => {
+                  <AssetsSection businessId={businessId} projectId={projectId} industry={industry ?? wizardSelections?.industryOverlay ?? null} vfsFiles={vfsFiles} creatorData={playground.creatorData} formsSlot={<FormsSection playground={playground} />} onReveal={(mark, files) => {
                     const slug = (f: string) => (f.split("/").pop() ?? "").replace(/\.(t|j)sx?$/, "").replace(/Page$/, "").toLowerCase();
                     const names = files.map(slug);
                     const page = controlPlane.pages.find((pg) => names.includes((pg.path.replace(/^\//, "") || "home").toLowerCase()) || names.includes(pg.title.replace(/\s+/g, "").toLowerCase()));
