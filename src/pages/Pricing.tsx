@@ -145,6 +145,15 @@ const Pricing = () => {
       return;
     }
 
+    // Placeholder plan IDs are not real payment plans — never start checkout with them.
+    if (!tier.stripePriceId.startsWith("price_1")) {
+      toast({
+        title: "Paid plans aren't open yet",
+        description: "Online payment for this plan isn't set up yet. Nothing was charged.",
+      });
+      return;
+    }
+
     setLoadingPlan(tier.name);
 
     try {
