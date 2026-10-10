@@ -154,8 +154,8 @@ function renderUser(req: AIComposerRequest): string {
   return parts.filter(Boolean).join('\n\n');
 }
 
-function extractJson(raw: string): unknown {
-  if ((raw ?? '').includes('<<<FILE') || (raw ?? '').includes('<<<DELETE')) return parseFileBlocks(raw);
+function extractJson(raw: string, files: Record<string, string> = {}): unknown {
+  if (/<<<(FILE|DELETE|EDIT)/.test(raw ?? '')) return parseFileBlocks(raw, files);
   const text = (raw ?? '').trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
   try { return JSON.parse(text); } catch { /* fall through */ }
   const start = text.indexOf('{'), end = text.lastIndexOf('}');
@@ -182,10 +182,11 @@ export async function runComposerLane(context: string, headers: Record<string, s
       return respond({ error: result.earlyError.error, errorType: 'composer_provider' }, result.earlyError.status);
     }
     let value: unknown;
-    try { value = extractJson(result.content); } catch {
-      lastError = 'Composer response was not JSON';
+    try { value = extractJson(result.content, req.files); } catch (err) {
+      const why = err instanceof Error && err.message.startsWith('EDIT ') ? err.message : '';
+      lastError = why || 'Composer response was not JSON';
       messages.push({ role: 'assistant', content: (result.content ?? '').slice(0, 4000) },
-        { role: 'user', content: 'That output could not be parsed. Return ONLY the file-block format (SUMMARY line, then <<<FILE ... >>>END blocks with complete raw files).' });
+        { role: 'user', content: why ? `${why}. Copy SEARCH lines exactly from FILES, or return that file as FILE replace.` : 'That output could not be parsed. Return ONLY the file-block format (SUMMARY line, then <<<FILE ... >>>END blocks with complete raw files).' });
       continue;
     }
     const checked = aiComposerResponseSchema.safeParse(value);
