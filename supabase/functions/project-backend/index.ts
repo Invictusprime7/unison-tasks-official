@@ -1,0 +1,97 @@
+/**
+ * project-backend — guidebook §27–29 gateway for sites with their own database.
+ * Order: authenticate → project membership → resolve binding → decrypt secret
+ * (dedicated only) → verify runtime identity → run resource command → audit.
+ * Shared-legacy sites are told to use cms-records; nothing silently falls back.
+ */
+import { serve } from "serve";
+import { createClient } from "@supabase/supabase-js";
+import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
+import { verifyAuth, authError } from "../_shared/auth.ts";
+import { isValidUUID, safeParseBody } from "../_shared/validate.ts";
+import { getCmsResourceContract } from "../_shared/catalogSurfaceSummary.ts";
+
+type Action = "list" | "get" | "create" | "update" | "delete";
+const ACTIONS: Action[] = ["list", "get", "create", "update", "delete"];
+
+async function decryptSecret(ciphertext: string, keyB64: string): Promise<string> {
+  // Format: base64(iv[12] || aes-gcm ciphertext)
+  const raw = Uint8Array.from(atob(ciphertext), (c) => c.charCodeAt(0));
+  const keyBytes = Uint8Array.from(atob(keyB64), (c) => c.charCodeAt(0));
+  const key = await crypto.subtle.importKey("raw", keyBytes, "AES-GCM", false, ["decrypt"]);
+  const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv: raw.slice(0, 12) }, key, raw.slice(12));
+  return new TextDecoder().decode(plain);
+}
+
+serve(async (req) => {
+  const pre = handleCorsPreflightRequest(req);
+  if (pre) return pre;
+  const cors = getCorsHeaders(req);
+  const json = (body: unknown, status = 200) =>
+    new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
+
+  const auth = await verifyAuth(req);
+  if (!auth.user) return authError(auth.error ?? "Please sign in.", auth.status, cors);
+
+  const parsed = await safeParseBody<Record<string, unknown>>(req);
+  const body = (parsed && "data" in parsed ? parsed.data : parsed) as Record<string, unknown> | null;
+  const projectId = String(body?.projectId ?? "");
+  const action = body?.action as Action;
+  const resource = String(body?.resource ?? "");
+  if (!isValidUUID(projectId)) return json({ success: false, error: "A site is required." }, 400);
+  if (!ACTIONS.includes(action)) return json({ success: false, error: "Unknown action." }, 400);
+  const contract = getCmsResourceContract(resource);
+  if (!contract) return json({ success: false, error: "Unknown kind of saved item." }, 400);
+
+  const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {
+    auth: { persistSession: false },
+  });
+
+  const { data: member } = await admin.rpc("is_project_member", { _user_id: auth.user.id, _project_id: projectId });
+  if (!member) return json({ success: false, error: "You don't have access to this site." }, 403);
+
+  const { data: binding } = await admin.from("connected_supabase_projects")
+    .select("id, business_id, site_id, project_url, secret_key_ciphertext, provisioning_status")
+    .eq("unison_project_id", projectId).neq("provisioning_status", "disconnected").maybeSingle();
+  if (!binding) return json({ success: false, mode: "shared-legacy", error: "This site uses the shared database; use cms-records." }, 409);
+  if (binding.provisioning_status !== "ready") return json({ success: false, error: "This site's database isn't ready yet." }, 503);
+
+  const encKey = Deno.env.get("CONNECTED_PROJECT_TOKEN_ENCRYPTION_KEY");
+  if (!encKey || !binding.secret_key_ciphertext || !binding.project_url) {
+    return json({ success: false, error: "This site's own database isn't connected yet." }, 503);
+  }
+
+  let secret: string;
+  try { secret = await decryptSecret(binding.secret_key_ciphertext, encKey); }
+  catch { return json({ success: false, error: "This site's database key could not be read." }, 500); }
+  const site = createClient(binding.project_url, secret, { auth: { persistSession: false } });
+
+  // §9 — refuse to touch a database that belongs to a different site.
+  const { data: identity } = await site.from("unison_runtime_identity").select("project_id, site_id").maybeSingle();
+  if (!identity || identity.project_id !== projectId || (binding.site_id && identity.site_id !== binding.site_id)) {
+    return json({ success: false, error: "This site's database belongs to a different site." }, 409);
+  }
+
+  const table = contract.sourceTable;
+  const recordId = body?.recordId ? String(body.recordId) : undefined;
+  const values = (body?.values ?? {}) as Record<string, unknown>;
+  const allowed = Object.fromEntries(Object.entries(values).filter(([k]) => k in contract.editableFields));
+
+  let result: { data: unknown; error: { message: string } | null };
+  if (action === "list") result = await site.from(table).select("*").order(contract.sortField);
+  else if (!recordId && action !== "create") return json({ success: false, error: "An item is required." }, 400);
+  else if (action === "get") result = await site.from(table).select("*").eq("id", recordId!).maybeSingle();
+  else if (action === "create") result = await site.from(table).insert(allowed).select().single();
+  else if (action === "update") result = await site.from(table).update(allowed).eq("id", recordId!).select().single();
+  else result = await site.from(table).delete().eq("id", recordId!);
+
+  if (action !== "list" && action !== "get") {
+    await admin.from("audit_logs").insert({
+      user_id: auth.user.id, user_email: auth.user.email, business_id: binding.business_id,
+      action: `project-backend.${action}`, resource_type: resource, resource_id: recordId ?? null,
+      status: result.error ? "failed" : "success", metadata: { projectId, bindingId: binding.id },
+    });
+  }
+  if (result.error) return json({ success: false, error: result.error.message }, 400);
+  return json({ success: true, data: result.data });
+});
