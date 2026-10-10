@@ -195,18 +195,18 @@ export const agentOperations = {
   },
   /** Live catalog (products, services, menu, plans) for this business. */
   async inspect_catalog(ctx: AgentContext): Promise<CatalogItem[]> {
-    return ctx.businessId ? listCatalog(ctx.businessId) : [];
+    return ctx.businessId ? listCatalog(ctx.businessId, undefined, ctx.projectId) : [];
   },
   async create_catalog_item(ctx: AgentContext, surfaceId: string, patch: CatalogPatch): Promise<CatalogItem> {
     if (!ctx.businessId) throw new Error('No business is linked to this site.');
-    return createCatalogItem(ctx.businessId, surfaceId, patch);
+    return createCatalogItem(ctx.businessId, surfaceId, patch, ctx.projectId);
   },
   async hide_catalog_item(ctx: AgentContext, surfaceId: string, id: string, hidden = true) {
     return agentOperations.update_catalog_item(ctx, surfaceId, id, { active: !hidden });
   },
   async delete_catalog_item(ctx: AgentContext, surfaceId: string, id: string): Promise<void> {
     if (!ctx.businessId) throw new Error('No business is linked to this site.');
-    await deleteCatalogItem(ctx.businessId, surfaceId, id);
+    await deleteCatalogItem(ctx.businessId, surfaceId, id, ctx.projectId);
   },
   /**
    * Write a catalog record (database first), then propose the matching
@@ -217,7 +217,7 @@ export const agentOperations = {
     ctx: AgentContext, surfaceId: string, id: string, patch: CatalogPatch,
   ): Promise<{ change: ProposedChange | null; summary: string; item: CatalogItem }> {
     if (!ctx.businessId) throw new Error('No business is linked to this site.');
-    const { before, after } = await updateCatalogItemRow(ctx.businessId, surfaceId, id, patch);
+    const { before, after } = await updateCatalogItemRow(ctx.businessId, surfaceId, id, patch, ctx.projectId);
     const swaps: Array<[string, string]> = [];
     if (patch.image_url && before?.image && before.image !== patch.image_url) swaps.push([before.image, patch.image_url]);
     if (patch.price != null && before?.price) {
