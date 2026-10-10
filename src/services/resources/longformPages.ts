@@ -254,29 +254,22 @@ export function linkDataDrivenReads(src: string, base: string): string {
     const open = Math.max(...tags.map((t) => out.lastIndexOf(t, labelAbs)));
     const close = out.indexOf('>', open);
     if (open < 0 || close < 0 || close > labelAbs) continue;
+    let start = open;
     let tagName = out.slice(open + 1).match(/^\w+/)?.[0] ?? '';
-    // A bare <span> wrapping only the label: widen to its parent control.
+    // A bare <span> wrapping only the label: link its parent control instead.
     if (tagName === 'span') {
       const parent = Math.max(...['<Link', '<a', '<button', '<div'].map((t) => out.lastIndexOf(t, open - 1)));
       const parentClose = out.indexOf('>', parent);
       if (parent < 0 || parentClose > open || out.slice(parentClose + 1, open).trim()) continue;
+      start = parent;
       tagName = out.slice(parent + 1).match(/^\w+/)?.[0] ?? '';
-      return linkAt(out, parent, tagName, v, base, re, offset, original);
     }
-    const res = replaceTag(out, open, tagName, v, base);
+    const res = replaceTag(out, start, tagName, v, base);
     if (!res) continue;
     offset += res.length - out.length;
     out = res;
   }
   return out;
-}
-
-function linkAt(out: string, open: number, tagName: string, v: string, base: string, re: RegExp, offset: number, original: string): string {
-  const res = replaceTag(out, open, tagName, v, base);
-  if (!res) return out;
-  // Continue linking remaining controls after this one.
-  const rest = linkDataDrivenReads(res.slice(open + 1), base);
-  return res.slice(0, open + 1) + rest;
 }
 
 function replaceTag(out: string, open: number, tagName: string, v: string, base: string): string | null {
