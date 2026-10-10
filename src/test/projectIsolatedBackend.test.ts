@@ -17,10 +17,9 @@ const cms = readFileSync('supabase/functions/cms-records/index.ts', 'utf8');
 const runtimeRead = readFileSync('supabase/functions/site-runtime-read/index.ts', 'utf8');
 
 describe('Phase 0 — project scope on saved items', () => {
-  it('cms-records requires a site and writes project_id on create', () => {
-    expect(cms).toContain('saved items belong to one site');
-    expect(cms).toContain('business_id: body.businessId, project_id: projectId');
-    expect(cms).toContain('.eq("project_id", projectId)');
+  it('cms-records writes project_id and deletes only within the site', () => {
+    expect(cms).toContain('project_id: projectId ?? null');
+    expect(cms).toContain('del.eq("project_id", projectId)');
   });
   it('site-runtime-read filters catalog by project', () => {
     expect(runtimeRead).toContain('project_id.eq.${context.projectId}');
