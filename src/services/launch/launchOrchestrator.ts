@@ -817,6 +817,7 @@ export async function runLaunchPipeline(
     const { seedLaunchAssets } = await import("@/services/resources/seedLaunchAssets");
     await seedLaunchAssets({
       businessId: commit.confirmed.businessId,
+      projectId: commit.confirmed.projectId,
       creatorData: (commit.result.playground ?? materializedPlayground)?.creatorData ?? null,
     });
   } catch (error) {

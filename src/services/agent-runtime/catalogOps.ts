@@ -71,19 +71,20 @@ export function toCatalogItem(surface: CatalogSurface, r: Record<string, unknown
   };
 }
 
-export async function listCatalog(businessId: string, surfaceIds: readonly string[] = EDITABLE_CATALOG_SURFACES): Promise<CatalogItem[]> {
+export async function listCatalog(businessId: string, surfaceIds: readonly string[] = EDITABLE_CATALOG_SURFACES, projectId?: string | null): Promise<CatalogItem[]> {
   const all = await Promise.all(surfaceIds.map(async (id) => {
     const surface = surfaceOrThrow(id);
-    const rows = await listCmsRecords({ businessId, resource: surface.surfaceId }).catch(() => []);
+    const rows = await listCmsRecords({ businessId, projectId, resource: surface.surfaceId }).catch(() => []);
     return rows.map((r) => toCatalogItem(surface, r));
   }));
   return all.flat();
 }
 
-export async function createCatalogItem(businessId: string, surfaceId: string, patch: CatalogPatch): Promise<CatalogItem> {
+export async function createCatalogItem(businessId: string, surfaceId: string, patch: CatalogPatch, projectId?: string | null): Promise<CatalogItem> {
   const surface = surfaceOrThrow(surfaceId);
   const row = await createCmsRecord({
     businessId,
+    projectId,
     resource: surface.surfaceId,
     values: { ...surface.newRowDefaults, ...normalizeCatalogPatch(surface, patch) },
   });
@@ -93,22 +94,22 @@ export async function createCatalogItem(businessId: string, surfaceId: string, p
 }
 
 export async function updateCatalogItemRow(
-  businessId: string, surfaceId: string, id: string, patch: CatalogPatch,
+  businessId: string, surfaceId: string, id: string, patch: CatalogPatch, projectId?: string | null,
 ): Promise<{ before: CatalogItem | null; after: CatalogItem }> {
   const surface = surfaceOrThrow(surfaceId);
-  const rows = await listCmsRecords({ businessId, resource: surface.surfaceId });
+  const rows = await listCmsRecords({ businessId, projectId, resource: surface.surfaceId });
   const beforeRow = rows.find((r) => String(r.id) === id);
   const row = await updateCmsRecord({
-    businessId, resource: surface.surfaceId, recordId: id, values: normalizeCatalogPatch(surface, patch),
+    businessId, projectId, resource: surface.surfaceId, recordId: id, values: normalizeCatalogPatch(surface, patch),
   });
   const after = toCatalogItem(surface, row);
   emitAgentEvent({ kind: 'data_change', message: `Updated ${surface.rowLabel} "${after.name}"`, status: 'ok' });
   return { before: beforeRow ? toCatalogItem(surface, beforeRow) : null, after };
 }
 
-export async function deleteCatalogItem(businessId: string, surfaceId: string, id: string): Promise<void> {
+export async function deleteCatalogItem(businessId: string, surfaceId: string, id: string, projectId?: string | null): Promise<void> {
   const surface = surfaceOrThrow(surfaceId);
-  await removeCmsRecord({ businessId, resource: surface.surfaceId, recordId: id });
+  await removeCmsRecord({ businessId, projectId, resource: surface.surfaceId, recordId: id });
   emitAgentEvent({ kind: 'data_change', message: `Removed a ${surface.rowLabel}`, status: 'ok' });
 }
 

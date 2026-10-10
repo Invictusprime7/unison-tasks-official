@@ -198,9 +198,11 @@ async function resolveCmsScope(
   input: { businessId: string; projectId?: string; siteId?: string },
 ): Promise<{ projectId?: string } | null> {
   if (!input.siteId) {
-    return await assertProjectScope(admin, input.projectId, input.businessId)
-      ? { projectId: input.projectId }
-      : null;
+    if (!await assertProjectScope(admin, input.projectId, input.businessId)) return null;
+    if (input.projectId) return { projectId: input.projectId };
+    // Unambiguous only: a business with exactly one site. Otherwise caller must name the site.
+    const { data: only } = await admin.from("projects").select("id").eq("business_id", input.businessId).limit(2);
+    return { projectId: only?.length === 1 ? String(only[0].id) : undefined };
   }
 
   const { data: site, error: siteError } = await admin
@@ -218,6 +220,11 @@ async function resolveCmsScope(
     .maybeSingle();
   if (projectError || !project || (input.projectId && project.id !== input.projectId)) return null;
   return { projectId: project.id };
+}
+
+/** Guidebook §12: project-owned rows are filtered by business + project. NULL project = shared-legacy row, read-only visible. */
+function projectReadFilter(projectId: string): string {
+  return `project_id.eq.${projectId},project_id.is.null`;
 }
 
 function audit(admin: SupabaseClient, args: { userId: string; businessId: string; projectId?: string; resource: string; action: CmsAction; recordId?: string }) {
@@ -286,6 +293,8 @@ serve(async (req) => {
   const admin = createClient(url, serviceRoleKey);
   const scope = await resolveCmsScope(admin, body);
   if (!scope) return jsonError("Site, project, or business scope is invalid", 403, corsHeaders);
+  if (!scope.projectId) return jsonError("projectId or siteId is required: saved items belong to one site", 400, corsHeaders);
+  const projectId = scope.projectId;
 
   if (isContentAction) {
     const action = body.action as ContentCmsAction;
@@ -297,6 +306,7 @@ serve(async (req) => {
         .from("content_types")
         .select("id,api_key,display_name,description,field_schema,workflow,created_at,updated_at")
         .eq("business_id", body.businessId)
+        .or(projectReadFilter(projectId))
         .order("display_name", { ascending: true });
       if (error) return jsonError("Could not load content types", 500, corsHeaders);
       return secureJsonResponse({ success: true, resource: "content-types", records: data ?? [] }, 200, corsHeaders);
@@ -317,8 +327,8 @@ serve(async (req) => {
       const schemaValidation = parseContentFields(writeValues.field_schema);
       if ("error" in schemaValidation) return jsonError(schemaValidation.error, 400, corsHeaders);
       const query = action === "content-type-create"
-        ? admin.from("content_types").insert({ ...writeValues, business_id: body.businessId, created_by: userResult.user.id })
-        : admin.from("content_types").update(writeValues).eq("id", body.contentTypeId!).eq("business_id", body.businessId);
+        ? admin.from("content_types").insert({ ...writeValues, business_id: body.businessId, project_id: projectId, created_by: userResult.user.id })
+        : admin.from("content_types").update(writeValues).eq("id", body.contentTypeId!).eq("business_id", body.businessId).or(projectReadFilter(projectId));
       const { data, error } = await query.select("id,api_key,display_name,description,field_schema,workflow,created_at,updated_at").maybeSingle();
       if (error || !data) return jsonError(action === "content-type-create" ? "Could not create content type" : "Content type not found or could not be updated", action === "content-type-create" ? 500 : 404, corsHeaders);
       audit(admin, { userId: userResult.user.id, businessId: body.businessId, projectId: scope.projectId, resource: "content-type", action, recordId: String(data.id) });
@@ -330,6 +340,7 @@ serve(async (req) => {
         .from("content_entries")
         .select("id,content_type_id,site_id,locale,slug,title,status,published_at,updated_at")
         .eq("business_id", body.businessId)
+        .or(projectReadFilter(projectId))
         .order("updated_at", { ascending: false });
       if (body.siteId) query = query.eq("site_id", body.siteId);
       if (body.contentTypeId) query = query.eq("content_type_id", body.contentTypeId);
@@ -344,6 +355,7 @@ serve(async (req) => {
         .select("*")
         .eq("id", body.recordId!)
         .eq("business_id", body.businessId)
+        .or(projectReadFilter(projectId))
         .maybeSingle();
       if (entryError || !entry) return jsonError("Content entry not found", 404, corsHeaders);
       if (action === "content-entry-get") return secureJsonResponse({ success: true, resource: "content-entry", record: entry }, 200, corsHeaders);
@@ -365,6 +377,7 @@ serve(async (req) => {
         .select("id,content_type_id,site_id,locale,slug,title,data,status")
         .eq("id", body.recordId!)
         .eq("business_id", body.businessId)
+        .or(projectReadFilter(projectId))
         .maybeSingle();
       if (error || !data) return jsonError("Content entry not found", 404, corsHeaders);
       entry = data;
@@ -413,6 +426,9 @@ serve(async (req) => {
     }).maybeSingle();
     if (error || !data) return jsonError(action === "content-entry-create" ? "Could not create content entry" : "Could not update content entry", 500, corsHeaders);
     const contentEntry = data as Record<string, unknown>;
+    // Stamp ownership (adopts legacy NULL rows into the editing site).
+    await admin.from("content_entries").update({ project_id: projectId }).eq("id", String(contentEntry.id)).is("project_id", null);
+    contentEntry.project_id = contentEntry.project_id ?? projectId;
     audit(admin, { userId: userResult.user.id, businessId: body.businessId, projectId: scope.projectId, resource: "content-entry", action, recordId: String(contentEntry.id) });
     return secureJsonResponse({ success: true, resource: "content-entry", record: data }, action === "content-entry-create" ? 201 : 200, corsHeaders);
   }
@@ -432,6 +448,7 @@ serve(async (req) => {
       .from(resource.sourceTable)
       .select("*")
       .eq("business_id", body.businessId)
+      .or(projectReadFilter(projectId))
       .order(resource.sortField, { ascending: true });
     if (error) return jsonError("Could not load CMS records", 500, corsHeaders);
     return secureJsonResponse({ success: true, resource: resource.resource, records: data ?? [] }, 200, corsHeaders);
@@ -443,6 +460,7 @@ serve(async (req) => {
       .select("*")
       .eq("id", body.recordId!)
       .eq("business_id", body.businessId)
+      .or(projectReadFilter(projectId))
       .maybeSingle();
     if (error || !data) return jsonError("CMS record not found", 404, corsHeaders);
     return secureJsonResponse({ success: true, resource: resource.resource, record: data }, 200, corsHeaders);
@@ -459,7 +477,7 @@ serve(async (req) => {
   if (body.action === "create") {
     const { data, error } = await admin
       .from(resource.sourceTable)
-      .insert({ ...validation.values, business_id: body.businessId })
+      .insert({ ...validation.values, business_id: body.businessId, project_id: projectId })
       .select("*")
       .single();
     if (error || !data) return jsonError("Could not create CMS record", 500, corsHeaders);
@@ -470,9 +488,10 @@ serve(async (req) => {
   if (body.action === "update") {
     const { data, error } = await admin
       .from(resource.sourceTable)
-      .update(validation.values)
+      .update({ ...validation.values, project_id: projectId })
       .eq("id", body.recordId!)
       .eq("business_id", body.businessId)
+      .or(projectReadFilter(projectId))
       .select("*")
       .maybeSingle();
     if (error || !data) return jsonError("CMS record not found or could not be updated", 404, corsHeaders);
@@ -485,6 +504,7 @@ serve(async (req) => {
     .delete()
     .eq("id", body.recordId!)
     .eq("business_id", body.businessId)
+    .eq("project_id", projectId)
     .select("id")
     .maybeSingle();
   if (error || !data) return jsonError("CMS record not found or could not be deleted", 404, corsHeaders);

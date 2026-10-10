@@ -68,4 +68,4 @@
 - [x] Deterministic article/case-study pages + Read button wiring (Create page & link button / Create all pages)
 - [ ] Run it on SPARK (needs user click: Assets → Content → Articles)
 
-- [ ] Direct WYSIWYG + project-isolated backend milestone (guidebook 2026-10-09), following guidebook methods exactly
+- [~] Direct WYSIWYG + project-isolated backend (guidebook 2026-10-09): Phases 0,1(core),2 done; toolbar/inline wiring to EditorCommandService, site-level business profile, Phase 3+ (needs Supabase Management OAuth creds + billing decision) open

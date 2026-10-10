@@ -71,6 +71,27 @@
       "when": 1791483074286,
       "tag": "0009_business_profile_command",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791605037941,
+      "tag": "0010_project_scope_catalog_resources",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1791605056956,
+      "tag": "0011_project_aware_unique_slugs",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1791605078940,
+      "tag": "0012_project_backend_binding",
+      "breakpoints": true
     }
   ]
 }

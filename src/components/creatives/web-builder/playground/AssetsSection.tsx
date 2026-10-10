@@ -79,7 +79,7 @@ const SCAN_LABEL: Record<string, string> = { products: "Products & menu", servic
 
 /** Read-only Live Preview scan: lists items actually rendered on the current
  *  page, whether or not they are saved. Saving goes through seedLaunchAssets. */
-function SiteScanList({ group, businessId, onSaved }: { group: "catalog" | "content"; businessId: string; onSaved: () => void }) {
+function SiteScanList({ group, businessId, projectId, onSaved }: { group: "catalog" | "content"; businessId: string; projectId?: string | null; onSaved: () => void }) {
   const [scan, setScan] = useState<{ items: ScannedItem[]; css: string } | null>(null);
   const [open, setOpen] = useState<number | null>(-1);
   const [saved, setSaved] = useState<Set<number>>(new Set());
@@ -109,7 +109,7 @@ function SiteScanList({ group, businessId, onSaved }: { group: "catalog" | "cont
     else if (it.kind === "team") data.team = { x: { name: it.name, bio: it.description } };
     else data.gallery = { x: { caption: it.name } };
     try {
-      await seedLaunchAssets({ businessId, creatorData: data as unknown as CreatorData });
+      await seedLaunchAssets({ businessId, projectId, creatorData: data as unknown as CreatorData });
       setSaved((s) => new Set(s).add(i));
       onSaved();
       toast.success(`Saved "${it.name}"`);
@@ -308,10 +308,10 @@ export function AssetsSection({ businessId, projectId, industry, vfsFiles = {}, 
     if (!hasPlanned) return;
     backfillTried.current = businessId;
     let alive = true;
-    listCatalog(businessId, ["products", "services", "testimonials"])
+    listCatalog(businessId, ["products", "services", "testimonials"], projectId)
       .then(async (rows) => {
         if (!alive || rows.length > 0) return;
-        await seedLaunchAssets({ businessId, creatorData });
+        await seedLaunchAssets({ businessId, projectId, creatorData });
         if (alive) setContentReady((n) => n + 1);
       })
       .catch(() => undefined);
@@ -324,7 +324,7 @@ export function AssetsSection({ businessId, projectId, industry, vfsFiles = {}, 
     if (!businessId || longformTried.current === businessId || !Object.keys(vfsFiles).length) return;
     longformTried.current = businessId;
     let alive = true;
-    adoptLongformFromSite({ businessId, vfsFiles })
+    adoptLongformFromSite({ businessId, projectId, vfsFiles })
       .then(() => listContentTypes({ businessId, projectId: projectId ?? undefined } as never))
       .then((rows) => { if (!alive) return; registerContentTypes(rows as ContentTypeRow[]); setContentReady((n) => n + 1); })
       .catch(() => undefined);
@@ -344,7 +344,7 @@ export function AssetsSection({ businessId, projectId, industry, vfsFiles = {}, 
     const rest = all.filter((t) => !isRelevantAsset(t));
     return (
       <div className="space-y-6">
-        <SiteScanList group={group} businessId={businessId} onSaved={() => setContentReady((n) => n + 1)} />
+        <SiteScanList group={group} businessId={businessId} projectId={projectId} onSaved={() => setContentReady((n) => n + 1)} />
         {relevant.map((t) => <AssetList key={t.key} type={t} businessId={businessId} projectId={projectId} liveIndex={liveIndex} onReveal={onReveal} onPlace={onPlace} onPublishLongform={onPublishLongform} />)}
         {group === "content" && formsSlot}
         {relevant.length === 0 && group === "catalog" && <p className="text-sm text-muted-foreground">This site doesn't sell or list items yet.</p>}

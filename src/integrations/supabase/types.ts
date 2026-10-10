@@ -717,6 +717,7 @@ export type Database = {
           ends_at: string
           id: string
           is_booked: boolean
+          project_id: string | null
           service_id: string | null
           starts_at: string
         }
@@ -726,6 +727,7 @@ export type Database = {
           ends_at: string
           id?: string
           is_booked?: boolean
+          project_id?: string | null
           service_id?: string | null
           starts_at: string
         }
@@ -735,6 +737,7 @@ export type Database = {
           ends_at?: string
           id?: string
           is_booked?: boolean
+          project_id?: string | null
           service_id?: string | null
           starts_at?: string
         }
@@ -1686,6 +1689,63 @@ export type Database = {
           },
         ]
       }
+      connected_supabase_projects: {
+        Row: {
+          backend_manifest: Json
+          business_id: string
+          created_at: string
+          health_status: Json
+          id: string
+          mode: string
+          project_ref: string | null
+          project_url: string | null
+          provider: string
+          provisioning_status: string
+          publishable_key: string | null
+          schema_version: number
+          secret_key_ciphertext: string | null
+          site_id: string | null
+          unison_project_id: string
+          updated_at: string
+        }
+        Insert: {
+          backend_manifest?: Json
+          business_id: string
+          created_at?: string
+          health_status?: Json
+          id?: string
+          mode?: string
+          project_ref?: string | null
+          project_url?: string | null
+          provider?: string
+          provisioning_status?: string
+          publishable_key?: string | null
+          schema_version?: number
+          secret_key_ciphertext?: string | null
+          site_id?: string | null
+          unison_project_id: string
+          updated_at?: string
+        }
+        Update: {
+          backend_manifest?: Json
+          business_id?: string
+          created_at?: string
+          health_status?: Json
+          id?: string
+          mode?: string
+          project_ref?: string | null
+          project_url?: string | null
+          provider?: string
+          provisioning_status?: string
+          publishable_key?: string | null
+          schema_version?: number
+          secret_key_ciphertext?: string | null
+          site_id?: string | null
+          unison_project_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       content_entries: {
         Row: {
           archived_at: string | null
@@ -1696,6 +1756,7 @@ export type Database = {
           data: Json
           id: string
           locale: string
+          project_id: string | null
           published_at: string | null
           scheduled_publish_at: string | null
           site_id: string | null
@@ -1714,6 +1775,7 @@ export type Database = {
           data?: Json
           id?: string
           locale?: string
+          project_id?: string | null
           published_at?: string | null
           scheduled_publish_at?: string | null
           site_id?: string | null
@@ -1732,6 +1794,7 @@ export type Database = {
           data?: Json
           id?: string
           locale?: string
+          project_id?: string | null
           published_at?: string | null
           scheduled_publish_at?: string | null
           site_id?: string | null
@@ -1787,6 +1850,7 @@ export type Database = {
           created_by: string | null
           entry_id: string
           id: string
+          project_id: string | null
           revision_number: number
           snapshot: Json
         }
@@ -1797,6 +1861,7 @@ export type Database = {
           created_by?: string | null
           entry_id: string
           id?: string
+          project_id?: string | null
           revision_number: number
           snapshot: Json
         }
@@ -1807,6 +1872,7 @@ export type Database = {
           created_by?: string | null
           entry_id?: string
           id?: string
+          project_id?: string | null
           revision_number?: number
           snapshot?: Json
         }
@@ -1850,6 +1916,7 @@ export type Database = {
           event_type: string
           id: string
           metadata: Json
+          project_id: string | null
           revision_id: string | null
         }
         Insert: {
@@ -1860,6 +1927,7 @@ export type Database = {
           event_type: string
           id?: string
           metadata?: Json
+          project_id?: string | null
           revision_id?: string | null
         }
         Update: {
@@ -1870,6 +1938,7 @@ export type Database = {
           event_type?: string
           id?: string
           metadata?: Json
+          project_id?: string | null
           revision_id?: string | null
         }
         Relationships: [
@@ -1920,6 +1989,7 @@ export type Database = {
           display_name: string
           field_schema: Json
           id: string
+          project_id: string | null
           updated_at: string
           updated_by: string | null
           workflow: Json
@@ -1933,6 +2003,7 @@ export type Database = {
           display_name: string
           field_schema?: Json
           id?: string
+          project_id?: string | null
           updated_at?: string
           updated_by?: string | null
           workflow?: Json
@@ -1946,6 +2017,7 @@ export type Database = {
           display_name?: string
           field_schema?: Json
           id?: string
+          project_id?: string | null
           updated_at?: string
           updated_by?: string | null
           workflow?: Json
@@ -2611,6 +2683,7 @@ export type Database = {
           id: string
           image_url: string | null
           metadata: Json
+          project_id: string | null
           sort_order: number
           starts_at: string | null
           subtitle: string | null
@@ -2630,6 +2703,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           metadata?: Json
+          project_id?: string | null
           sort_order?: number
           starts_at?: string | null
           subtitle?: string | null
@@ -2649,6 +2723,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           metadata?: Json
+          project_id?: string | null
           sort_order?: number
           starts_at?: string | null
           subtitle?: string | null
@@ -3468,6 +3543,7 @@ export type Database = {
           metadata: Json
           name: string
           price_cents: number
+          project_id: string | null
           slug: string | null
           sort_order: number
           updated_at: string
@@ -3486,6 +3562,7 @@ export type Database = {
           metadata?: Json
           name: string
           price_cents?: number
+          project_id?: string | null
           slug?: string | null
           sort_order?: number
           updated_at?: string
@@ -3504,6 +3581,7 @@ export type Database = {
           metadata?: Json
           name?: string
           price_cents?: number
+          project_id?: string | null
           slug?: string | null
           sort_order?: number
           updated_at?: string
@@ -3746,6 +3824,7 @@ export type Database = {
           gallery: Json
           id: string
           metadata: Json
+          project_id: string | null
           sort_order: number
           subtitle: string | null
           summary: string | null
@@ -3764,6 +3843,7 @@ export type Database = {
           gallery?: Json
           id?: string
           metadata?: Json
+          project_id?: string | null
           sort_order?: number
           subtitle?: string | null
           summary?: string | null
@@ -3782,6 +3862,7 @@ export type Database = {
           gallery?: Json
           id?: string
           metadata?: Json
+          project_id?: string | null
           sort_order?: number
           subtitle?: string | null
           summary?: string | null
@@ -3828,6 +3909,7 @@ export type Database = {
           metadata: Json
           name: string
           price_cents: number
+          project_id: string | null
           slug: string | null
           sort_order: number
           updated_at: string
@@ -3846,6 +3928,7 @@ export type Database = {
           metadata?: Json
           name: string
           price_cents?: number
+          project_id?: string | null
           slug?: string | null
           sort_order?: number
           updated_at?: string
@@ -3864,6 +3947,7 @@ export type Database = {
           metadata?: Json
           name?: string
           price_cents?: number
+          project_id?: string | null
           slug?: string | null
           sort_order?: number
           updated_at?: string
@@ -3907,6 +3991,7 @@ export type Database = {
           metadata: Json | null
           name: string
           price: number
+          project_id: string | null
           slug: string | null
           sort_order: number
           updated_at: string | null
@@ -3926,6 +4011,7 @@ export type Database = {
           metadata?: Json | null
           name: string
           price: number
+          project_id?: string | null
           slug?: string | null
           sort_order?: number
           updated_at?: string | null
@@ -3945,6 +4031,7 @@ export type Database = {
           metadata?: Json | null
           name?: string
           price?: number
+          project_id?: string | null
           slug?: string | null
           sort_order?: number
           updated_at?: string | null
@@ -4297,6 +4384,7 @@ export type Database = {
           metadata: Json
           name: string
           price_cents: number | null
+          project_id: string | null
           slug: string | null
           sort_order: number
           updated_at: string
@@ -4314,6 +4402,7 @@ export type Database = {
           metadata?: Json
           name: string
           price_cents?: number | null
+          project_id?: string | null
           slug?: string | null
           sort_order?: number
           updated_at?: string
@@ -4331,6 +4420,7 @@ export type Database = {
           metadata?: Json
           name?: string
           price_cents?: number | null
+          project_id?: string | null
           slug?: string | null
           sort_order?: number
           updated_at?: string
@@ -5013,6 +5103,7 @@ export type Database = {
           featured: boolean
           id: string
           metadata: Json
+          project_id: string | null
           quote: string
           rating: number | null
           sort_order: number
@@ -5028,6 +5119,7 @@ export type Database = {
           featured?: boolean
           id?: string
           metadata?: Json
+          project_id?: string | null
           quote: string
           rating?: number | null
           sort_order?: number
@@ -5043,6 +5135,7 @@ export type Database = {
           featured?: boolean
           id?: string
           metadata?: Json
+          project_id?: string | null
           quote?: string
           rating?: number | null
           sort_order?: number
@@ -5458,6 +5551,7 @@ export type Database = {
           data: Json
           id: string
           locale: string
+          project_id: string | null
           published_at: string | null
           scheduled_publish_at: string | null
           site_id: string | null
@@ -5547,6 +5641,7 @@ export type Database = {
         Args: { _project_id: string; _target_business_id: string }
         Returns: undefined
       }
+      resolve_project_backend: { Args: { p_project_id: string }; Returns: Json }
       user_business_role: {
         Args: { _business_id: string; _user_id: string }
         Returns: string

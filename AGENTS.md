@@ -17,10 +17,9 @@
 - App Builder pages must pass the structural floor in `src/services/app-builder/design/pageStructureGate.ts` (shared nav + footer, minimum body sections, imagery on media-led roles) via the orchestrator's `pageCheck`, and each page brief leads with its own composition target and only its own archetype block; why: the router adds no chrome and truncated, site-wide briefs let the AI ship lone centered heroes.
 
 - Chat and Wizard share one launch plan (`src/services/launch/chatLaunchPlan.ts`): the chat brief prefills the Wizard, and `buildSyncedVisionBrief` puts final selections first; page briefs put composition target + design contract before that vision. Why: separate chat/Wizard inputs drifted and crowded out composition vocabulary.
-- AI provider order rules live in `supabase/functions/_shared/AGENTS.md`.
 - Agent activity and typed operations live in `src/services/agent-runtime/` (events ride `vfsEventBus` as `agent:event`; operations only propose files that go through `runBuilderAiMutation` → `commitMutation`), and every AI commit runs the intent-retarget check first; why: one capability surface for AI and command menu, no second bus or writer, and button destinations stay invariant under UI edits.
 
-- Save, preflight, scoped-edit and preview-projection rules live in `src/services/AGENTS.md`.
 - Builder save surfaces serialise through `src/services/builder/builderMutationCoordinator.ts` (queue, autosave pause, fingerprint rebase of non-overlapping AI candidates); `aiApplyGate` keeps the strict stale check. Why: concurrent autosaves made AI edits fail as "stale" without one coordinator.
 - Code-terminal file commands emit FileOps to `onPatch` and the host commits them via `commitBuilderFiles` inside `runExclusive('terminal')`; the terminal never writes the VFS itself. Why: the old `onWriteFile` → `importFiles` path bypassed save, checkpoints and the coordinator.
 - Catalog, content and business profile go through `src/services/resources/resourceRuntime.ts`; why: one edit path, separate tables.
+- Save, preflight, scoped-edit, preview, site-backend and editor-command rules: `src/services/AGENTS.md`; AI provider order: `supabase/functions/_shared/AGENTS.md`.
