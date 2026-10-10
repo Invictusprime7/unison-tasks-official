@@ -1,6 +1,7 @@
 import type { EditableEntity, EditableEntityKind, EditablePropertyOwner, EditableMutationLane } from './editableEntity';
 import type { SystemGraph } from './systemGraph';
 import { getCatalogSurfaceByTable } from '@/platform/core/catalogSurfaceRegistry';
+import { parseResourceProvenance } from '@/services/resources/resourceRuntime';
 
 export interface EditableSelection {
   elementId?: string | null;
@@ -26,6 +27,8 @@ export interface EditableSelection {
   /** Preview selection revision. A stale selection can never target a newer graph. */
   revisionId?: string | null;
   projectId?: string | null;
+  /** Raw `data-ut-resource` mark (guidebook §24). */
+  resourceMark?: string | null;
 }
 
 export interface CatalogBindingReference {
@@ -90,6 +93,16 @@ export function resolveEditableEntity(input: ResolveEditableEntityInput): Editab
     provenance: { catalogSurface: catalogSurface?.surfaceId, bindingId: selected.bindingId ?? undefined, registryKey: selected.artifactId ?? undefined },
     owners: {},
   };
+
+  const resourceRef = parseResourceProvenance(selected.resourceMark);
+  if (resourceRef) {
+    entity.resource = resourceRef;
+    entity.owners[resourceRef.field ?? 'value'] = { kind: 'resource-field', resource: resourceRef, field: resourceRef.field };
+    entity.allowedMutationLanes = ['dataOps', 'presentationOps'];
+    if (selected.sectionId) entity.owners.presentation = { kind: 'presentation', presentationKey: selected.sectionId };
+    if (intents.length) entity.owners.intent = { kind: 'intent-binding', intent: intents[0], bindingId: selected.bindingId ?? undefined };
+    return entity;
+  }
 
   if (sourceTable && selected.rowId) {
     const owner: EditablePropertyOwner = {
