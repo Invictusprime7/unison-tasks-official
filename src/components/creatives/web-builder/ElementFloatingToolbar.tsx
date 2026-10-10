@@ -40,6 +40,8 @@ import {
 import { buildWebBuilderAIContext } from '@/utils/aiAssistantContext';
 import { buildCatalogContext, renderCatalogContextForPrompt, type SelectedSectionRef } from '@/utils/catalogContext';
 import runBuilderTurn from '@/services/builderBrainClient';
+import { useToolbarCommands } from './toolbarCommandAdapter';
+import type { EditorTarget } from '@/services/editor/editorCommandTypes';
 
 interface SelectedElement {
   tagName?: string;
@@ -407,9 +409,21 @@ export const ElementFloatingToolbar: React.FC<ElementFloatingToolbarProps> = ({
     if (imageInputRef.current) imageInputRef.current.value = '';
   }, [element]);
 
+  // Every toolbar action goes through the shared EditorCommandService (§25):
+  // lane resolution + capability check first, host commit handlers second.
+  const runCommand = useToolbarCommands(
+    { onUpdateStyles, onUpdateText, onUpdateAttributes, onReplaceImage, onDelete, onDuplicate, onMoveUp, onMoveDown },
+    { businessId: businessId ?? undefined, projectId: projectId ?? undefined },
+  );
+
   if (!element || !element.selector) return null;
 
   const selector = element.selector;
+  const target: EditorTarget = {
+    selector,
+    pagePath: activePagePath ?? undefined,
+    resourceMark: element.attributes?.['data-ut-resource'] ?? null,
+  };
   const styles = element.styles || {};
   const isImage = element.tagName?.toLowerCase() === 'img';
   const backgroundImage = styles.backgroundImage || '';
@@ -431,21 +445,28 @@ export const ElementFloatingToolbar: React.FC<ElementFloatingToolbarProps> = ({
   const currentColor = styles.color || '#000000';
   const currentBgColor = styles.backgroundColor || 'transparent';
 
-  const updateStyle = (prop: string, value: string) => onUpdateStyles(selector, { [prop]: value });
-  const updateAttributes = (attributes: Record<string, string>) => onUpdateAttributes?.(selector, attributes);
+  const updateStyle = (prop: string, value: string) => {
+    void runCommand({ type: 'set-style', target, styles: { [prop]: value } });
+  };
 
   const replaceImage = (src: string) => {
     const nextSrc = src.trim();
     if (!nextSrc) return;
     if (imageTarget?.kind === 'img') {
-      onReplaceImage(imageTarget.selector || selector, nextSrc);
+      void runCommand({ type: 'replace-asset', target: { ...target, selector: imageTarget.selector || selector }, url: nextSrc });
       return;
     }
-    onUpdateStyles(imageTarget?.selector || selector, { backgroundImage: `url("${nextSrc.replace(/"/g, '%22')}")` });
+    void runCommand({
+      type: 'set-style',
+      target: { ...target, selector: imageTarget?.selector || selector },
+      styles: { backgroundImage: `url("${nextSrc.replace(/"/g, '%22')}")` },
+    });
   };
 
   const handleTextSave = () => {
-    if (editText.trim() !== element.textContent) onUpdateText(selector, editText.trim());
+    if (editText.trim() !== element.textContent) {
+      void runCommand({ type: 'set-text', target, text: editText.trim() });
+    }
     setIsEditingText(false);
   };
 
@@ -477,11 +498,9 @@ export const ElementFloatingToolbar: React.FC<ElementFloatingToolbarProps> = ({
 
   const handleAttributeSave = () => {
     if (!onUpdateAttributes) return;
-    const nextAttributes: Record<string, string> = {};
     Object.entries(attributeDraft).forEach(([key, value]) => {
-      nextAttributes[key] = value.trim();
+      void runCommand({ type: 'set-attribute', target, name: key, value: value.trim() });
     });
-    updateAttributes(nextAttributes);
   };
 
   return (
@@ -825,7 +844,7 @@ export const ElementFloatingToolbar: React.FC<ElementFloatingToolbarProps> = ({
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => updateStyle('display', isHidden ? getDefaultDisplay(element.tagName) : 'none')}
+          onClick={() => void runCommand({ type: 'set-style', target, styles: { display: isHidden ? getDefaultDisplay(element.tagName) : 'none' } })}
           className="h-7 text-xs gap-1 px-2"
           title={isHidden ? 'Show element' : 'Hide element'}
         >
@@ -859,12 +878,12 @@ export const ElementFloatingToolbar: React.FC<ElementFloatingToolbarProps> = ({
           <>
             <Separator orientation="vertical" className="h-6 mx-0.5 bg-white/[0.1]" />
             {onMoveUp && (
-              <Button variant="ghost" size="sm" onClick={() => onMoveUp(selector)} className="h-7 w-7 p-0" title="Move Up">
+              <Button variant="ghost" size="sm" onClick={() => void runCommand({ type: 'move', target, direction: 'up' })} className="h-7 w-7 p-0" title="Move Up">
                 <MoveUp className="w-3.5 h-3.5" />
               </Button>
             )}
             {onMoveDown && (
-              <Button variant="ghost" size="sm" onClick={() => onMoveDown(selector)} className="h-7 w-7 p-0" title="Move Down">
+              <Button variant="ghost" size="sm" onClick={() => void runCommand({ type: 'move', target, direction: 'down' })} className="h-7 w-7 p-0" title="Move Down">
                 <MoveDown className="w-3.5 h-3.5" />
               </Button>
             )}
@@ -873,8 +892,8 @@ export const ElementFloatingToolbar: React.FC<ElementFloatingToolbarProps> = ({
 
         <Separator orientation="vertical" className="h-6 mx-0.5 bg-white/[0.1]" />
 
-        <Button variant="ghost" size="sm" onClick={() => onDuplicate(selector)} className="h-7 w-7 p-0" title="Duplicate"><Copy className="w-3.5 h-3.5" /></Button>
-        <Button variant="ghost" size="sm" onClick={() => onDelete(selector)} className="h-7 w-7 p-0 text-destructive hover:text-destructive" title="Delete"><Trash2 className="w-3.5 h-3.5" /></Button>
+        <Button variant="ghost" size="sm" onClick={() => void runCommand({ type: 'duplicate', target })} className="h-7 w-7 p-0" title="Duplicate"><Copy className="w-3.5 h-3.5" /></Button>
+        <Button variant="ghost" size="sm" onClick={() => void runCommand({ type: 'delete', target })} className="h-7 w-7 p-0 text-destructive hover:text-destructive" title="Delete"><Trash2 className="w-3.5 h-3.5" /></Button>
         <Button variant="ghost" size="sm" onClick={onClear} className="h-7 w-7 p-0" title="Deselect"><Undo2 className="w-3.5 h-3.5" /></Button>
       </div>
 

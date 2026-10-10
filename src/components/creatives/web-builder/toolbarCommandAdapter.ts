@@ -1,0 +1,115 @@
+/**
+ * Toolbar → EditorCommandService adapter (guidebook §25).
+ *
+ * The floating toolbar never calls its host callbacks directly. Every button
+ * issues a typed EditorCommand; the service resolves the owning lane, checks
+ * the toolbar's capabilities, and dispatches to these executors, which delegate
+ * to the host's commitMutation-backed handlers. One command path, one result
+ * shape (§44) for toolbar, inline editor, AI and command palette.
+ */
+import { useCallback } from 'react';
+import { toast } from 'sonner';
+import { executeEditorCommand, type LaneExecutor } from '@/services/editor/editorCommandService';
+import type { EditorCommand, EditorCommandResult, EditorCommandType } from '@/services/editor/editorCommandTypes';
+import type { ResourceContext } from '@/services/resources/resourceTypes';
+
+export interface ToolbarCommandHandlers {
+  onUpdateStyles: (selector: string, styles: Record<string, string>) => void;
+  onUpdateText: (selector: string, text: string) => void;
+  onUpdateAttributes?: (selector: string, attributes: Record<string, string>) => void;
+  onReplaceImage: (selector: string, src: string) => void;
+  onDelete: (selector: string) => void;
+  onDuplicate: (selector: string) => void;
+  onMoveUp?: (selector: string) => void;
+  onMoveDown?: (selector: string) => void;
+}
+
+function ok(command: EditorCommand, lane: EditorCommandResult['lane'], savedTo: string, changedFields: string[]): EditorCommandResult {
+  return { ok: true, command: command.type, lane, savedTo, changedFields };
+}
+
+function unsupported(command: EditorCommand, lane: EditorCommandResult['lane']): EditorCommandResult {
+  return { ok: false, command: command.type, lane, savedTo: null, changedFields: [], error: 'This change can’t be saved from the toolbar yet.' };
+}
+
+export function useToolbarCommands(
+  handlers: ToolbarCommandHandlers,
+  resource: Pick<ResourceContext, 'businessId' | 'projectId'>,
+) {
+  return useCallback(
+    async (command: EditorCommand): Promise<EditorCommandResult> => {
+      const selector = command.target.selector ?? '';
+
+      const source: LaneExecutor = async (cmd) => {
+        switch (cmd.type) {
+          case 'set-text':
+            handlers.onUpdateText(selector, cmd.text);
+            return ok(cmd, 'source', 'page source', ['text']);
+          case 'set-attribute':
+            if (!handlers.onUpdateAttributes) return unsupported(cmd, 'source');
+            handlers.onUpdateAttributes(selector, { [cmd.name]: cmd.value ?? '' });
+            return ok(cmd, 'source', 'page source', [cmd.name]);
+          case 'replace-asset':
+            handlers.onReplaceImage(selector, cmd.url);
+            return ok(cmd, 'source', 'page source', ['image']);
+          case 'delete':
+            handlers.onDelete(selector);
+            return ok(cmd, 'source', 'page source', ['element']);
+          case 'duplicate':
+            handlers.onDuplicate(selector);
+            return ok(cmd, 'source', 'page source', ['element']);
+          default:
+            return unsupported(cmd, 'source');
+        }
+      };
+
+      const presentation: LaneExecutor = async (cmd) => {
+        switch (cmd.type) {
+          case 'set-style':
+            handlers.onUpdateStyles(selector, cmd.styles);
+            return ok(cmd, 'presentation', 'page styles', Object.keys(cmd.styles));
+          case 'resize': {
+            const styles: Record<string, string> = {};
+            if (cmd.width) styles.width = cmd.width;
+            if (cmd.height) styles.height = cmd.height;
+            handlers.onUpdateStyles(selector, styles);
+            return ok(cmd, 'presentation', 'page styles', Object.keys(styles));
+          }
+          case 'set-visibility':
+            handlers.onUpdateStyles(selector, { display: cmd.visible ? 'block' : 'none' });
+            return ok(cmd, 'presentation', 'page styles', ['display']);
+          case 'move': {
+            const move = cmd.direction === 'up' ? handlers.onMoveUp : handlers.onMoveDown;
+            if (!move) return unsupported(cmd, 'presentation');
+            move(selector);
+            return ok(cmd, 'presentation', 'page order', ['position']);
+          }
+          default:
+            return unsupported(cmd, 'presentation');
+        }
+      };
+
+      const route: LaneExecutor = async (cmd) => {
+        if (cmd.type === 'set-link' && handlers.onUpdateAttributes) {
+          handlers.onUpdateAttributes(selector, { href: cmd.href });
+          return ok(cmd, 'route', 'page source', ['href']);
+        }
+        return unsupported(cmd, 'route');
+      };
+
+      const result = await executeEditorCommand(command, {
+        source: 'toolbar',
+        resource: resource as ResourceContext,
+        executors: { source, presentation, route },
+      });
+      if (!result.ok && result.error) {
+        toast.error('Could not apply that change', { description: result.error });
+      }
+      return result;
+    },
+    // Handlers are stable host callbacks; rebuilding per render is cheap and safe.
+    [handlers, resource.businessId, resource.projectId],
+  );
+}
+
+export type { EditorCommandType };
