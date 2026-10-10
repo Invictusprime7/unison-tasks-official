@@ -223,7 +223,9 @@ async function resolveCmsScope(
 }
 
 /** Guidebook §12: project-owned rows are filtered by business + project. NULL project = shared-legacy row, read-only visible. */
-function projectReadFilter(projectId: string): string {
+function projectReadFilter(projectId: string | undefined): string {
+  // Account-level callers (Business Center, post-edit checks) name no site: business scope only.
+  if (!projectId) return "id.not.is.null";
   return `project_id.eq.${projectId},project_id.is.null`;
 }
 
@@ -293,7 +295,6 @@ serve(async (req) => {
   const admin = createClient(url, serviceRoleKey);
   const scope = await resolveCmsScope(admin, body);
   if (!scope) return jsonError("Site, project, or business scope is invalid", 403, corsHeaders);
-  if (!scope.projectId) return jsonError("projectId or siteId is required: saved items belong to one site", 400, corsHeaders);
   const projectId = scope.projectId;
 
   if (isContentAction) {
@@ -427,7 +428,7 @@ serve(async (req) => {
     if (error || !data) return jsonError(action === "content-entry-create" ? "Could not create content entry" : "Could not update content entry", 500, corsHeaders);
     const contentEntry = data as Record<string, unknown>;
     // Stamp ownership (adopts legacy NULL rows into the editing site).
-    await admin.from("content_entries").update({ project_id: projectId }).eq("id", String(contentEntry.id)).is("project_id", null);
+    if (projectId) await admin.from("content_entries").update({ project_id: projectId }).eq("id", String(contentEntry.id)).is("project_id", null);
     contentEntry.project_id = contentEntry.project_id ?? projectId;
     audit(admin, { userId: userResult.user.id, businessId: body.businessId, projectId: scope.projectId, resource: "content-entry", action, recordId: String(contentEntry.id) });
     return secureJsonResponse({ success: true, resource: "content-entry", record: data }, action === "content-entry-create" ? 201 : 200, corsHeaders);
@@ -477,7 +478,7 @@ serve(async (req) => {
   if (body.action === "create") {
     const { data, error } = await admin
       .from(resource.sourceTable)
-      .insert({ ...validation.values, business_id: body.businessId, project_id: projectId })
+      .insert({ ...validation.values, business_id: body.businessId, project_id: projectId ?? null })
       .select("*")
       .single();
     if (error || !data) return jsonError("Could not create CMS record", 500, corsHeaders);
@@ -488,7 +489,7 @@ serve(async (req) => {
   if (body.action === "update") {
     const { data, error } = await admin
       .from(resource.sourceTable)
-      .update({ ...validation.values, project_id: projectId })
+      .update(projectId ? { ...validation.values, project_id: projectId } : validation.values)
       .eq("id", body.recordId!)
       .eq("business_id", body.businessId)
       .or(projectReadFilter(projectId))
@@ -499,12 +500,13 @@ serve(async (req) => {
     return secureJsonResponse({ success: true, resource: resource.resource, record: data }, 200, corsHeaders);
   }
 
-  const { data, error } = await admin
+  let del = admin
     .from(resource.sourceTable)
     .delete()
     .eq("id", body.recordId!)
-    .eq("business_id", body.businessId)
-    .eq("project_id", projectId)
+    .eq("business_id", body.businessId);
+  if (projectId) del = del.eq("project_id", projectId);
+  const { data, error } = await del
     .select("id")
     .maybeSingle();
   if (error || !data) return jsonError("CMS record not found or could not be deleted", 404, corsHeaders);
