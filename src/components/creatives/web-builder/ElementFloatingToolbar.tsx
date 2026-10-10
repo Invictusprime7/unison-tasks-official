@@ -844,7 +844,7 @@ export const ElementFloatingToolbar: React.FC<ElementFloatingToolbarProps> = ({
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => updateStyle('display', isHidden ? getDefaultDisplay(element.tagName) : 'none')}
+          onClick={() => void runCommand({ type: 'set-visibility', target, visible: isHidden })}
           className="h-7 text-xs gap-1 px-2"
           title={isHidden ? 'Show element' : 'Hide element'}
         >
@@ -878,12 +878,12 @@ export const ElementFloatingToolbar: React.FC<ElementFloatingToolbarProps> = ({
           <>
             <Separator orientation="vertical" className="h-6 mx-0.5 bg-white/[0.1]" />
             {onMoveUp && (
-              <Button variant="ghost" size="sm" onClick={() => onMoveUp(selector)} className="h-7 w-7 p-0" title="Move Up">
+              <Button variant="ghost" size="sm" onClick={() => void runCommand({ type: 'move', target, direction: 'up' })} className="h-7 w-7 p-0" title="Move Up">
                 <MoveUp className="w-3.5 h-3.5" />
               </Button>
             )}
             {onMoveDown && (
-              <Button variant="ghost" size="sm" onClick={() => onMoveDown(selector)} className="h-7 w-7 p-0" title="Move Down">
+              <Button variant="ghost" size="sm" onClick={() => void runCommand({ type: 'move', target, direction: 'down' })} className="h-7 w-7 p-0" title="Move Down">
                 <MoveDown className="w-3.5 h-3.5" />
               </Button>
             )}
@@ -892,8 +892,8 @@ export const ElementFloatingToolbar: React.FC<ElementFloatingToolbarProps> = ({
 
         <Separator orientation="vertical" className="h-6 mx-0.5 bg-white/[0.1]" />
 
-        <Button variant="ghost" size="sm" onClick={() => onDuplicate(selector)} className="h-7 w-7 p-0" title="Duplicate"><Copy className="w-3.5 h-3.5" /></Button>
-        <Button variant="ghost" size="sm" onClick={() => onDelete(selector)} className="h-7 w-7 p-0 text-destructive hover:text-destructive" title="Delete"><Trash2 className="w-3.5 h-3.5" /></Button>
+        <Button variant="ghost" size="sm" onClick={() => void runCommand({ type: 'duplicate', target })} className="h-7 w-7 p-0" title="Duplicate"><Copy className="w-3.5 h-3.5" /></Button>
+        <Button variant="ghost" size="sm" onClick={() => void runCommand({ type: 'delete', target })} className="h-7 w-7 p-0 text-destructive hover:text-destructive" title="Delete"><Trash2 className="w-3.5 h-3.5" /></Button>
         <Button variant="ghost" size="sm" onClick={onClear} className="h-7 w-7 p-0" title="Deselect"><Undo2 className="w-3.5 h-3.5" /></Button>
       </div>
 
