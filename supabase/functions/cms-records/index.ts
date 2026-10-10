@@ -198,9 +198,11 @@ async function resolveCmsScope(
   input: { businessId: string; projectId?: string; siteId?: string },
 ): Promise<{ projectId?: string } | null> {
   if (!input.siteId) {
-    return await assertProjectScope(admin, input.projectId, input.businessId)
-      ? { projectId: input.projectId }
-      : null;
+    if (!await assertProjectScope(admin, input.projectId, input.businessId)) return null;
+    if (input.projectId) return { projectId: input.projectId };
+    // Unambiguous only: a business with exactly one site. Otherwise caller must name the site.
+    const { data: only } = await admin.from("projects").select("id").eq("business_id", input.businessId).limit(2);
+    return { projectId: only?.length === 1 ? String(only[0].id) : undefined };
   }
 
   const { data: site, error: siteError } = await admin
