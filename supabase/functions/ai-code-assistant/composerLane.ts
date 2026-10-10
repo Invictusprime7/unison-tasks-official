@@ -57,20 +57,65 @@ SUMMARY: <one line describing the change>
 <<<DELETE /src/path/Old.tsx
 Optional lines: DEPENDENCIES: a,b   INTENTS: x,y
 Optional typed topology line (single-line JSON): ROUTE_OPS: [{"type":"add_page","pageId":"pricing","title":"Pricing","route":"/pricing","pageType":"pricing","showInNav":true}]
-Every create/replace carries the COMPLETE file contents. Output nothing else.`;
+Every create/replace carries the COMPLETE file contents. Output nothing else.
+
+TASK builder_source_edit: for an EXISTING file in FILES, prefer an EDIT block over replace — return only the changed regions, never the whole file:
+<<<EDIT /src/path/File.tsx
+<<<<<<< SEARCH
+<exact lines copied verbatim from FILES, unique in that file>
+=======
+<new lines>
+>>>>>>> REPLACE
+>>>END
+An EDIT block may hold several SEARCH/REPLACE pairs. Use FILE create for new files.`;
 
 const FILE_BLOCK = /<<<FILE\s+(create|replace)\s+(\S+)[ \t]*\r?\n([\s\S]*?)\r?\n?>>>END/g;
 const DELETE_BLOCK = /<<<DELETE\s+(\S+)/g;
+const EDIT_BLOCK = /<<<EDIT\s+(\S+)[ \t]*\r?\n([\s\S]*?)>>>END/g;
+const EDIT_HUNK = /<<<<<<< SEARCH\r?\n([\s\S]*?)\r?\n=======\r?\n([\s\S]*?)\r?\n?>>>>>>> REPLACE/g;
 
 function stripFence(body: string): string {
   const m = body.match(/^\s*```[a-z]*\s*\n([\s\S]*?)\n```\s*$/i);
   return m ? m[1] : body;
 }
 
-export function parseFileBlocks(raw: string): unknown {
+/** Apply SEARCH/REPLACE hunks to the supplied source; throws a repairable message on mismatch. */
+export function applyEditHunks(path: string, source: string, body: string): string {
+  let next = source;
+  let count = 0;
+  for (const h of body.matchAll(EDIT_HUNK)) {
+    count++;
+    const search = h[1], replace = h[2];
+    let at = next.indexOf(search);
+    if (at < 0) {
+      // Tolerate trailing-whitespace drift only.
+      const norm = (s: string) => s.split('\n').map((l) => l.replace(/\s+$/, '')).join('\n');
+      const n = norm(next), ns = norm(search);
+      if (n.indexOf(ns) < 0) throw new Error(`EDIT ${path}: SEARCH block ${count} not found verbatim`);
+      next = n; at = n.indexOf(ns);
+      next = next.slice(0, at) + replace + next.slice(at + ns.length);
+      continue;
+    }
+    if (next.indexOf(search, at + 1) >= 0) throw new Error(`EDIT ${path}: SEARCH block ${count} matches more than once; include more context`);
+    next = next.slice(0, at) + replace + next.slice(at + search.length);
+  }
+  if (!count) throw new Error(`EDIT ${path}: no SEARCH/REPLACE hunks`);
+  return next;
+}
+
+export function parseFileBlocks(raw: string, files: Record<string, string> = {}): unknown {
   const text = raw ?? '';
   const fileOps: Array<Record<string, string>> = [];
   for (const m of text.matchAll(FILE_BLOCK)) fileOps.push({ type: m[1], path: m[2], content: stripFence(m[3]) });
+  for (const m of text.matchAll(EDIT_BLOCK)) {
+    const path = m[1];
+    const prior = fileOps.find((op) => op.path === path && op.content !== undefined)?.content ?? files[path];
+    if (prior === undefined) throw new Error(`EDIT ${path}: file is not in FILES; use FILE create`);
+    const content = applyEditHunks(path, prior, m[2]);
+    const existing = fileOps.find((op) => op.path === path);
+    if (existing) existing.content = content;
+    else fileOps.push({ type: 'replace', path, content });
+  }
   for (const m of text.matchAll(DELETE_BLOCK)) fileOps.push({ type: 'delete', path: m[1] });
   if (!fileOps.length) throw new Error('no file blocks');
   const list = (key: string) => {
