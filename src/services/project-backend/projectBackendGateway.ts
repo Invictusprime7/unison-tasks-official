@@ -2,8 +2,8 @@
  * ProjectBackendGateway (guidebook §27–29). Every resource command resolves the
  * site's backend first. `shared-legacy` runs through the existing server
  * functions (which authenticate, check membership, scope by business+project
- * and audit). `dedicated` requires the Phase 3 server route and is refused
- * here rather than silently falling back to the shared database.
+ * and audit). `dedicated` is handed to the caller, which must use the
+ * project-backend connection — never the shared database.
  */
 import { projectBackendResolver } from './projectBackendResolver';
 import { describeBackendStatus } from './projectBackendHealth';
@@ -20,8 +20,5 @@ export async function withProjectBackend<T>(
   const descriptor = await projectBackendResolver.resolve(projectId);
   const health = describeBackendStatus(descriptor);
   if (!health.ok) throw new ProjectBackendUnavailableError(health.reason);
-  if (descriptor.mode === 'dedicated') {
-    throw new ProjectBackendUnavailableError('This site uses its own database, which needs the dedicated backend service (not set up yet).');
-  }
   return run(descriptor);
 }

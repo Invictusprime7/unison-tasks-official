@@ -10,6 +10,16 @@ import { emitAgentEvent } from '@/services/agent-runtime/agentEvents';
 import { RESOURCE_ADAPTERS, filterWritableValues } from './resourceAdapters';
 import { getResource } from './resourceRegistry';
 import { withProjectBackend } from '@/services/project-backend/projectBackendGateway';
+import { callProjectBackend } from '@/services/project-backend/projectBackendClient';
+import type { ProjectBackendDescriptor } from '@/services/project-backend/projectBackendTypes';
+
+/** Dedicated sites: catalog commands go through the private project-backend connection. */
+function dedicated(d: ProjectBackendDescriptor | null, def: ResourceDefinition, projectId?: string | null): projectId is string {
+  if (d?.mode !== 'dedicated') return false;
+  if (def.storage.adapter !== 'catalog') throw new Error(`${def.label} isn't available on sites with their own database yet.`);
+  return Boolean(projectId);
+}
+const rec = (r: unknown): ResourceRecord => ({ ...(r as Record<string, unknown>), id: String((r as Record<string, unknown>)?.id ?? '') });
 import type {
   ResourceContext, ResourceDataOp, ResourceDefinition, ResourceEntityRef, ResourceInvalidation, ResourceRecord,
 } from './resourceTypes';
@@ -39,12 +49,18 @@ export function onResourceInvalidated(listener: (inv: ResourceInvalidation) => v
 
 export async function queryResource(key: string, ctx: ResourceContext): Promise<ResourceRecord[]> {
   const def = defOrThrow(key);
-  return withProjectBackend(ctx.projectId, () => RESOURCE_ADAPTERS[def.storage.adapter].query(def, ctx));
+  return withProjectBackend(ctx.projectId, async (d) => dedicated(d, def, ctx.projectId)
+    ? ((await callProjectBackend<unknown[]>({ projectId: ctx.projectId, action: 'list', resource: def.key })) ?? []).map(rec)
+    : RESOURCE_ADAPTERS[def.storage.adapter].query(def, ctx));
 }
 
 export async function getResourceRecord(key: string, ctx: ResourceContext, id: string): Promise<ResourceRecord | null> {
   const def = defOrThrow(key);
-  return withProjectBackend(ctx.projectId, () => RESOURCE_ADAPTERS[def.storage.adapter].get(def, ctx, id));
+  return withProjectBackend(ctx.projectId, async (d) => {
+    if (!dedicated(d, def, ctx.projectId)) return RESOURCE_ADAPTERS[def.storage.adapter].get(def, ctx, id);
+    const r = await callProjectBackend({ projectId: ctx.projectId, action: 'get', resource: def.key, recordId: id });
+    return r ? rec(r) : null;
+  });
 }
 
 /** Validate an op against the schema without touching storage. */
@@ -69,7 +85,14 @@ export async function applyResourceOp(op: ResourceDataOp, ctx: ResourceContext):
   if (v.ok === false) throw new Error(v.reason);
   const { def } = v;
   const adapter = RESOURCE_ADAPTERS[def.storage.adapter];
-  const result = await withProjectBackend(ctx.projectId, async () => {
+  const result = await withProjectBackend(ctx.projectId, async (d) => {
+    if (dedicated(d, def, ctx.projectId)) {
+      const pid = ctx.projectId;
+      if (op.op === 'create') return rec(await callProjectBackend({ projectId: pid, action: 'create', resource: def.key, values: filterWritableValues(def, op.values) }));
+      if (op.op === 'update') return rec(await callProjectBackend({ projectId: pid, action: 'update', resource: def.key, recordId: op.ref.recordId, values: filterWritableValues(def, op.values) }));
+      await callProjectBackend({ projectId: pid, action: 'delete', resource: def.key, recordId: op.ref.recordId });
+      return null;
+    }
     if (op.op === 'create') return adapter.create(def, ctx, filterWritableValues(def, op.values));
     if (op.op === 'update') return adapter.update(def, ctx, op.ref.recordId, filterWritableValues(def, op.values));
     await adapter.delete!(def, ctx, op.ref.recordId);
