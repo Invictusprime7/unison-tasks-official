@@ -60,14 +60,17 @@ export interface ContentTypeRow {
   id?: string;
   slug?: string;
   key?: string;
+  /** cms-records returns api_key / display_name. */
+  api_key?: string;
   name?: string;
+  display_name?: string;
   field_schema?: unknown;
 }
 
 const CONTENT_FIELD_TYPES = new Set<ResourceFieldType>(['text', 'textarea', 'richtext', 'number', 'image', 'boolean', 'url', 'email', 'json']);
 
 export function contentTypeToResource(row: ContentTypeRow): ResourceDefinition | null {
-  const slug = String(row.slug ?? row.key ?? '').trim();
+  const slug = String(row.api_key ?? row.slug ?? row.key ?? '').trim();
   if (!slug) return null;
   const raw = Array.isArray(row.field_schema)
     ? row.field_schema
@@ -83,7 +86,7 @@ export function contentTypeToResource(row: ContentTypeRow): ResourceDefinition |
     key: `content:${slug}`,
     kind: 'content',
     cardinality: 'collection',
-    label: String(row.name ?? slug),
+    label: String(row.display_name ?? row.name ?? slug),
     schema,
     storage: { adapter: 'content', contentType: slug, contentTypeId: row.id ? String(row.id) : undefined },
     capabilities: { publishing: true, ordering: true },

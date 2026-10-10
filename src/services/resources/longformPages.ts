@@ -50,9 +50,10 @@ function chromeImports(files: Record<string, string>): { lines: string[]; nav: s
   const lines: string[] = [];
   let nav: string | null = null;
   let footer: string | null = null;
-  for (const m of home.matchAll(/^import\s+(\w+)\s+from\s+['"]([^'"]+)['"];?\s*$/gm)) {
-    if (/Nav/.test(m[1]) && !nav) { nav = m[1]; lines.push(m[0].trim()); }
-    else if (/Footer/.test(m[1]) && !footer) { footer = m[1]; lines.push(m[0].trim()); }
+  for (const m of home.matchAll(/^import\s+(?:(\w+)|\{\s*(\w+)\s*\})\s+from\s+['"]([^'"]+)['"];?\s*$/gm)) {
+    const name = m[1] || m[2];
+    if (/Nav/.test(name) && !nav) { nav = name; lines.push(m[0].trim()); }
+    else if (/Footer/.test(name) && !footer) { footer = name; lines.push(m[0].trim()); }
   }
   return { lines, nav, footer };
 }
@@ -141,6 +142,15 @@ export function linkReadButtons(files: Record<string, string>, title: string, hr
   const titleRe = new RegExp(esc, 'i');
   for (const [path, src] of Object.entries(files)) {
     if (path === skip || !/^\/src\/(pages|project-components)\/.*\.tsx$/.test(path)) continue;
+    // Data-driven listings: entries live in an array (title/slug) and cards
+    // render {item.title}; link each read control to base/{item.slug}.
+    const dataEntry = src.search(new RegExp(`title\\s*:\\s*['"\`]${esc}`, 'i'));
+    if (dataEntry >= 0 && /\bslug\s*:/.test(src)) {
+      const base = href.replace(/\/[^/]+$/, '');
+      const next = linkDataDrivenReads(src, base);
+      if (next !== src) out[path] = next;
+      continue;
+    }
     const at = src.search(titleRe);
     if (at < 0) continue;
     const window = src.slice(at, at + 2500);
@@ -185,7 +195,7 @@ export function planLongformPage(args: {
   return { pageId, title, path, filePath, files: { [filePath]: page, ...linked }, linkedFiles: Object.keys(linked) };
 }
 
-export interface FoundLongform { kind: LongformKind; title: string; excerpt?: string; category?: string; date?: string; readTime?: string; file: string }
+export interface FoundLongform { kind: LongformKind; title: string; slug?: string; author?: string; excerpt?: string; category?: string; date?: string; readTime?: string; file: string }
 
 const lastMatch = (re: RegExp, s: string) => { let m: RegExpExecArray | null; let last: RegExpExecArray | null = null; const g = new RegExp(re.source, re.flags.includes('g') ? re.flags : re.flags + 'g'); while ((m = g.exec(s))) last = m; return last; };
 const clean = (t: string) => t.replace(/\s+/g, ' ').trim();
@@ -200,6 +210,30 @@ export function extractLongformFromSource(files: Record<string, string>): FoundL
   const seen = new Set<string>();
   for (const [file, src] of Object.entries(files)) {
     if (!/^\/src\/pages\/.*\.tsx$/.test(file)) continue;
+    const readMatch = src.match(new RegExp(READ_LABEL.source, 'i'));
+    if (readMatch && !/learn\s+more/i.test(readMatch[0]) && /\bslug\s*:/.test(src)) {
+      // Data-driven listing: read entries from the array literal.
+      const kind: LongformKind = /case\s+study|project|story/i.test(readMatch[0]) || /\/(Work|CaseStudies|Portfolio|Projects)\.tsx$/.test(file) ? 'case-studies' : 'articles';
+      const field = (chunk: string, k: string) => chunk.match(new RegExp(`\\b${k}\\s*:\\s*['"\`]([^'"\`]+)['"\`]`))?.[1];
+      const parts = src.split(/\btitle\s*:\s*(?=['"`])/).slice(1);
+      for (const part of parts) {
+        const title = clean(part.match(/^['"`]([^'"`]{6,200})['"`]/)?.[1] ?? '');
+        if (!title || seen.has(title.toLowerCase())) continue;
+        const chunk = part.slice(0, 1500).split(/\n\s*\},?\s*\n\s*\{/)[0];
+        if (!field(chunk, 'slug')) continue;
+        seen.add(title.toLowerCase());
+        out.push({
+          kind, title, file,
+          slug: field(chunk, 'slug'),
+          excerpt: field(chunk, 'excerpt') ?? field(chunk, 'summary') ?? field(chunk, 'description'),
+          category: field(chunk, 'category'),
+          date: field(chunk, 'publishedDate') ?? field(chunk, 'date'),
+          readTime: field(chunk, 'readTime'),
+          author: field(chunk, 'name'),
+        });
+      }
+      if (out.some((f) => f.file === file)) continue;
+    }
     const re = new RegExp(READ_LABEL.source, 'gi');
     let m: RegExpExecArray | null;
     while ((m = re.exec(src))) {
@@ -225,4 +259,61 @@ export function extractLongformFromSource(files: Record<string, string>): FoundL
     }
   }
   return out;
+}
+
+/** Turns each data-driven read control into a Link to `${base}/${var.slug}`. */
+export function linkDataDrivenReads(src: string, base: string): string {
+  const re = new RegExp(READ_LABEL.source, 'gi');
+  let out = src;
+  let offset = 0;
+  let m: RegExpExecArray | null;
+  const original = src;
+  while ((m = re.exec(original))) {
+    if (/learn\s+more/i.test(m[0])) continue;
+    const labelAbs = m.index + offset;
+    const before = out.slice(Math.max(0, labelAbs - 4000), labelAbs);
+    const v = lastMatch(/\{\s*(\w+)\.title\s*\}/, before)?.[1];
+    if (!v) continue;
+    const tags = ['<Link', '<a', '<button', '<div', '<span'];
+    const open = Math.max(...tags.map((t) => out.lastIndexOf(t, labelAbs)));
+    const close = out.indexOf('>', open);
+    if (open < 0 || close < 0 || close > labelAbs) continue;
+    let start = open;
+    let tagName = out.slice(open + 1).match(/^\w+/)?.[0] ?? '';
+    // A bare <span> wrapping only the label: link its parent control instead.
+    if (tagName === 'span') {
+      const parent = Math.max(...['<Link', '<a', '<button', '<div'].map((t) => out.lastIndexOf(t, open - 1)));
+      const parentClose = out.indexOf('>', parent);
+      if (parent < 0 || parentClose > open || out.slice(parentClose + 1, open).trim()) continue;
+      start = parent;
+      tagName = out.slice(parent + 1).match(/^\w+/)?.[0] ?? '';
+    }
+    const res = replaceTag(out, start, tagName, v, base);
+    if (!res) continue;
+    offset += res.length - out.length;
+    out = res;
+  }
+  return out;
+}
+
+function replaceTag(out: string, open: number, tagName: string, v: string, base: string): string | null {
+  const close = out.indexOf('>', open);
+  const tag = out.slice(open, close + 1);
+  if (tag.includes('data-ut-intent="nav.goto"')) return null;
+  const attrs = tag
+    .replace(/^<\w+/, '')
+    .replace(/\s*\/?>$/, '')
+    .replace(/\s(?:href|to)=(?:"[^"]*"|\{[^}]*\})/g, '')
+    .replace(/\sonClick=\{[^}]*\}/g, '');
+  const target = `{\`${base}/\${${v}.slug}\`}`;
+  const link = `<Link to=${target} data-ut-intent="nav.goto" data-ut-path=${target}${attrs}>`;
+  if (tagName === 'Link') return out.slice(0, open) + link + out.slice(close + 1);
+  // Rename the matching close tag (first one after open with no nested same tag).
+  const endTag = `</${tagName}>`;
+  const end = out.indexOf(endTag, close);
+  const nested = out.slice(close + 1, end).includes(`<${tagName}`);
+  if (end < 0 || nested) return null;
+  let next = out.slice(0, open) + link + out.slice(close + 1, end) + '</Link>' + out.slice(end + endTag.length);
+  if (!/import\s*\{[^}]*\bLink\b[^}]*\}\s*from\s*['"]react-router-dom['"]/.test(next)) next = `import { Link } from 'react-router-dom';\n` + next;
+  return next;
 }
