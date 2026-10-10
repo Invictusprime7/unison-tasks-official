@@ -4761,6 +4761,56 @@ export type Database = {
         }
         Relationships: []
       }
+      site_profiles: {
+        Row: {
+          business_id: string
+          overrides: Json
+          project_id: string
+          updated_at: string
+        }
+        Insert: {
+          business_id: string
+          overrides?: Json
+          project_id: string
+          updated_at?: string
+        }
+        Update: {
+          business_id?: string
+          overrides?: Json
+          project_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_profiles_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "business_storefronts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "site_profiles_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "site_profiles_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "site_profiles_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       site_revisions: {
         Row: {
           backend_ops_applied: Json

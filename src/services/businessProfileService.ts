@@ -157,3 +157,56 @@ export async function saveBusinessProfile(
 export function scoreProfile(profile: BusinessProfileDTO): ProfileCompletenessReport {
   return scoreProfileCompleteness(profile);
 }
+
+// ── Guidebook §15 / §43: account identity vs. per-site profile ──────────────
+/** Fields owned by the business account; never overridden per site. */
+export const ACCOUNT_IDENTITY_FIELDS = [
+  'name', 'slug', 'industry', 'timezone', 'notificationEmail', 'notificationPhone', 'settings',
+] as const;
+/** Fields a site may present differently from the account. */
+export const SITE_PROFILE_FIELDS = [
+  'tagline', 'description', 'logoUrl', 'brandColor', 'website', 'phone', 'email', 'address', 'hours', 'socialLinks',
+] as const;
+type SiteField = typeof SITE_PROFILE_FIELDS[number];
+
+export function splitProfilePatch(patch: BusinessProfilePatch) {
+  const account: BusinessProfilePatch = {};
+  const site: Partial<Pick<BusinessProfileDTO, SiteField>> = {};
+  for (const [k, v] of Object.entries(patch)) {
+    if ((SITE_PROFILE_FIELDS as readonly string[]).includes(k)) (site as Record<string, unknown>)[k] = v;
+    else (account as Record<string, unknown>)[k] = v;
+  }
+  return { account, site };
+}
+
+export function mergeSiteProfile(base: BusinessProfileDTO, overrides: unknown): BusinessProfileDTO {
+  const o = asObject<Record<string, unknown>>(overrides, {});
+  const merged = { ...base } as Record<string, unknown>;
+  for (const f of SITE_PROFILE_FIELDS) if (f in o) merged[f] = o[f];
+  return merged as unknown as BusinessProfileDTO;
+}
+
+/** Account identity merged with this site's own profile overrides. */
+export async function loadSiteProfile(businessId: string, projectId?: string | null): Promise<BusinessProfileDTO | null> {
+  const base = await loadBusinessProfile(businessId);
+  if (!base || !projectId) return base;
+  const { data } = await supabase.from('site_profiles').select('overrides').eq('project_id', projectId).maybeSingle();
+  return data ? mergeSiteProfile(base, data.overrides) : base;
+}
+
+/** Account fields → permission-checked business command; site fields → this site only. */
+export async function saveSiteProfile(
+  businessId: string, projectId: string | null | undefined, patch: BusinessProfilePatch,
+): Promise<BusinessProfileDTO | null> {
+  if (!projectId) return saveBusinessProfile(businessId, patch);
+  const { account, site } = splitProfilePatch(patch);
+  if (Object.keys(account).length) await saveBusinessProfile(businessId, account);
+  if (Object.keys(site).length) {
+    const { data: cur } = await supabase.from('site_profiles').select('overrides').eq('project_id', projectId).maybeSingle();
+    const overrides = { ...asObject<Record<string, unknown>>(cur?.overrides, {}), ...site };
+    const { error } = await supabase.from('site_profiles')
+      .upsert({ project_id: projectId, business_id: businessId, overrides: overrides as never }, { onConflict: 'project_id' });
+    if (error) throw new Error(error.message || 'This site’s details could not be saved.');
+  }
+  return loadSiteProfile(businessId, projectId);
+}
