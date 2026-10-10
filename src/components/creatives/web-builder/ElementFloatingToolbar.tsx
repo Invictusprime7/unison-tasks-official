@@ -40,6 +40,8 @@ import {
 import { buildWebBuilderAIContext } from '@/utils/aiAssistantContext';
 import { buildCatalogContext, renderCatalogContextForPrompt, type SelectedSectionRef } from '@/utils/catalogContext';
 import runBuilderTurn from '@/services/builderBrainClient';
+import { useToolbarCommands } from './toolbarCommandAdapter';
+import type { EditorTarget } from '@/services/editor/editorCommandTypes';
 
 interface SelectedElement {
   tagName?: string;
