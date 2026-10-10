@@ -1831,11 +1831,12 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
                       })!,
                       current: buildCanonicalCommitCurrent(beforeFiles, snapshot),
                       patch,
-                      // Capability installs change backend behaviour: these keep the gates on.
+                      // The preview must stay valid, but unrelated unwired buttons (or the
+                      // ones this install is about to wire) only block publishing.
                       options: {
                         ...buildCommitOptions(snapshot),
                         requirePreviewPass: true,
-                        requireReadinessPass: true,
+                        requireReadinessPass: false,
                       },
                     });
                     recordCanonicalVfsAdoption({

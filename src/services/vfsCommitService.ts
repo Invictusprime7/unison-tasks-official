@@ -1056,7 +1056,9 @@ export async function commitMutation(
 
   // 6. Auto-repair-then-hard-reject -----------------------------------------
   let status: 'committed' | 'rejected' = 'committed';
-  let preExecutionReady = previewOk && readinessOk;
+  // Callers that opt out of readiness (capability installs, restores) still run
+  // their backend ops: the install is what clears those readiness blockers.
+  let preExecutionReady = previewOk && (readinessOk || !requireReadiness);
   if ((requirePreview && !previewOk) || (requireReadiness && !readinessOk)) {
     log('repair', 'warn', 'running single auto-repair pass');
     try {
@@ -1107,7 +1109,7 @@ export async function commitMutation(
         backendOpsFailed: backendOpsReport?.failedCount ?? 0,
       });
     } else {
-      preExecutionReady = previewOk2 && readinessOk2;
+      preExecutionReady = previewOk2 && (readinessOk2 || !requireReadiness);
       log('repair', 'info', 'auto-repair recovered the commit');
     }
   }
