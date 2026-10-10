@@ -46,7 +46,7 @@ export const catalogResourceAdapter: ResourceAdapter = {
 /** Flatten a content entry: its field values live in `data`, lifecycle stays visible. */
 export function flattenContentEntry(r: Record<string, unknown>): ResourceRecord {
   const data = r.data && typeof r.data === 'object' ? (r.data as Record<string, unknown>) : {};
-  return { ...data, id: String(r.id ?? ''), status: r.status, slug: r.slug, title: r.title ?? data.title };
+  return { ...data, id: String(r.id ?? ''), status: r.status, slug: r.slug ?? data.slug, title: r.title ?? data.title };
 }
 
 export const contentResourceAdapter: ResourceAdapter = {
