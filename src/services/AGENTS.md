@@ -8,3 +8,5 @@
 - `commitMutation` refuses to persist a revision that drops a non-empty `/src/App.tsx` present in its parent unless `explicitAuthorityReset` is set; why: blank saves must never become the accepted revision.
 - Playground "Manage → Assets" is a read-only projection (`resources/assetCatalog.ts`) over the Resource Runtime; launch seeds planned catalog items/business details once via `resources/seedLaunchAssets.ts`. Why: one editor path, no parallel asset store.
 - Article/case-study pages are built deterministically by `resources/longformPages.ts` and committed with an `add_page` route op; why: AI-prompted page creation timed out on large sites.
+- Backend per site is chosen only by `project-backend/projectBackendResolver.ts`; catalog/content rows carry `project_id`, written and filtered by `cms-records`/`site-runtime-read`. Why: sites under one business must not share saved items.
+- Editing surfaces issue `EditorCommand`s via `editor/editorCommandService.ts`, routed per property to ResourceRuntime or host `commitMutation` executors. Why: one editing protocol, no parallel writer.

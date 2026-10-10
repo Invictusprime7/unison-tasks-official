@@ -24,6 +24,4 @@
 - Builder save surfaces serialise through `src/services/builder/builderMutationCoordinator.ts` (queue, autosave pause, fingerprint rebase of non-overlapping AI candidates); `aiApplyGate` keeps the strict stale check. Why: concurrent autosaves made AI edits fail as "stale" without one coordinator.
 - Code-terminal file commands emit FileOps to `onPatch` and the host commits them via `commitBuilderFiles` inside `runExclusive('terminal')`; the terminal never writes the VFS itself. Why: the old `onWriteFile` → `importFiles` path bypassed save, checkpoints and the coordinator.
 - Catalog, content and business profile go through `src/services/resources/resourceRuntime.ts`; why: one edit path, separate tables.
-
-- A site's backend is chosen only by `src/services/project-backend/projectBackendResolver.ts` (guidebook 2026-10-09 §64), and every catalog/content row carries `project_id`, written and filtered by `cms-records`/`site-runtime-read`; why: sites under one business must never see each other's saved items.
-- All editing surfaces (inline, toolbar, inspector, AI, command palette) issue `EditorCommand`s through `src/services/editor/editorCommandService.ts`, which routes per property to ResourceRuntime or the host's `commitMutation`-backed executors; why: one editing protocol, no parallel writer.
+- Site-isolated backend and editor-command rules live in `src/services/AGENTS.md`.
