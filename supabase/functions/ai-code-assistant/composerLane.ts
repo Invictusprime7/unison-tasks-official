@@ -59,7 +59,7 @@ Optional lines: DEPENDENCIES: a,b   INTENTS: x,y
 Optional typed topology line (single-line JSON): ROUTE_OPS: [{"type":"add_page","pageId":"pricing","title":"Pricing","route":"/pricing","pageType":"pricing","showInNav":true}]
 Every create/replace carries the COMPLETE file contents. Output nothing else.
 
-TASK builder_source_edit: for an EXISTING file in FILES, prefer an EDIT block over replace — return only the changed regions, never the whole file:
+TASK builder_source_edit: for an EXISTING file in FILES you MUST use an EDIT block — FILE replace (or FILE create) on an existing file is rejected. Return only the changed regions, never the whole file:
 <<<EDIT /src/path/File.tsx
 <<<<<<< SEARCH
 <exact lines copied verbatim from FILES, unique in that file>
@@ -67,7 +67,15 @@ TASK builder_source_edit: for an EXISTING file in FILES, prefer an EDIT block ov
 <new lines>
 >>>>>>> REPLACE
 >>>END
-An EDIT block may hold several SEARCH/REPLACE pairs. Use FILE create for new files.`;
+An EDIT block may hold several SEARCH/REPLACE pairs. Use FILE create only for files that do not exist yet.
+PAGE CREATION (when the request asks to create/add pages): write each new page with FILE create under /src/pages/, add one ROUTE_OPS add_page entry per page, and EDIT only the nav/footer link lines that must point at them. Never rewrite or edit other existing pages.`;
+
+/** Deterministic: does the instruction ask for new pages? */
+export function isPageCreationRequest(instruction: string | undefined): boolean {
+  return /\b(create|add|make|build|generate|scaffold)\b[^.\n]{0,80}\bpages?\b/i.test(instruction ?? '');
+}
+
+const CHROME_PATH = /^\/src\/project-components\/site\//;
 
 const FILE_BLOCK = /<<<FILE\s+(create|replace)\s+(\S+)[ \t]*\r?\n([\s\S]*?)\r?\n?>>>END/g;
 const DELETE_BLOCK = /<<<DELETE\s+(\S+)/g;
@@ -103,10 +111,15 @@ export function applyEditHunks(path: string, source: string, body: string): stri
   return next;
 }
 
-export function parseFileBlocks(raw: string, files: Record<string, string> = {}): unknown {
+export function parseFileBlocks(raw: string, files: Record<string, string> = {}, strictEdits = false): unknown {
   const text = raw ?? '';
   const fileOps: Array<Record<string, string>> = [];
-  for (const m of text.matchAll(FILE_BLOCK)) fileOps.push({ type: m[1], path: m[2], content: stripFence(m[3]) });
+  for (const m of text.matchAll(FILE_BLOCK)) {
+    if (strictEdits && files[m[2]] !== undefined) {
+      throw new Error(`EDIT ${m[2]}: this file already exists — return only its changed lines in an EDIT block, not FILE ${m[1]}`);
+    }
+    fileOps.push({ type: m[1], path: m[2], content: stripFence(m[3]) });
+  }
   for (const m of text.matchAll(EDIT_BLOCK)) {
     const path = m[1];
     const prior = fileOps.find((op) => op.path === path && op.content !== undefined)?.content ?? files[path];
@@ -133,8 +146,15 @@ export function parseFileBlocks(raw: string, files: Record<string, string> = {})
   return out;
 }
 
+/** Page creation reads only the style-reference target and shared chrome. */
+function filesForTurn(req: AIComposerRequest): Record<string, string> {
+  if (req.task !== 'builder_source_edit' || !isPageCreationRequest(req.instruction)) return req.files;
+  return Object.fromEntries(Object.entries(req.files)
+    .filter(([p]) => p === req.page.filePath || CHROME_PATH.test(p)));
+}
+
 function renderUser(req: AIComposerRequest): string {
-  const files = Object.entries(req.files).map(([p, c]) => `--- ${p}\n${c}`).join('\n\n');
+  const files = Object.entries(filesForTurn(req)).map(([p, c]) => `--- ${p}\n${c}`).join('\n\n');
   const parts = [
     `TASK: ${req.task}`,
     `TARGET PAGE: ${req.page.title} (${req.page.role}) route=${req.page.route} file=${req.page.filePath}`,
@@ -154,8 +174,8 @@ function renderUser(req: AIComposerRequest): string {
   return parts.filter(Boolean).join('\n\n');
 }
 
-function extractJson(raw: string, files: Record<string, string> = {}): unknown {
-  if (/<<<(FILE|DELETE|EDIT)/.test(raw ?? '')) return parseFileBlocks(raw, files);
+function extractJson(raw: string, files: Record<string, string> = {}, strictEdits = false): unknown {
+  if (/<<<(FILE|DELETE|EDIT)/.test(raw ?? '')) return parseFileBlocks(raw, files, strictEdits);
   const text = (raw ?? '').trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
   try { return JSON.parse(text); } catch { /* fall through */ }
   const start = text.indexOf('{'), end = text.lastIndexOf('}');
@@ -182,11 +202,11 @@ export async function runComposerLane(context: string, headers: Record<string, s
       return respond({ error: result.earlyError.error, errorType: 'composer_provider' }, result.earlyError.status);
     }
     let value: unknown;
-    try { value = extractJson(result.content, req.files); } catch (err) {
+    try { value = extractJson(result.content, req.files, req.task === 'builder_source_edit'); } catch (err) {
       const why = err instanceof Error && err.message.startsWith('EDIT ') ? err.message : '';
       lastError = why || 'Composer response was not JSON';
       messages.push({ role: 'assistant', content: (result.content ?? '').slice(0, 4000) },
-        { role: 'user', content: why ? `${why}. Copy SEARCH lines exactly from FILES, or return that file as FILE replace.` : 'That output could not be parsed. Return ONLY the file-block format (SUMMARY line, then <<<FILE ... >>>END blocks with complete raw files).' });
+        { role: 'user', content: why ? `${why}. Copy SEARCH lines exactly from FILES and return only the changed lines in EDIT blocks.` : 'That output could not be parsed. Return ONLY the file-block format (SUMMARY line, then <<<FILE ... >>>END blocks with complete raw files).' });
       continue;
     }
     const checked = aiComposerResponseSchema.safeParse(value);
@@ -199,6 +219,13 @@ export async function runComposerLane(context: string, headers: Record<string, s
       continue;
     }
     const scope = composerScopeViolations(req.task, req.page.filePath, checked.data.fileOps);
+    if (req.task === 'builder_source_edit' && isPageCreationRequest(req.instruction)) {
+      for (const op of checked.data.fileOps) {
+        if (op.type !== 'create' && op.path.startsWith('/src/pages/') && req.files[op.path] !== undefined) {
+          scope.push(`${op.path}: existing page — page creation must not modify other pages`);
+        }
+      }
+    }
     if (scope.length) {
       lastError = 'Composer wrote outside its allowed scope';
       messages.push({ role: 'assistant', content: (result.content ?? '').slice(0, 4000) }, {
