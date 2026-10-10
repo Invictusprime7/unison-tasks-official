@@ -90,6 +90,8 @@ export interface ResourceInvalidation {
   resourceKey: string;
   kind: ResourceKind;
   businessId: string;
+  /** Owning site; live previews of other sites ignore the invalidation. */
+  projectId?: string | null;
   recordIds: string[];
   /** Storage tables touched, so live sections bound to them refresh (and only them). */
   sourceTables?: string[];

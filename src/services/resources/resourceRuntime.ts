@@ -9,6 +9,7 @@ import { vfsEventBus } from '@/services/vfsEventBus';
 import { emitAgentEvent } from '@/services/agent-runtime/agentEvents';
 import { RESOURCE_ADAPTERS, filterWritableValues } from './resourceAdapters';
 import { getResource } from './resourceRegistry';
+import { withProjectBackend } from '@/services/project-backend/projectBackendGateway';
 import type {
   ResourceContext, ResourceDataOp, ResourceDefinition, ResourceEntityRef, ResourceInvalidation, ResourceRecord,
 } from './resourceTypes';
@@ -38,12 +39,12 @@ export function onResourceInvalidated(listener: (inv: ResourceInvalidation) => v
 
 export async function queryResource(key: string, ctx: ResourceContext): Promise<ResourceRecord[]> {
   const def = defOrThrow(key);
-  return RESOURCE_ADAPTERS[def.storage.adapter].query(def, ctx);
+  return withProjectBackend(ctx.projectId, () => RESOURCE_ADAPTERS[def.storage.adapter].query(def, ctx));
 }
 
 export async function getResourceRecord(key: string, ctx: ResourceContext, id: string): Promise<ResourceRecord | null> {
   const def = defOrThrow(key);
-  return RESOURCE_ADAPTERS[def.storage.adapter].get(def, ctx, id);
+  return withProjectBackend(ctx.projectId, () => RESOURCE_ADAPTERS[def.storage.adapter].get(def, ctx, id));
 }
 
 /** Validate an op against the schema without touching storage. */
@@ -68,12 +69,14 @@ export async function applyResourceOp(op: ResourceDataOp, ctx: ResourceContext):
   if (v.ok === false) throw new Error(v.reason);
   const { def } = v;
   const adapter = RESOURCE_ADAPTERS[def.storage.adapter];
-  let result: ResourceRecord | null = null;
-  if (op.op === 'create') result = await adapter.create(def, ctx, filterWritableValues(def, op.values));
-  else if (op.op === 'update') result = await adapter.update(def, ctx, op.ref.recordId, filterWritableValues(def, op.values));
-  else await adapter.delete!(def, ctx, op.ref.recordId);
+  const result = await withProjectBackend(ctx.projectId, async () => {
+    if (op.op === 'create') return adapter.create(def, ctx, filterWritableValues(def, op.values));
+    if (op.op === 'update') return adapter.update(def, ctx, op.ref.recordId, filterWritableValues(def, op.values));
+    await adapter.delete!(def, ctx, op.ref.recordId);
+    return null;
+  });
   const recordId = op.op === 'create' ? result?.id ?? '' : op.ref.recordId;
-  invalidateResource({ resourceKey: def.key, kind: def.kind, businessId: ctx.businessId, recordIds: recordId ? [recordId] : [], sourceTables: def.storage.table ? [def.storage.table] : undefined });
+  invalidateResource({ resourceKey: def.key, kind: def.kind, businessId: ctx.businessId, projectId: ctx.projectId ?? null, recordIds: recordId ? [recordId] : [], sourceTables: def.storage.table ? [def.storage.table] : undefined });
   emitAgentEvent({ kind: 'data_change', message: `${op.op === 'create' ? 'Added to' : op.op === 'update' ? 'Updated' : 'Removed from'} ${def.label}`, status: 'ok' });
   return result;
 }
