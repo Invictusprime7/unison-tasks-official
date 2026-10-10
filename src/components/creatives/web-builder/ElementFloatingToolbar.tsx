@@ -409,9 +409,21 @@ export const ElementFloatingToolbar: React.FC<ElementFloatingToolbarProps> = ({
     if (imageInputRef.current) imageInputRef.current.value = '';
   }, [element]);
 
+  // Every toolbar action goes through the shared EditorCommandService (§25):
+  // lane resolution + capability check first, host commit handlers second.
+  const runCommand = useToolbarCommands(
+    { onUpdateStyles, onUpdateText, onUpdateAttributes, onReplaceImage, onDelete, onDuplicate, onMoveUp, onMoveDown },
+    { businessId: businessId ?? undefined, projectId: projectId ?? undefined },
+  );
+
   if (!element || !element.selector) return null;
 
   const selector = element.selector;
+  const target: EditorTarget = {
+    selector,
+    pagePath: activePagePath ?? undefined,
+    resourceMark: element.attributes?.['data-ut-resource'] ?? null,
+  };
   const styles = element.styles || {};
   const isImage = element.tagName?.toLowerCase() === 'img';
   const backgroundImage = styles.backgroundImage || '';
