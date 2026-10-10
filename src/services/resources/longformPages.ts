@@ -1,3 +1,4 @@
+import { deriveFilePath } from '@/services/routeNavigationService';
 /**
  * Longform pages — deterministic page + button wiring for saved Articles and
  * Case studies (any industry). Pure: returns the files and route op that the
@@ -36,13 +37,9 @@ export function longformBase(kind: LongformKind, existingPaths: string[], indust
 }
 
 /** Mirrors routeNavigationService.deriveFilePath for non-home pages. */
+/** Same naming the save step derives for a new route, so the page file is found. */
 export function filePathForRoute(route: string): string {
-  const slug = route.replace(/^\//, '') || 'custom';
-  const name = slug
-    .replace(/[-_\s/]+(.)/g, (_: string, c: string) => c.toUpperCase())
-    .replace(/^(.)/, (_: string, c: string) => c.toUpperCase())
-    .replace(/[^a-zA-Z0-9]/g, '') || 'Page';
-  return `/src/pages/${name}.tsx`;
+  return deriveFilePath({ path: route } as Parameters<typeof deriveFilePath>[0]);
 }
 
 function chromeImports(files: Record<string, string>): { lines: string[]; nav: string | null; footer: string | null } {
@@ -116,7 +113,7 @@ export const ${component} = () => {
           {ENTRY.image && <img src={ENTRY.image} alt={ENTRY.name} className="mt-10 w-full rounded-lg object-cover aspect-[16/9]" data-ut-resource="${mark('image_url')}" />}
           {ENTRY.results && <p className="mt-10 border-y border-border py-6 text-lg font-medium" data-ut-resource="${mark('results')}">{ENTRY.results}</p>}
           <div className="mt-10" data-ut-resource="${mark('body')}">
-            {ENTRY.body ? renderBody(ENTRY.body) : <p className="text-muted-foreground">Full text coming soon.</p>}
+            {ENTRY.body ? renderBody(ENTRY.body) : null}
           </div>
         </article>
       </main>

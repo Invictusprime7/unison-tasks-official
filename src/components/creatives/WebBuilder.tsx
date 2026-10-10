@@ -3259,9 +3259,10 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
         identity: commitIdentity,
         current: buildCanonicalCommitCurrent(beforeFiles, snapshot),
         patch: {
-          ...(options.fileOps?.length || options.routeOps?.length
-            ? { ...legacyFilesToPatchPlan({}, options.summary ?? 'Builder edit'), fileOps: options.fileOps ?? [] }
-            : legacyFilesToPatchPlan(files, options.summary ?? 'Builder edit')),
+          // fileOps override `files`; route ops alone keep the new page files alongside them.
+          ...(options.fileOps?.length
+            ? { ...legacyFilesToPatchPlan({}, options.summary ?? 'Builder edit'), fileOps: options.fileOps }
+            : legacyFilesToPatchPlan(files ?? {}, options.summary ?? 'Builder edit')),
           ...(options.routeOps?.length ? { routeOps: options.routeOps } : {}),
         },
         options: buildCommitOptions(snapshot),
@@ -7511,13 +7512,18 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
             const changed: Record<string, string> = {};
             const routeOps: TopologyChange[] = [];
             const linked: string[] = [];
+            // Earlier article/case pages saved without a page kind block every save; replace them.
+            for (const pg of Object.values(registry)) {
+              if (/^(article|case)-/.test(pg.pageId) && pg.pageType === 'custom') routeOps.push({ type: 'remove_page', pageId: pg.pageId });
+            }
             for (const item of items) {
               const plan = planLongformPage({ ...item, files, existingPaths: paths, industry: effectiveRouteState?.wizardSelections?.industryOverlay || null });
               Object.assign(files, plan.files);
               Object.assign(changed, plan.files);
               linked.push(...plan.linkedFiles);
-              const exists = Object.values(registry).some((pg) => pg.path === plan.path) || routeOps.some((op) => op.route === plan.path);
-              if (!exists) routeOps.push({ type: 'add_page', pageId: plan.pageId, title: plan.title, route: plan.path, pageType: 'custom', showInNav: false, createdBy: 'manual' });
+              const removed = new Set(routeOps.filter((op) => op.type === 'remove_page').map((op) => op.pageId));
+              const exists = Object.values(registry).some((pg) => pg.path === plan.path && !removed.has(pg.pageId)) || routeOps.some((op) => op.route === plan.path);
+              if (!exists) routeOps.push({ type: 'add_page', pageId: plan.pageId, title: plan.title, route: plan.path, pageType: item.kind === 'articles' ? 'blog' : 'gallery', showInNav: false, createdBy: 'manual' });
             }
             const label = items.length === 1 ? `"${String(items[0].record.name ?? items[0].record.title ?? 'item')}"` : `${items.length} items`;
             const committed = await commitBuilderFiles(changed, {

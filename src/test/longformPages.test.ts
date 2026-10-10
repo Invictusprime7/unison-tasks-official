@@ -21,7 +21,7 @@ describe('longform pages', () => {
     expect(longformBase('articles', ['/'], 'salon')).toBe('/blog');
     expect(longformBase('articles', ['/'], 'agency')).toBe('/insights');
     expect(longformBase('case-studies', ['/case-studies'], 'law')).toBe('/case-studies');
-    expect(filePathForRoute('/insights/the-sovereign-brand')).toBe('/src/pages/InsightsTheSovereignBrand.tsx');
+    expect(filePathForRoute('/insights/the-sovereign-brand')).toBe('/src/pages/InsightstheSovereignBrand.tsx');
   });
 
   it('builds the page with site chrome and links only that read button', () => {

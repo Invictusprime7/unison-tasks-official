@@ -13,7 +13,7 @@ import { RecordFieldsEditor } from "../RecordFieldsEditor";
 import { listContentTypes, transitionContentRecord } from "@/services/cmsRecordService";
 import { supabase } from "@/integrations/supabase/client";
 import { registerContentTypes, BUSINESS_PROFILE_RESOURCE_KEY, type ContentTypeRow } from "@/services/resources/resourceRegistry";
-import { applyResourceOp, onResourceInvalidated, queryResource } from "@/services/resources/resourceRuntime";
+import { applyResourceOp, getResourceRecord, onResourceInvalidated, queryResource } from "@/services/resources/resourceRuntime";
 import type { ResourceRecord } from "@/services/resources/resourceTypes";
 import {
   buildRenderedResourceIndex, isRelevantAsset, listAssetTypes, listSiteImages, type AssetType,
@@ -162,7 +162,8 @@ function LongformActions({ type, record, businessId, projectId, onPublish }: { t
   const write = async () => {
     setBusy(true);
     try {
-      const brief = [`Title: ${title}`, record.category && `Category: ${record.category}`, record.client && `Client: ${record.client}`, record.excerpt && `Summary: ${record.excerpt}`, record.results && `Results: ${record.results}`].filter(Boolean).join("\n");
+      const rec = (await getResourceRecord(type.key, { businessId, projectId, mode: "builder" }, record.id).catch(() => null)) ?? record;
+      const brief = [`Title: ${title}`, rec.category && `Category: ${record.category}`, record.client && `Client: ${record.client}`, record.excerpt && `Summary: ${record.excerpt}`, record.results && `Results: ${record.results}`].filter(Boolean).join("\n");
       const { data, error } = await supabase.functions.invoke("copy-rewrite", { body: { text: brief, purpose: "article", tone: "authoritative" } });
       if (error || !data?.rewrittenText) throw new Error(data?.error || error?.message || "No text came back");
       await applyResourceOp({ op: "update", ref: { resourceKey: type.key, kind: "content", recordId: record.id }, values: { body: data.rewrittenText, slug } }, { businessId, projectId, mode: "builder" });
@@ -175,7 +176,11 @@ function LongformActions({ type, record, businessId, projectId, onPublish }: { t
   const page = async () => {
     if (!onPublish) return;
     setBusy(true);
-    try { await onPublish([{ record: { ...record, slug }, kind: isArticle ? "articles" : "case-studies", resourceKey: type.key }]); }
+    try {
+      // List rows omit saved fields (slug, text); load the full item first.
+      const full = (await getResourceRecord(type.key, { businessId, projectId, mode: "builder" }, record.id).catch(() => null)) ?? record;
+      const fullSlug = String(full.slug ?? "") || slug;
+      await onPublish([{ record: { ...full, slug: fullSlug }, kind: isArticle ? "articles" : "case-studies", resourceKey: type.key }]); }
     finally { setBusy(false); }
   };
   return (
@@ -221,7 +226,11 @@ function AssetList({ type, businessId, projectId, liveIndex, onReveal, onPlace, 
         </div>
         <div className="flex items-center gap-1">
           {LONGFORM.test(type.key) && onPublishLongform && rows && rows.length > 0 && (
-            <Button variant="ghost" size="sm" onClick={() => void onPublishLongform(rows.map((record) => ({ record, kind: type.key === "content:articles" ? "articles" : "case-studies", resourceKey: type.key })))}>
+            <Button variant="ghost" size="sm" onClick={async () => {
+              // List rows omit saved fields (slug, text); load each full item first.
+              const full = await Promise.all(rows.map((r) => getResourceRecord(type.key, ctx, r.id).catch(() => null).then((f) => f ?? r)));
+              await onPublishLongform(full.map((record) => ({ record, kind: type.key === "content:articles" ? "articles" : "case-studies", resourceKey: type.key })));
+            }}>
               Create all pages
             </Button>
           )}
