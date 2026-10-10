@@ -18,8 +18,8 @@ import {
 } from 'react';
 import type { BusinessProfileDTO } from '@/types/businessProfile';
 import {
-  loadBusinessProfile,
-  saveBusinessProfile,
+  loadSiteProfile,
+  saveSiteProfile,
   type BusinessProfilePatch,
 } from '@/services/businessProfileService';
 import {
@@ -40,7 +40,7 @@ function broadcastProfile(profile: BusinessProfileDTO | null) {
   }
 }
 
-export function BusinessProfileProvider({ businessId, children }: BusinessProfileProviderProps) {
+export function BusinessProfileProvider({ businessId, projectId, children }: BusinessProfileProviderProps) {
   const [profile, setProfile] = useState<BusinessProfileDTO | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -53,7 +53,7 @@ export function BusinessProfileProvider({ businessId, children }: BusinessProfil
     setLoading(true);
     setError(null);
     try {
-      const p = await loadBusinessProfile(businessId);
+      const p = await loadSiteProfile(businessId, projectId);
       setProfile(p);
       // Mirror into window for VFS preview iframe hydration.
       if (typeof window !== 'undefined') {
@@ -68,12 +68,12 @@ export function BusinessProfileProvider({ businessId, children }: BusinessProfil
     } finally {
       setLoading(false);
     }
-  }, [businessId]);
+  }, [businessId, projectId]);
 
   const patch = useCallback(
     async (p: BusinessProfilePatch) => {
       if (!businessId) return null;
-      const next = await saveBusinessProfile(businessId, p);
+      const next = await saveSiteProfile(businessId, projectId, p);
       if (next) {
         setProfile(next);
         if (typeof window !== 'undefined') {
