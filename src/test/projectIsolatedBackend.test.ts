@@ -53,3 +53,16 @@ describe('Phase 2 — backend resolver', () => {
     expect(() => parseProjectBackendDescriptor({})).toThrow();
   });
 });
+
+import { splitProfilePatch, mergeSiteProfile } from '@/services/businessProfileService';
+describe('Phase 2 — account identity vs site profile', () => {
+  it('routes site fields to the site and identity fields to the account', () => {
+    const { account, site } = splitProfilePatch({ name: 'Acme', tagline: 'Hi', phone: '1' });
+    expect(account).toEqual({ name: 'Acme' });
+    expect(site).toEqual({ tagline: 'Hi', phone: '1' });
+  });
+  it('site overrides never change account identity', () => {
+    const m = mergeSiteProfile({ name: 'Acme', tagline: 'A' } as never, { tagline: 'B', name: 'Hack' });
+    expect(m.tagline).toBe('B'); expect(m.name).toBe('Acme');
+  });
+});
