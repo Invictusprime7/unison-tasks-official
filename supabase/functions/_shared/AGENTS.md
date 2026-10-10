@@ -4,3 +4,4 @@
 
 - Gemini service configuration (2026-10-06): AI_PROVIDER_MODE=gemini-primary explicitly leads launch and builder composition with funded Gemini 3.8 Flash, retaining configured OpenAI and Lovable as fallbacks. Hybrid mode retains the managed-gateway lead described above. GEMINI_COMPOSER_MODEL controls composition; GEMINI_MODEL is the default for unspecified Gemini calls and must not replace explicit fallback model IDs.
 - After a direct Gemini attempt times out, the managed gateway leads composer turns with the full window for 10 minutes (per isolate). Why: a timed-out Gemini lead left the gateway only the deadline tail, so every fallback also timed out.
+- Builder source edits return SEARCH/REPLACE `<<<EDIT` blocks that `composerLane.ts` applies to the request's FILES before validation. Why: rewriting whole files produced 20–30k-token answers that outran the ~122 s provider window.
