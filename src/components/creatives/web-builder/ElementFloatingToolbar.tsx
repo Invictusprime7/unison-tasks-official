@@ -445,21 +445,28 @@ export const ElementFloatingToolbar: React.FC<ElementFloatingToolbarProps> = ({
   const currentColor = styles.color || '#000000';
   const currentBgColor = styles.backgroundColor || 'transparent';
 
-  const updateStyle = (prop: string, value: string) => onUpdateStyles(selector, { [prop]: value });
-  const updateAttributes = (attributes: Record<string, string>) => onUpdateAttributes?.(selector, attributes);
+  const updateStyle = (prop: string, value: string) => {
+    void runCommand({ type: 'set-style', target, styles: { [prop]: value } });
+  };
 
   const replaceImage = (src: string) => {
     const nextSrc = src.trim();
     if (!nextSrc) return;
     if (imageTarget?.kind === 'img') {
-      onReplaceImage(imageTarget.selector || selector, nextSrc);
+      void runCommand({ type: 'replace-asset', target: { ...target, selector: imageTarget.selector || selector }, url: nextSrc });
       return;
     }
-    onUpdateStyles(imageTarget?.selector || selector, { backgroundImage: `url("${nextSrc.replace(/"/g, '%22')}")` });
+    void runCommand({
+      type: 'set-style',
+      target: { ...target, selector: imageTarget?.selector || selector },
+      styles: { backgroundImage: `url("${nextSrc.replace(/"/g, '%22')}")` },
+    });
   };
 
   const handleTextSave = () => {
-    if (editText.trim() !== element.textContent) onUpdateText(selector, editText.trim());
+    if (editText.trim() !== element.textContent) {
+      void runCommand({ type: 'set-text', target, text: editText.trim() });
+    }
     setIsEditingText(false);
   };
 
