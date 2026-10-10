@@ -67,3 +67,5 @@
 - [ ] P0.6-P0.20 per milestone doc
 - [x] Deterministic article/case-study pages + Read button wiring (Create page & link button / Create all pages)
 - [ ] Run it on SPARK (needs user click: Assets → Content → Articles)
+
+- [ ] Direct WYSIWYG + project-isolated backend milestone (guidebook 2026-10-09), following guidebook methods exactly
