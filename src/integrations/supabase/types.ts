@@ -1689,6 +1689,63 @@ export type Database = {
           },
         ]
       }
+      connected_supabase_projects: {
+        Row: {
+          backend_manifest: Json
+          business_id: string
+          created_at: string
+          health_status: Json
+          id: string
+          mode: string
+          project_ref: string | null
+          project_url: string | null
+          provider: string
+          provisioning_status: string
+          publishable_key: string | null
+          schema_version: number
+          secret_key_ciphertext: string | null
+          site_id: string | null
+          unison_project_id: string
+          updated_at: string
+        }
+        Insert: {
+          backend_manifest?: Json
+          business_id: string
+          created_at?: string
+          health_status?: Json
+          id?: string
+          mode?: string
+          project_ref?: string | null
+          project_url?: string | null
+          provider?: string
+          provisioning_status?: string
+          publishable_key?: string | null
+          schema_version?: number
+          secret_key_ciphertext?: string | null
+          site_id?: string | null
+          unison_project_id: string
+          updated_at?: string
+        }
+        Update: {
+          backend_manifest?: Json
+          business_id?: string
+          created_at?: string
+          health_status?: Json
+          id?: string
+          mode?: string
+          project_ref?: string | null
+          project_url?: string | null
+          provider?: string
+          provisioning_status?: string
+          publishable_key?: string | null
+          schema_version?: number
+          secret_key_ciphertext?: string | null
+          site_id?: string | null
+          unison_project_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       content_entries: {
         Row: {
           archived_at: string | null
@@ -5584,6 +5641,7 @@ export type Database = {
         Args: { _project_id: string; _target_business_id: string }
         Returns: undefined
       }
+      resolve_project_backend: { Args: { p_project_id: string }; Returns: Json }
       user_business_role: {
         Args: { _business_id: string; _user_id: string }
         Returns: string
