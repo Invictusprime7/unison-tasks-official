@@ -7512,6 +7512,10 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
             const changed: Record<string, string> = {};
             const routeOps: TopologyChange[] = [];
             const linked: string[] = [];
+            // Earlier article/case pages saved without a page kind block every save; replace them.
+            for (const pg of Object.values(registry)) {
+              if (/^(article|case)-/.test(pg.pageId) && pg.pageType === 'custom') routeOps.push({ type: 'remove_page', pageId: pg.pageId });
+            }
             for (const item of items) {
               const plan = planLongformPage({ ...item, files, existingPaths: paths, industry: effectiveRouteState?.wizardSelections?.industryOverlay || null });
               Object.assign(files, plan.files);
