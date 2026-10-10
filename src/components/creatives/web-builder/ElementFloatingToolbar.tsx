@@ -844,7 +844,7 @@ export const ElementFloatingToolbar: React.FC<ElementFloatingToolbarProps> = ({
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => void runCommand({ type: 'set-visibility', target, visible: isHidden })}
+          onClick={() => void runCommand({ type: 'set-style', target, styles: { display: isHidden ? getDefaultDisplay(element.tagName) : 'none' } })}
           className="h-7 text-xs gap-1 px-2"
           title={isHidden ? 'Show element' : 'Hide element'}
         >
