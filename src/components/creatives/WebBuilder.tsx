@@ -7521,7 +7521,8 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
               Object.assign(files, plan.files);
               Object.assign(changed, plan.files);
               linked.push(...plan.linkedFiles);
-              const exists = Object.values(registry).some((pg) => pg.path === plan.path) || routeOps.some((op) => op.route === plan.path);
+              const removed = new Set(routeOps.filter((op) => op.type === 'remove_page').map((op) => op.pageId));
+              const exists = Object.values(registry).some((pg) => pg.path === plan.path && !removed.has(pg.pageId)) || routeOps.some((op) => op.route === plan.path);
               if (!exists) routeOps.push({ type: 'add_page', pageId: plan.pageId, title: plan.title, route: plan.path, pageType: item.kind === 'articles' ? 'blog' : 'gallery', showInNav: false, createdBy: 'manual' });
             }
             const label = items.length === 1 ? `"${String(items[0].record.name ?? items[0].record.title ?? 'item')}"` : `${items.length} items`;
