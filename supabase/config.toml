@@ -150,3 +150,6 @@ verify_jwt = true
 
 [functions.wizard-site-composer]
 verify_jwt = false
+
+[functions.project-backend]
+verify_jwt = false
