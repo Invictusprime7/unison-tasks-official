@@ -1,38 +1,35 @@
-# Milestone: Direct WYSIWYG + Project-Isolated Backend
+# Milestone: Direct WYSIWYG + Project-Isolated Backend (guidebook 2026-10-09)
 
-Goal: every site's saved items (services, menus, articles, images, bookings, leads, business details) belong to that one site and can never show up on another site, and every way of editing (clicking text, the floating toolbar, the inspector, the AI) goes through one editing path.
+Built exactly to the guidebook's phases, names and file layout. Goal: each site's saved items belong only to that site, and every way of editing (click-to-edit, floating toolbar, inspector, AI, command menu) uses one set of editing commands.
 
-The guidebook has 11 phases. Phases 0–2 and 4–5 can be built now. Phase 3 (creating a separate database per site automatically) needs a Supabase account connection that only you can provide, so it is split out at the end.
+## Phase 0 — Stop new cross-project mixing (§11–14, §77)
+Separate small migrations, not one big one (§77):
+1. `project_id` (+ `site_id` where it fits) on products, services, menu_items, pricing_plans, featured_offers, testimonials, portfolio_projects, catalog_collections, availability_slots, form_definitions. Backfill from the business's only project; rows that can't be placed stay null and are hidden from site reads.
+2. `project_id` on content_types, content_entries, content_entry_revisions, content_publish_events.
+3. Project-aware unique slugs (project + slug).
+4. Project-aware access rules using `is_project_member`.
+- `cms-records`: every read/create/update/delete filters `business_id` + `project_id` and writes both (§12).
+- `site-runtime-read`: catalog queries use both values (§13).
+- Tests: two sites under the same business never see each other's items (§81).
 
-## Slice 1 — Stop sites mixing data (Phase 0)
-- Add a project link to every shared item table (products, services, menu items, pricing, offers, testimonials, portfolio, availability, content types/entries, media records), defaulting older rows to their business's single project where unambiguous.
-- Make names/slugs unique per site, not per business.
-- Item loading and saving (`cms-records`, `site-runtime-read`) refuse requests without a site, and only return that site's rows.
-- Access rules check site membership (`is_project_member`), not just business membership.
-- Tests: two sites under one business never see each other's items.
+## Phase 1 — Editor command layer (§20–26)
+- New `src/services/editor/`: `editorCommandTypes.ts` (the 16 commands from §22: SetText, SetStyle, SetAttribute, SetLink, ReplaceAsset, Resize, Move, SetVisibility, Duplicate, Delete, UpdateResourceField, InsertComponent, CreateComponent, CreatePage, CreateOverlay, BindIntent), `editorCommandService.ts`, `editorCapabilities.ts`, `propertyOwnerResolver.ts`, `executors/`.
+- Property-level ownership by extending the existing `EditableEntity.owners` (§23); `editableOwnershipResolver.ts` reads `data-ut-resource` directly via `parseResourceProvenance` (§24).
+- Floating toolbar becomes UI only and sends commands (§25); `commitMutation` stays the only page-code writer (§26); one command result shape (§44); AI and command menu use the same commands (§45).
 
-## Slice 2 — Site vs. account business details (§15)
-- Account business identity stays on the business.
-- New per-site business profile (name shown, hours, phone, address override), falling back to the account values. Resource Runtime reads/writes the site level.
+## Phase 2 — Project backend binding (§4–6, §9, §64)
+- Evolve `connected_supabase_projects` (no new table): drop the per-business active index, add `site_id`, unique active backend per `unison_project_id` and per `site_id` (§5), add `mode` (`unison-managed` | `connected-supabase`) and the §6 lifecycle statuses.
+- `src/services/project-backend/`: `projectBackendTypes.ts` (`ProjectBackendBinding`, `ProjectBackendDescriptor`), `projectBackendResolver.ts` (`resolve(projectId)` → `shared-legacy` | `dedicated`), `projectBackendHealth.ts`. No backend choice in UI components (§65).
+- `unison_runtime_identity` single-row table definition in the runtime schema bundle (§9).
 
-## Slice 3 — One editing path (Phase 1)
-- `EditorCommandService` with typed commands: set text, set saved field, replace image, restyle, move/remove section, relink button.
-- Ownership resolver decides per property: saved item → Resource Runtime; page code → `commitMutation`; button → BindingOps.
-- Floating toolbar, inline edit, inspector and simple AI edits all call it; it returns one result shape (what changed, where saved, undo handle).
+## Phase 4–5 — Gateway + Resource Runtime migration (§27–29, §41–43)
+- `api/project-backend.ts` (plus `projectBackendGateway.ts`, `projectBackendClient.ts`): authenticate, check project membership, resolve binding, decrypt secret (dedicated only), verify runtime identity, run the resource/asset command, audit.
+- Catalog, Content and Business Profile adapters go through the gateway; `ResourceContext.projectId` becomes required. Business Profile splits into account identity + site profile (§15, §43). Invalidation carries `projectId`.
 
-## Slice 4 — Per-site backend binding (Phase 2)
-- Evolve `connected_supabase_projects` into `project_backend_bindings`: one active backend per site (not per business), mode `unison-managed` | `connected`, lifecycle status, runtime identity check.
-- `ProjectBackendResolver`: the only place that decides which backend a site uses. Today every site resolves to Unison-managed with site scoping from Slice 1.
-
-## Slice 5 — Server gateway (Phases 4–5)
-- `project-backend-gateway` function: signed-in check, site membership, resolve binding, verify identity, run the item/asset command, write an audit row.
-- Catalog, Content and Business Profile adapters go through it. No backend keys in the browser.
-
-## Later — needs you (Phases 3, 6–10)
-- Automatic dedicated database per site requires a Supabase Management OAuth app (client ID/secret) and a billing decision, since each database costs money. I'll ask for these when we reach it.
-- Then: per-site file storage, published site reading from its own backend, Vercel per-site settings, export manifest (`unison.runtime.json`), migrating existing sites one by one.
+## Blocked — needs you (Phases 3, 6–10)
+- Phase 3 `create-project` route (§8) needs Supabase Management API OAuth credentials (`SUPABASE_OAUTH_CLIENT_ID/SECRET`, `OAUTH_STATE_SECRET`, `CONNECTED_PROJECT_TOKEN_ENCRYPTION_KEY`) set on Vercel, and a decision on who pays for each per-site database. Until then every site resolves to `shared-legacy` with Phase 0 scoping.
+- Phases 6–10 (asset runtime, published runtime, Vercel binding, `unison.runtime.json` export, existing-project migration) follow after Phase 3.
 
 ## Technical details
-- Migrations are additive (nullable `project_id`, backfill, then NOT NULL in a later migration); no drops.
-- Rule recorded in `AGENTS.md`: backend choice only via `ProjectBackendResolver`; site data always carries `project_id`.
-- Existing UI components are untouched; adapters map data into them.
+- Migrations are additive; the business-index drop is the only removal and is an index, not data.
+- `AGENTS.md` rules: backend chosen only by `ProjectBackendResolver`; site data always carries `project_id`; all editing surfaces emit `EditorCommand`s.
