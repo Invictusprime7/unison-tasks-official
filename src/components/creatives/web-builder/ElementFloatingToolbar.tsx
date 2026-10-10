@@ -498,11 +498,9 @@ export const ElementFloatingToolbar: React.FC<ElementFloatingToolbarProps> = ({
 
   const handleAttributeSave = () => {
     if (!onUpdateAttributes) return;
-    const nextAttributes: Record<string, string> = {};
     Object.entries(attributeDraft).forEach(([key, value]) => {
-      nextAttributes[key] = value.trim();
+      void runCommand({ type: 'set-attribute', target, name: key, value: value.trim() });
     });
-    updateAttributes(nextAttributes);
   };
 
   return (
