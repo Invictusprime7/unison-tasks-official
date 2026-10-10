@@ -21,18 +21,43 @@ export interface SourceKnowledgeReport {
 }
 
 /** Keeps whole sources and makes missing context observable to the caller. */
+export interface SourceKnowledgeScope {
+  /** Scoped edits read targets + their direct imports only (no transitive crawl). */
+  scoped?: boolean;
+  /** Include /src/index.css (theme tokens) even when scoped. */
+  includeTheme?: boolean;
+  /** Include /package.json even when scoped. */
+  includeDependencies?: boolean;
+}
+
+/** Deterministic: which optional reads a scoped instruction actually needs. */
+export function scopeForInstruction(instruction: string | undefined): SourceKnowledgeScope {
+  const text = (instruction ?? '').toLowerCase();
+  return {
+    scoped: true,
+    includeTheme: /\b(theme|token|colou?r|palette|font|typograph|css|brand|dark mode|light mode)\b/.test(text),
+    includeDependencies: /\b(dependenc|package|install|npm|library|librar)/.test(text),
+  };
+}
+
 export function selectSourceKnowledgeWithReport(
   files: Record<string, string>,
   targets: string[],
   maxBytes = 140_000,
+  scope: SourceKnowledgeScope = {},
 ): SourceKnowledgeReport {
   if (!Number.isFinite(maxBytes) || maxBytes < 4) throw new Error('Source context budget must fit an empty encoded object.');
   const omitted: SourceKnowledgeReport['omitted'] = [];
   const unresolvedImports: SourceKnowledgeReport['unresolvedImports'] = [];
   const selected: Record<string, string> = {};
   const visited = new Set<string>();
-  const queue = [...targets, '/src/index.css', '/package.json',
-    ...Object.keys(files).filter((path) => path.startsWith('/src/project-components/site/')).sort()];
+  const queue = scope.scoped
+    ? [...targets,
+      ...(scope.includeTheme ? ['/src/index.css'] : []),
+      ...(scope.includeDependencies ? ['/package.json'] : [])]
+    : [...targets, '/src/index.css', '/package.json',
+      ...Object.keys(files).filter((path) => path.startsWith('/src/project-components/site/')).sort()];
+  const targetSet = new Set(targets);
   const encoder = new TextEncoder();
   for (let index = 0; index < queue.length; index++) {
     const path = queue[index];
@@ -53,6 +78,8 @@ export function selectSourceKnowledgeWithReport(
         omitted.push({ path, reason: 'transport-budget' });
       }
     } else omitted.push({ path, reason: 'per-file-limit' });
+    // Scoped edits follow only the targets' direct imports (interface contracts).
+    if (scope.scoped && !targetSet.has(path)) continue;
     for (const match of source.matchAll(/(?:import|export)\s[^'"`;]*?from\s*['"]([^'"]+)['"]|import\s*['"]([^'"]+)['"]|import\(\s*['"]([^'"]+)['"]\s*\)/g)) {
       const specifier = match[1] ?? match[2] ?? match[3];
       const resolved = resolveLocalImport(path, specifier, files);
