@@ -71,6 +71,13 @@
       "when": 1791483074286,
       "tag": "0009_business_profile_command",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791605037941,
+      "tag": "0010_project_scope_catalog_resources",
+      "breakpoints": true
     }
   ]
 }
