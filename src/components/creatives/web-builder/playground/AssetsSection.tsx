@@ -79,7 +79,7 @@ const SCAN_LABEL: Record<string, string> = { products: "Products & menu", servic
 
 /** Read-only Live Preview scan: lists items actually rendered on the current
  *  page, whether or not they are saved. Saving goes through seedLaunchAssets. */
-function SiteScanList({ group, businessId, onSaved }: { group: "catalog" | "content"; businessId: string; onSaved: () => void }) {
+function SiteScanList({ group, businessId, projectId, onSaved }: { group: "catalog" | "content"; businessId: string; projectId?: string | null; onSaved: () => void }) {
   const [scan, setScan] = useState<{ items: ScannedItem[]; css: string } | null>(null);
   const [open, setOpen] = useState<number | null>(-1);
   const [saved, setSaved] = useState<Set<number>>(new Set());
@@ -344,7 +344,7 @@ export function AssetsSection({ businessId, projectId, industry, vfsFiles = {}, 
     const rest = all.filter((t) => !isRelevantAsset(t));
     return (
       <div className="space-y-6">
-        <SiteScanList group={group} businessId={businessId} onSaved={() => setContentReady((n) => n + 1)} />
+        <SiteScanList group={group} businessId={businessId} projectId={projectId} onSaved={() => setContentReady((n) => n + 1)} />
         {relevant.map((t) => <AssetList key={t.key} type={t} businessId={businessId} projectId={projectId} liveIndex={liveIndex} onReveal={onReveal} onPlace={onPlace} onPublishLongform={onPublishLongform} />)}
         {group === "content" && formsSlot}
         {relevant.length === 0 && group === "catalog" && <p className="text-sm text-muted-foreground">This site doesn't sell or list items yet.</p>}
