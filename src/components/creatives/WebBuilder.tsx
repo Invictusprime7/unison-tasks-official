@@ -7518,7 +7518,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
               Object.assign(changed, plan.files);
               linked.push(...plan.linkedFiles);
               const exists = Object.values(registry).some((pg) => pg.path === plan.path) || routeOps.some((op) => op.route === plan.path);
-              if (!exists) routeOps.push({ type: 'add_page', pageId: plan.pageId, title: plan.title, route: plan.path, pageType: 'custom', showInNav: false, createdBy: 'manual' });
+              if (!exists) routeOps.push({ type: 'add_page', pageId: plan.pageId, title: plan.title, route: plan.path, pageType: item.kind === 'articles' ? 'blog' : 'gallery', showInNav: false, createdBy: 'manual' });
             }
             const label = items.length === 1 ? `"${String(items[0].record.name ?? items[0].record.title ?? 'item')}"` : `${items.length} items`;
             const committed = await commitBuilderFiles(changed, {
