@@ -7207,7 +7207,7 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
         draftId: currentDraftId || undefined,
       }}
     >
-    <BusinessProfileProvider businessId={businessId || undefined}>
+    <BusinessProfileProvider businessId={businessId || undefined} projectId={resolvedProjectId || null}>
     <div ref={mainContainerRef} className={cn("wb-obsidian flex min-h-[100dvh] h-[100dvh] flex-col overflow-hidden bg-[#09090b]", isMobile && "pb-16")}>
       {/* Launcher is opened only by an explicit user flow. */}
       <LauncherWizard open={showLauncher} onOpenChange={setShowLauncher} />
