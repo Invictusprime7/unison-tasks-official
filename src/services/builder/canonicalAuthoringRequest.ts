@@ -3,7 +3,7 @@ import {
   designKnowledgeManifest,
   selectDesignKnowledge,
 } from '@/services/knowledge/designKnowledge';
-import { selectSourceKnowledgeWithReport } from './sourceKnowledgeContext';
+import { scopeForInstruction, selectSourceKnowledgeWithReport } from './sourceKnowledgeContext';
 import {
   boundRegistryContext,
   collectValidImportPaths,
@@ -206,6 +206,8 @@ export async function assembleCanonicalAuthoringRequest(
   const source = selectSourceKnowledgeWithReport(
     input.baseFiles,
     input.sourceTargets?.length ? input.sourceTargets : [input.page.filePath],
+    140_000,
+    input.task === 'builder_source_edit' ? scopeForInstruction(input.instruction) : {},
   );
   const rawRegistry = input.registryContext === undefined
     ? input.baseFiles['/.unison/wizard-registry-context.json']

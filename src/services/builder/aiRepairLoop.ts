@@ -90,7 +90,7 @@ export const MIN_REPAIR_WINDOW_MS = 60_000;
 export async function runComposerRepairLoop(input: ComposerLoopInput): Promise<ComposerLoopResult> {
   const invoke = input.invoke ?? runBuilderTurn;
   const maxAttempts = Math.max(1, input.maxAttempts ?? 3);
-  const deadline = Date.now() + (input.timeoutMs ?? 130_000);
+  const deadline = Date.now() + (input.timeoutMs ?? 145_000);
   let request = input.request;
   let lastErrors: string[] = [];
   let lastResponse: AIComposerResponse | undefined;
@@ -112,7 +112,7 @@ export async function runComposerRepairLoop(input: ComposerLoopInput): Promise<C
     const { data, error } = await invoke({
       mode: AI_COMPOSER_MODES[request.task],
       messages: [{ role: 'user', content: JSON.stringify(request) }],
-      gatewayOptions: { timeoutMs: Math.min(135_000, remainingMs - 5_000) },
+      gatewayOptions: { timeoutMs: Math.min(145_000, remainingMs - 5_000) },
     }, { timeoutMs: remainingMs, signal: input.signal });
 
     if (error || !data) {

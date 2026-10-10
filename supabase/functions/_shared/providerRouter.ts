@@ -235,7 +235,8 @@ export function buildProviderPlan(
           // Stronger Gemini leads composition when funded Gemini serves the turn.
           m(composerGeminiModel(readEnv), 48_000),
         ],
-        perModelTimeoutMs: 110_000,
+        // Full-page authoring gets the platform window; scoped EDIT turns are small.
+        perModelTimeoutMs: task.type === "site_page_author" ? 135_000 : 110_000,
         fallbackMaxTokens: 32_000,
         preferLongLeadAttempt: true,
         fallbackReserveMs: 30_000,

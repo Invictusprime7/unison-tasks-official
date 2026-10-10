@@ -43,7 +43,7 @@ export interface ProviderCallResult {
 const providerForRace = (id: string) =>
   id.startsWith('google/') || id.startsWith('gemini-') ? 'gemini' : 'openai';
 
-export const PROVIDER_LOOP_TOTAL_BUDGET_MS = 135_000;
+export const PROVIDER_LOOP_TOTAL_BUDGET_MS = 145_000;
 
 // A billing/quota-exhausted direct key fails the same way on every request, so
 // remember it per isolate for a while instead of rediscovering it (and
