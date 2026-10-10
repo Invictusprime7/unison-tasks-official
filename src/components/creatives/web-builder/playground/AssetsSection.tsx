@@ -109,7 +109,7 @@ function SiteScanList({ group, businessId, onSaved }: { group: "catalog" | "cont
     else if (it.kind === "team") data.team = { x: { name: it.name, bio: it.description } };
     else data.gallery = { x: { caption: it.name } };
     try {
-      await seedLaunchAssets({ businessId, creatorData: data as unknown as CreatorData });
+      await seedLaunchAssets({ businessId, projectId, creatorData: data as unknown as CreatorData });
       setSaved((s) => new Set(s).add(i));
       onSaved();
       toast.success(`Saved "${it.name}"`);
@@ -308,10 +308,10 @@ export function AssetsSection({ businessId, projectId, industry, vfsFiles = {}, 
     if (!hasPlanned) return;
     backfillTried.current = businessId;
     let alive = true;
-    listCatalog(businessId, ["products", "services", "testimonials"])
+    listCatalog(businessId, ["products", "services", "testimonials"], projectId)
       .then(async (rows) => {
         if (!alive || rows.length > 0) return;
-        await seedLaunchAssets({ businessId, creatorData });
+        await seedLaunchAssets({ businessId, projectId, creatorData });
         if (alive) setContentReady((n) => n + 1);
       })
       .catch(() => undefined);
@@ -324,7 +324,7 @@ export function AssetsSection({ businessId, projectId, industry, vfsFiles = {}, 
     if (!businessId || longformTried.current === businessId || !Object.keys(vfsFiles).length) return;
     longformTried.current = businessId;
     let alive = true;
-    adoptLongformFromSite({ businessId, vfsFiles })
+    adoptLongformFromSite({ businessId, projectId, vfsFiles })
       .then(() => listContentTypes({ businessId, projectId: projectId ?? undefined } as never))
       .then((rows) => { if (!alive) return; registerContentTypes(rows as ContentTypeRow[]); setContentReady((n) => n + 1); })
       .catch(() => undefined);

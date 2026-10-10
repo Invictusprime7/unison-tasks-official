@@ -51,11 +51,11 @@ interface LongformPlan { title?: string; name?: string; excerpt?: string; descri
 
 export interface SeedLaunchAssetsResult { created: number; profileFields: string[] }
 
-export async function seedLaunchAssets(input: { businessId: string; creatorData?: CreatorData | null }): Promise<SeedLaunchAssetsResult> {
+export async function seedLaunchAssets(input: { businessId: string; projectId?: string | null; creatorData?: CreatorData | null }): Promise<SeedLaunchAssetsResult> {
   const data = input.creatorData;
   const result: SeedLaunchAssetsResult = { created: 0, profileFields: [] };
   if (!data) return result;
-  const existing = await listCatalog(input.businessId, ['products', 'services', 'testimonials']).catch(() => []);
+  const existing = await listCatalog(input.businessId, ['products', 'services', 'testimonials'], input.projectId).catch(() => []);
   const have = new Set(existing.map((i) => `${i.surfaceId}:${i.name.trim().toLowerCase()}`));
   const plans: { surface: string; name: string; description?: string; price?: number | null; extra?: Record<string, unknown> }[] = [
     ...Object.values(data.products ?? {}).map((p) => ({ surface: 'products', name: p.name, description: p.description, price: p.price })),
@@ -71,7 +71,7 @@ export async function seedLaunchAssets(input: { businessId: string; creatorData?
     if (!name || have.has(`${p.surface}:${name.toLowerCase()}`)) continue;
     await createCatalogItem(input.businessId, p.surface, isTestimonial
       ? { name, description: p.description ?? null, ...(p.extra ?? {}) }
-      : { name, description: p.description ?? null, price: p.price ?? null, active: true });
+      : { name, description: p.description ?? null, price: p.price ?? null, active: true }, input.projectId);
     have.add(`${p.surface}:${name.toLowerCase()}`);
     result.created += 1;
   }
@@ -117,7 +117,7 @@ export async function seedLaunchAssets(input: { businessId: string; creatorData?
     ...longform(data, 'caseStudies', 'case-studies'),
   ];
   if (contentPlans.length) {
-    const types = await listContentTypes({ businessId: input.businessId }).catch(() => [] as Array<Record<string, unknown>>);
+    const types = await listContentTypes({ businessId: input.businessId, projectId: input.projectId }).catch(() => [] as Array<Record<string, unknown>>);
     const typeIdByKey = new Map<string, string>();
     for (const t of types) {
       const key = String(t.api_key ?? '').trim();
@@ -126,7 +126,7 @@ export async function seedLaunchAssets(input: { businessId: string; creatorData?
     for (const [key, def] of Object.entries(SEED_CONTENT_TYPES)) {
       if (typeIdByKey.has(key) || !contentPlans.some((p) => p.type === key)) continue;
       const created = await mutateContentRecord({
-        action: 'content-type-create', businessId: input.businessId,
+        action: 'content-type-create', businessId: input.businessId, projectId: input.projectId,
         values: { apiKey: key, displayName: def.displayName, fieldSchema: { fields: def.fields } },
       }).catch(() => null);
       const id = created?.record?.id;
@@ -135,11 +135,11 @@ export async function seedLaunchAssets(input: { businessId: string; creatorData?
     for (const plan of contentPlans) {
       const typeId = typeIdByKey.get(plan.type);
       if (!typeId) continue;
-      const existingEntries = await listContentRecords({ businessId: input.businessId, contentTypeId: typeId }).catch(() => [] as Array<Record<string, unknown>>);
+      const existingEntries = await listContentRecords({ businessId: input.businessId, projectId: input.projectId, contentTypeId: typeId }).catch(() => [] as Array<Record<string, unknown>>);
       const titles = new Set(existingEntries.map((e) => String(e.title ?? '').trim().toLowerCase()));
       if (titles.has(plan.title.toLowerCase())) continue;
       await createContentRecord({
-        businessId: input.businessId, contentTypeId: typeId, status: 'published',
+        businessId: input.businessId, projectId: input.projectId, contentTypeId: typeId, status: 'published',
         values: { title: plan.title, data: plan.data },
       });
       result.created += 1;
@@ -164,11 +164,11 @@ function longform(data: CreatorData, field: string, type: string) {
  * saved content. Idempotent: creates the type on demand, dedupes by title,
  * never overwrites. Works for any industry and pre-existing sites.
  */
-export async function adoptLongformFromSite(input: { businessId: string; vfsFiles: Record<string, string> }): Promise<number> {
+export async function adoptLongformFromSite(input: { businessId: string; projectId?: string | null; vfsFiles: Record<string, string> }): Promise<number> {
   const { extractLongformFromSource } = await import('./longformPages');
   const found = extractLongformFromSource(input.vfsFiles);
   if (!found.length) return 0;
-  const types = await listContentTypes({ businessId: input.businessId }).catch(() => [] as Array<Record<string, unknown>>);
+  const types = await listContentTypes({ businessId: input.businessId, projectId: input.projectId }).catch(() => [] as Array<Record<string, unknown>>);
   const typeIdByKey = new Map<string, string>();
   for (const t of types) if (t.api_key && t.id) typeIdByKey.set(String(t.api_key), String(t.id));
   let created = 0;
@@ -177,17 +177,17 @@ export async function adoptLongformFromSite(input: { businessId: string; vfsFile
     if (!items.length) continue;
     if (!typeIdByKey.has(key)) {
       const def = SEED_CONTENT_TYPES[key];
-      const res = await mutateContentRecord({ action: 'content-type-create', businessId: input.businessId, values: { apiKey: key, displayName: def.displayName, fieldSchema: { fields: def.fields } } }).catch(() => null);
+      const res = await mutateContentRecord({ action: 'content-type-create', businessId: input.businessId, projectId: input.projectId, values: { apiKey: key, displayName: def.displayName, fieldSchema: { fields: def.fields } } }).catch(() => null);
       if (res?.record?.id) typeIdByKey.set(key, String(res.record.id));
     }
     const typeId = typeIdByKey.get(key);
     if (!typeId) continue;
-    const existing = await listContentRecords({ businessId: input.businessId, contentTypeId: typeId }).catch(() => [] as Array<Record<string, unknown>>);
+    const existing = await listContentRecords({ businessId: input.businessId, projectId: input.projectId, contentTypeId: typeId }).catch(() => [] as Array<Record<string, unknown>>);
     const titles = new Set(existing.map((e) => String(e.title ?? '').trim().toLowerCase()));
     for (const f of items) {
       if (titles.has(f.title.toLowerCase())) continue;
       await createContentRecord({
-        businessId: input.businessId, contentTypeId: typeId, status: 'published',
+        businessId: input.businessId, projectId: input.projectId, contentTypeId: typeId, status: 'published',
         values: { title: f.title, data: { slug: f.slug || slugify(f.title), category: f.category, published_on: f.date, author: f.author, read_time: f.readTime, excerpt: f.excerpt } },
       });
       titles.add(f.title.toLowerCase());
