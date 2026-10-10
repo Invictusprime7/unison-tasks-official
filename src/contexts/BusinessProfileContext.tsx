@@ -29,6 +29,8 @@ import {
 
 export interface BusinessProfileProviderProps {
   businessId: string | undefined;
+  /** When set, site-facing fields read/write this site’s own profile (guidebook §15). */
+  projectId?: string | null;
   children: ReactNode;
 }
 
@@ -86,7 +88,7 @@ export function BusinessProfileProvider({ businessId, projectId, children }: Bus
       }
       return next;
     },
-    [businessId],
+    [businessId, projectId],
   );
 
   useEffect(() => {
