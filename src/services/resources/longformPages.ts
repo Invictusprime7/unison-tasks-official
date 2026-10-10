@@ -113,7 +113,7 @@ export const ${component} = () => {
           {ENTRY.image && <img src={ENTRY.image} alt={ENTRY.name} className="mt-10 w-full rounded-lg object-cover aspect-[16/9]" data-ut-resource="${mark('image_url')}" />}
           {ENTRY.results && <p className="mt-10 border-y border-border py-6 text-lg font-medium" data-ut-resource="${mark('results')}">{ENTRY.results}</p>}
           <div className="mt-10" data-ut-resource="${mark('body')}">
-            {ENTRY.body ? renderBody(ENTRY.body) : <p className="text-muted-foreground">Full text coming soon.</p>}
+            {ENTRY.body ? renderBody(ENTRY.body) : null}
           </div>
         </article>
       </main>
