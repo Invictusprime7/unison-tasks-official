@@ -76,7 +76,8 @@ export const contentResourceAdapter: ResourceAdapter = {
     const data = { ...((current.data as Record<string, unknown>) ?? {}), ...values };
     return flattenContentEntry(await updateContentRecord({
       businessId: ctx.businessId, projectId: ctx.projectId, recordId: id,
-      values: { data }, changeSummary: `Edited ${Object.keys(values).join(', ')}`,
+      // The content command requires the title on every update.
+      values: { title: String(values.title ?? values.name ?? current.title ?? ''), data }, changeSummary: `Edited ${Object.keys(values).join(', ')}`,
     }));
   },
   // No delete: content leaves via the archive transition, preserving the publishing workflow.
