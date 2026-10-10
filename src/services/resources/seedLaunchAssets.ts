@@ -188,7 +188,7 @@ export async function adoptLongformFromSite(input: { businessId: string; vfsFile
       if (titles.has(f.title.toLowerCase())) continue;
       await createContentRecord({
         businessId: input.businessId, contentTypeId: typeId, status: 'published',
-        values: { title: f.title, data: { slug: slugify(f.title), category: f.category, published_on: f.date, read_time: f.readTime, excerpt: f.excerpt } },
+        values: { title: f.title, data: { slug: f.slug || slugify(f.title), category: f.category, published_on: f.date, author: f.author, read_time: f.readTime, excerpt: f.excerpt } },
       });
       titles.add(f.title.toLowerCase());
       created += 1;

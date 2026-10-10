@@ -195,7 +195,7 @@ export function planLongformPage(args: {
   return { pageId, title, path, filePath, files: { [filePath]: page, ...linked }, linkedFiles: Object.keys(linked) };
 }
 
-export interface FoundLongform { kind: LongformKind; title: string; excerpt?: string; category?: string; date?: string; readTime?: string; file: string }
+export interface FoundLongform { kind: LongformKind; title: string; slug?: string; author?: string; excerpt?: string; category?: string; date?: string; readTime?: string; file: string }
 
 const lastMatch = (re: RegExp, s: string) => { let m: RegExpExecArray | null; let last: RegExpExecArray | null = null; const g = new RegExp(re.source, re.flags.includes('g') ? re.flags : re.flags + 'g'); while ((m = g.exec(s))) last = m; return last; };
 const clean = (t: string) => t.replace(/\s+/g, ' ').trim();
@@ -210,6 +210,30 @@ export function extractLongformFromSource(files: Record<string, string>): FoundL
   const seen = new Set<string>();
   for (const [file, src] of Object.entries(files)) {
     if (!/^\/src\/pages\/.*\.tsx$/.test(file)) continue;
+    const readMatch = src.match(new RegExp(READ_LABEL.source, 'i'));
+    if (readMatch && !/learn\s+more/i.test(readMatch[0]) && /\bslug\s*:/.test(src)) {
+      // Data-driven listing: read entries from the array literal.
+      const kind: LongformKind = /case\s+study|project|story/i.test(readMatch[0]) || /\/(Work|CaseStudies|Portfolio|Projects)\.tsx$/.test(file) ? 'case-studies' : 'articles';
+      const field = (chunk: string, k: string) => chunk.match(new RegExp(`\\b${k}\\s*:\\s*['"\`]([^'"\`]+)['"\`]`))?.[1];
+      const parts = src.split(/\btitle\s*:\s*(?=['"`])/).slice(1);
+      for (const part of parts) {
+        const title = clean(part.match(/^['"`]([^'"`]{6,200})['"`]/)?.[1] ?? '');
+        if (!title || seen.has(title.toLowerCase())) continue;
+        const chunk = part.slice(0, 1500).split(/\n\s*\},?\s*\n\s*\{/)[0];
+        if (!field(chunk, 'slug')) continue;
+        seen.add(title.toLowerCase());
+        out.push({
+          kind, title, file,
+          slug: field(chunk, 'slug'),
+          excerpt: field(chunk, 'excerpt') ?? field(chunk, 'summary') ?? field(chunk, 'description'),
+          category: field(chunk, 'category'),
+          date: field(chunk, 'publishedDate') ?? field(chunk, 'date'),
+          readTime: field(chunk, 'readTime'),
+          author: field(chunk, 'name'),
+        });
+      }
+      if (out.some((f) => f.file === file)) continue;
+    }
     const re = new RegExp(READ_LABEL.source, 'gi');
     let m: RegExpExecArray | null;
     while ((m = re.exec(src))) {
