@@ -1,3 +1,4 @@
+import { deriveFilePath } from '@/services/routeNavigationService';
 /**
  * Longform pages — deterministic page + button wiring for saved Articles and
  * Case studies (any industry). Pure: returns the files and route op that the
@@ -36,13 +37,9 @@ export function longformBase(kind: LongformKind, existingPaths: string[], indust
 }
 
 /** Mirrors routeNavigationService.deriveFilePath for non-home pages. */
+/** Same naming the save step derives for a new route, so the page file is found. */
 export function filePathForRoute(route: string): string {
-  const slug = route.replace(/^\//, '') || 'custom';
-  const name = slug
-    .replace(/[-_\s/]+(.)/g, (_: string, c: string) => c.toUpperCase())
-    .replace(/^(.)/, (_: string, c: string) => c.toUpperCase())
-    .replace(/[^a-zA-Z0-9]/g, '') || 'Page';
-  return `/src/pages/${name}.tsx`;
+  return deriveFilePath({ path: route } as Parameters<typeof deriveFilePath>[0]);
 }
 
 function chromeImports(files: Record<string, string>): { lines: string[]; nav: string | null; footer: string | null } {
