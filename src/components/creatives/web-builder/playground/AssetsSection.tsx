@@ -13,7 +13,7 @@ import { RecordFieldsEditor } from "../RecordFieldsEditor";
 import { listContentTypes, transitionContentRecord } from "@/services/cmsRecordService";
 import { supabase } from "@/integrations/supabase/client";
 import { registerContentTypes, BUSINESS_PROFILE_RESOURCE_KEY, type ContentTypeRow } from "@/services/resources/resourceRegistry";
-import { applyResourceOp, onResourceInvalidated, queryResource } from "@/services/resources/resourceRuntime";
+import { applyResourceOp, getResourceRecord, onResourceInvalidated, queryResource } from "@/services/resources/resourceRuntime";
 import type { ResourceRecord } from "@/services/resources/resourceTypes";
 import {
   buildRenderedResourceIndex, isRelevantAsset, listAssetTypes, listSiteImages, type AssetType,
@@ -175,7 +175,11 @@ function LongformActions({ type, record, businessId, projectId, onPublish }: { t
   const page = async () => {
     if (!onPublish) return;
     setBusy(true);
-    try { await onPublish([{ record: { ...record, slug }, kind: isArticle ? "articles" : "case-studies", resourceKey: type.key }]); }
+    try {
+      // List rows omit saved fields (slug, text); load the full item first.
+      const full = (await getResourceRecord(type.key, { businessId, projectId, mode: "builder" }, record.id).catch(() => null)) ?? record;
+      const fullSlug = String(full.slug ?? "") || slug;
+      await onPublish([{ record: { ...full, slug: fullSlug }, kind: isArticle ? "articles" : "case-studies", resourceKey: type.key }]); }
     finally { setBusy(false); }
   };
   return (
