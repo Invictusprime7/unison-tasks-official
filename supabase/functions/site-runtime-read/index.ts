@@ -286,7 +286,9 @@ Deno.serve(async (req) => {
   let catalogQuery = supabase
     .from(surface.sourceTable)
     .select(surface.columns.join(","))
-    .eq("business_id", context.businessId);
+    .eq("business_id", context.businessId)
+    // Guidebook §13: both business and project; NULL = shared-legacy row.
+    .or(`project_id.eq.${context.projectId},project_id.is.null`);
   for (const [key, value] of primitiveFilters(binding.filters, surface)) catalogQuery = catalogQuery.eq(key, value);
   if (binding.collection_id) {
     const { data: collection } = await supabase
