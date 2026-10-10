@@ -3259,9 +3259,10 @@ export const WebBuilder = ({ initialHtml, initialCss, onSave }: WebBuilderProps)
         identity: commitIdentity,
         current: buildCanonicalCommitCurrent(beforeFiles, snapshot),
         patch: {
-          ...(options.fileOps?.length || options.routeOps?.length
-            ? { ...legacyFilesToPatchPlan({}, options.summary ?? 'Builder edit'), fileOps: options.fileOps ?? [] }
-            : legacyFilesToPatchPlan(files, options.summary ?? 'Builder edit')),
+          // fileOps override `files`; route ops alone keep the new page files alongside them.
+          ...(options.fileOps?.length
+            ? { ...legacyFilesToPatchPlan({}, options.summary ?? 'Builder edit'), fileOps: options.fileOps }
+            : legacyFilesToPatchPlan(files ?? {}, options.summary ?? 'Builder edit')),
           ...(options.routeOps?.length ? { routeOps: options.routeOps } : {}),
         },
         options: buildCommitOptions(snapshot),
