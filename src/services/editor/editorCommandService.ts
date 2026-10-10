@@ -8,6 +8,7 @@ import type { ResourceContext } from '@/services/resources/resourceTypes';
 import { canIssue } from './editorCapabilities';
 import { resolvePropertyOwner } from './propertyOwnerResolver';
 import { executeResourceCommand } from './executors/resourceExecutor';
+import { assetBelongsTo, toAssetRef } from '@/services/assets/assetRef';
 import type { EditorCommand, EditorCommandResult, EditorCommandSource, EditorOwnerLane } from './editorCommandTypes';
 
 /** Host-supplied executor for lanes owned by page source / topology / bindings. */
@@ -24,10 +25,17 @@ export async function executeEditorCommand(command: EditorCommand, ctx: EditorCo
   const fail = (error: string): EditorCommandResult => ({ ok: false, command: command.type, lane, savedTo: null, changedFields: [], error });
   if (!canIssue(ctx.source, command.type)) return fail(`This action isn't available from here.`);
   try {
-    if (lane === 'resource') return await executeResourceCommand(command, ctx.resource);
+    let cmd = command;
+    if (cmd.type === 'replace-asset') {
+      // §18: every image swap is validated as an AssetRef owned by this site.
+      const ref = toAssetRef({ url: cmd.url, alt: cmd.alt, projectId: cmd.assetRef?.projectId ?? null, assetId: cmd.assetRef?.assetId ?? null });
+      if (!assetBelongsTo(ref, ctx.resource.projectId)) return fail('That image belongs to another site.');
+      cmd = { ...cmd, url: ref.url, alt: ref.alt, assetRef: ref };
+    }
+    if (lane === 'resource') return await executeResourceCommand(cmd, ctx.resource);
     const exec = ctx.executors?.[lane];
     if (!exec) return fail('This change can’t be saved from here yet.');
-    return await exec(command);
+    return await exec(cmd);
   } catch (e) {
     return fail(e instanceof Error ? e.message : String(e));
   }

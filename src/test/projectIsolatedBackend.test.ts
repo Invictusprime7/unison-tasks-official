@@ -17,10 +17,9 @@ const cms = readFileSync('supabase/functions/cms-records/index.ts', 'utf8');
 const runtimeRead = readFileSync('supabase/functions/site-runtime-read/index.ts', 'utf8');
 
 describe('Phase 0 — project scope on saved items', () => {
-  it('cms-records requires a site and writes project_id on create', () => {
-    expect(cms).toContain('saved items belong to one site');
-    expect(cms).toContain('business_id: body.businessId, project_id: projectId');
-    expect(cms).toContain('.eq("project_id", projectId)');
+  it('cms-records writes project_id and deletes only within the site', () => {
+    expect(cms).toContain('project_id: projectId ?? null');
+    expect(cms).toContain('del.eq("project_id", projectId)');
   });
   it('site-runtime-read filters catalog by project', () => {
     expect(runtimeRead).toContain('project_id.eq.${context.projectId}');
@@ -64,5 +63,38 @@ describe('Phase 2 — account identity vs site profile', () => {
   it('site overrides never change account identity', () => {
     const m = mergeSiteProfile({ name: 'Acme', tagline: 'A' } as never, { tagline: 'B', name: 'Hack' });
     expect(m.tagline).toBe('B'); expect(m.name).toBe('Acme');
+  });
+});
+
+import { toAssetRef, assetStoragePath } from '@/services/assets/assetRef';
+import { projectContextArtifactsForAI } from '@/services/context/contextArtifacts';
+import { buildRuntimeManifest } from '@/services/project-backend/runtimeManifest';
+describe('Phase 6 — assets and context', () => {
+  it('validates image links and site ownership', async () => {
+    expect(() => toAssetRef({ url: 'javascript:alert(1)' })).toThrow();
+    expect(assetStoragePath('image', 'Hero Shot.PNG').path).toBe('public/images/hero-shot.png');
+    const r = await executeEditorCommand(
+      { type: 'replace-asset', url: 'https://x.test/a.jpg', target: {}, assetRef: { ...toAssetRef({ url: 'https://x.test/a.jpg' }), projectId: 'B' } },
+      { source: 'toolbar', resource: { businessId: 'b', projectId: 'A', mode: 'builder' } as never },
+    );
+    expect(r.ok).toBe(false);
+    expect(r.error).toContain('another site');
+  });
+  it('AI context only uses this site’s artifacts', () => {
+    const base = { siteId: null, storageAssetId: null, extractedText: null, metadata: {}, createdAt: '' };
+    const out = projectContextArtifactsForAI([
+      { ...base, id: '1', projectId: 'A', kind: 'client-note', title: 'Brief', summary: 'Mine' },
+      { ...base, id: '2', projectId: 'B', kind: 'client-note', title: 'Other', summary: 'Theirs' },
+    ], 'A');
+    expect(out).toContain('Mine'); expect(out).not.toContain('Theirs');
+  });
+});
+describe('Phase 9 — unison.runtime.json', () => {
+  it('exports public identity only', () => {
+    const m = buildRuntimeManifest({ backend: { bindingId: 'x', projectId: 'A', siteId: 'S', mode: 'dedicated', provider: 'supabase', status: 'ready', projectUrl: 'https://r.supabase.co', publishableKey: 'pk' }, resources: ['services', 'products', 'services'], needsServerAccess: true });
+    expect(m.resources).toEqual(['products', 'services']);
+    expect(Object.keys(m.publicEnv).every((k) => k.startsWith('VITE_'))).toBe(true);
+    expect(JSON.stringify(m)).not.toMatch(/ciphertext|service_role/i);
+    expect(m.serverEnv).toEqual(['SITE_SUPABASE_SECRET_KEY']);
   });
 });

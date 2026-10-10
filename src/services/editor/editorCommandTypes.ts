@@ -4,6 +4,7 @@
  * This is an orchestration layer, not a data authority (§21).
  */
 import type { ResourceEntityRef } from '@/services/resources/resourceTypes';
+import type { AssetRef } from '@/services/assets/assetRef';
 
 export interface EditorTarget {
   /** Preview element identity. */
@@ -23,7 +24,7 @@ export type SetTextCommand = Base<'set-text'> & { text: string };
 export type SetStyleCommand = Base<'set-style'> & { styles: Record<string, string> };
 export type SetAttributeCommand = Base<'set-attribute'> & { name: string; value: string | null };
 export type SetLinkCommand = Base<'set-link'> & { href: string };
-export type ReplaceAssetCommand = Base<'replace-asset'> & { url: string; alt?: string };
+export type ReplaceAssetCommand = Base<'replace-asset'> & { url: string; alt?: string; assetRef?: AssetRef };
 export type ResizeCommand = Base<'resize'> & { width?: string; height?: string };
 export type MoveCommand = Base<'move'> & { direction: 'up' | 'down' };
 export type SetVisibilityCommand = Base<'set-visibility'> & { visible: boolean };
