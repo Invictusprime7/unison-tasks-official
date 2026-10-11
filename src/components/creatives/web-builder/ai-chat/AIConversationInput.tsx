@@ -26,6 +26,8 @@ export interface DroppedFile {
   preview?: string;
   content?: string;
   size: number;
+  /** Raw file, kept so it can be uploaded and placed on the site. */
+  file?: File;
 }
 
 interface Props {
