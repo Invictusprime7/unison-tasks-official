@@ -146,6 +146,7 @@ import {
   interpretBuilderRequest,
   requiresRenderableUiPatch,
 } from '@/services/builderRequestInterpreter';
+import { uploadForPlacement, buildUploadPlacementBlock, CERTIFIED_VOCABULARY_NOTE, type PlacedUpload } from '@/services/assets/uploadPlacement';
 import { extractMultiFileOutput, extractStylesheetOutput } from '@/utils/aiResponseParser';
 import {
   AIPermissionControl,
@@ -605,6 +606,8 @@ interface DroppedFile {
   /** Full text content for text/code files */
   content?: string;
   size: number;
+  /** Raw file, kept so it can be uploaded and placed on the site. */
+  file?: File;
 }
 
 interface PendingPermissionAction {
@@ -862,7 +865,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
 
   const addFiles = useCallback(async (files: FileList | File[]) => {
     const arr = Array.from(files).slice(0, 5); // max 5 files
-    const processed = await Promise.all(arr.map(processFile));
+    const processed = (await Promise.all(arr.map(processFile))).map((p, i) => ({ ...p, file: arr[i] }));
     setDroppedFiles(prev => {
       const existing = new Set(prev.map(f => f.name));
       const newFiles = processed.filter(f => !existing.has(f.name));
@@ -1022,6 +1025,24 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
       }
       return parts.join('');
     })() : '');
+
+    // Upload attached files so the AI can place them on the site by URL.
+    let uploadBlock = '';
+    if (droppedFiles.some((f) => f.file)) {
+      const placed: PlacedUpload[] = [];
+      for (const f of droppedFiles) {
+        if (!f.file) continue;
+        try {
+          emitAgentEvent({ kind: 'understanding', message: `Uploading ${f.name}` });
+          const up = await uploadForPlacement(f.file, projectId);
+          placed.push(f.content ? { ...up, text: f.content } : up);
+        } catch (err) {
+          toast.error(err instanceof Error ? err.message : `Couldn't upload ${f.name}`);
+        }
+      }
+      uploadBlock = buildUploadPlacementBlock(placed, systemType ?? null);
+    }
+    const placementContext = uploadBlock + CERTIFIED_VOCABULARY_NOTE;
 
     // Build attachments for the edge function
     const attachments = droppedFiles
@@ -1408,7 +1429,7 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
 
 
     // Keep fileContext & attachments in closure for the rest of handleSend
-    const _fileContext = fileContext;
+    const _fileContext = fileContext + placementContext;
     const _attachments = attachments;
     const _userContent = userContent;
     const launchBrief = isLaunchPlanningRequest ? extractLaunchBriefFromPrompt(_userContent) : undefined;
