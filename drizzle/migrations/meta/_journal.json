@@ -106,6 +106,13 @@
       "when": 1791677905907,
       "tag": "0014_migration",
       "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1791679517323,
+      "tag": "0015_published_site_backend_resolver",
+      "breakpoints": true
     }
   ]
 }
