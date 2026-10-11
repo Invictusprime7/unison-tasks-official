@@ -15,8 +15,44 @@ export interface PlacedUpload {
   kind: UploadKind;
   mimeType: string;
   url: string;
-  /** Plain text extracted client-side (text/markdown/code files only). */
+  /** Plain text extracted client-side (text/markdown/code, PDF and Word files). */
   text?: string;
+}
+
+const MAX_EXTRACTED_CHARS = 8000;
+
+/** Extracts readable text from an upload so the AI can build pages/copy from it. */
+export async function extractUploadText(file: File): Promise<string | undefined> {
+  try {
+    const kind = classifyUpload(file.type, file.name);
+    if (kind === 'text') {
+      return (await file.text()).slice(0, MAX_EXTRACTED_CHARS);
+    }
+    if (file.type === 'application/pdf' || /\.pdf$/i.test(file.name)) {
+      const pdfjs = await import('pdfjs-dist');
+      const workerUrl = (await import('pdfjs-dist/build/pdf.worker.min.mjs?url')).default;
+      pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
+      const doc = await pdfjs.getDocument({ data: await file.arrayBuffer() }).promise;
+      const parts: string[] = [];
+      for (let p = 1; p <= doc.numPages; p++) {
+        const page = await doc.getPage(p);
+        const content = await page.getTextContent();
+        parts.push(content.items.map((item) => ('str' in item ? item.str : '')).join(' '));
+        if (parts.join('\n').length >= MAX_EXTRACTED_CHARS) break;
+      }
+      const text = parts.join('\n').replace(/\s{2,}/g, ' ').trim();
+      return text ? text.slice(0, MAX_EXTRACTED_CHARS) : undefined;
+    }
+    if (/\.docx$/i.test(file.name) || file.type.includes('officedocument.wordprocessingml')) {
+      const mammoth = await import('mammoth');
+      const result = await mammoth.extractRawText({ arrayBuffer: await file.arrayBuffer() });
+      const text = result.value.trim();
+      return text ? text.slice(0, MAX_EXTRACTED_CHARS) : undefined;
+    }
+  } catch (err) {
+    console.warn('[uploadPlacement] text extraction failed for', file.name, err);
+  }
+  return undefined;
 }
 
 const UPLOAD_BUCKET = 'user-files';
@@ -39,7 +75,8 @@ export async function uploadForPlacement(file: File, projectId: string | null | 
   if (error) throw new Error(`Couldn't upload ${file.name}.`);
   const { data, error: signErr } = await supabase.storage.from(UPLOAD_BUCKET).createSignedUrl(path, TEN_YEARS);
   if (signErr || !data?.signedUrl) throw new Error(`Couldn't create a link for ${file.name}.`);
-  return { name: file.name, kind: classifyUpload(file.type, file.name), mimeType: file.type || 'application/octet-stream', url: data.signedUrl };
+  const text = await extractUploadText(file);
+  return { name: file.name, kind: classifyUpload(file.type, file.name), mimeType: file.type || 'application/octet-stream', url: data.signedUrl, text };
 }
 
 /**

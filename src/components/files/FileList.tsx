@@ -7,6 +7,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
+import { findUploadUsage } from "@/services/assets/uploadUsage";
 import { useToast } from "@/hooks/use-toast";
 import { formatDistance } from "date-fns";
 
@@ -33,6 +34,18 @@ const FileList = ({ files, onFileClick, onShare, onToggleFavorite }: FileListPro
   const handleDelete = async (file: any, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!confirm("Are you sure you want to delete this file?")) return;
+
+    if (file.mime_type !== "folder" && typeof file.storage_path === "string" && file.storage_path.includes("/site-uploads/")) {
+      const usages = await findUploadUsage(file.storage_path);
+      if (usages.length > 0) {
+        toast({
+          title: "File is in use",
+          description: `This file appears on ${usages.map((u) => u.draftName).join(", ")}. Remove it from the site first.`,
+          variant: "destructive",
+        });
+        return;
+      }
+    }
 
     if (file.mime_type !== "folder") {
       await supabase.storage.from("user-files").remove([file.storage_path]);
