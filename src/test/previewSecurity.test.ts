@@ -1,7 +1,7 @@
 import {
   isAllowedPreviewFileContent,
   normalizePreviewFilePath,
-} from "../../api/_lib/security";
+} from "../../server/api-lib/security";
 
 describe("normalizePreviewFilePath", () => {
   it("normalizes safe relative paths", () => {

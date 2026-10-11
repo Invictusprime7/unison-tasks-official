@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => {
   projectQuery.maybeSingle = vi.fn();
   return {
     invoke: vi.fn(),
+    rpc: vi.fn(),
     from: vi.fn(() => projectQuery),
     loadLatestPublishReadyRevisionForProject: vi.fn(),
     recordRepublishEvent: vi.fn(),
@@ -19,6 +20,7 @@ vi.mock('@/integrations/supabase/client', () => ({
   supabase: {
     functions: { invoke: mocks.invoke },
     from: mocks.from,
+    rpc: mocks.rpc,
   },
 }));
 
@@ -48,6 +50,10 @@ describe('deployToProvider publication projection', () => {
       error: null,
     });
     mocks.projectQuery.maybeSingle.mockResolvedValue({ data: { id: 'project-1' }, error: null });
+    mocks.rpc.mockResolvedValue({
+      data: { bindingId: 'binding-1', projectId: 'project-1', siteId: null, mode: 'shared-legacy', status: 'ready' },
+      error: null,
+    });
   });
 
   it('sets the project active published revision after deployment', async () => {

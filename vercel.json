@@ -26,6 +26,18 @@
   ],
   "rewrites": [
     {
+      "source": "/api/preview/health",
+      "destination": "/api/preview?route=health"
+    },
+    {
+      "source": "/api/preview/start",
+      "destination": "/api/preview?route=start"
+    },
+    {
+      "source": "/api/preview/:sessionId/:action(file|logs|ping|stop)",
+      "destination": "/api/preview?route=:action&sessionId=:sessionId"
+    },
+    {
       "source": "/api/onboarding/sessions",
       "destination": "/api/connected-backend?route=onboarding-sessions"
     },

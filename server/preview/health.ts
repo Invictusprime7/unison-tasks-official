@@ -3,7 +3,7 @@
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { applyApiSecurityHeaders, handlePreflight, sendError } from '../_lib/security';
+import { applyApiSecurityHeaders, handlePreflight, sendError } from '../api-lib/security';
 
 export default function handler(req: VercelRequest, res: VercelResponse) {
   const requestId = applyApiSecurityHeaders(req, res, {

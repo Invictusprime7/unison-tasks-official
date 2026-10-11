@@ -129,12 +129,14 @@ export default function Home() {
     const conflicting = { ...baseFiles, '/src/pages/Home.tsx': HOME.replace('Welcome.', 'Someone else edited this.') };
     const refused = rebaseCandidate(candidate, conflicting, 'rev-2');
     expect(refused.ok).toBe(false);
+    if (refused.ok !== false) throw new Error('Expected the conflicting candidate to be refused');
     expect(refused.conflicts).toContain('/src/pages/Home.tsx');
 
     // A newer commit changed an unrelated file → safe rebase onto it.
     const unrelated = { ...baseFiles, '/src/components/Footer.tsx': FOOTER.replace('© Studio', '© Studio 2026') };
     const rebased = rebaseCandidate(candidate, unrelated, 'rev-3');
     expect(rebased.ok).toBe(true);
+    if (!rebased.ok) throw new Error('Expected the unrelated save to allow rebasing');
     expect(rebased.rebased).toBe(true);
     expect(rebased.candidate?.baseRevisionId).toBe('rev-3');
   });

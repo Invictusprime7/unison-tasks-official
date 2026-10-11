@@ -6,7 +6,7 @@ import {
   decryptSecret,
   encryptSecret,
   readOAuthCallbackState,
-} from '../../api/_lib/connectedSupabase';
+} from '../../server/api-lib/connectedSupabase';
 
 const migration = readFileSync(
   resolve(process.cwd(), 'supabase/migrations/20260806164754_add_connected_backend_foundation.sql'),

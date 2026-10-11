@@ -28,10 +28,10 @@ describe('Supabase backend identity', () => {
     expect(SUPABASE_PUBLISHABLE_KEY).toBe(fallbackKey);
     expect(read('src/services/canonicalLaunchVfs.ts')).toContain(fallbackUrl);
     const vercelEnv = read('docs/vercel-env-setup.md');
-    expect(vercelEnv).toContain(`VITE_SUPABASE_URL=${fallbackUrl}`);
-    expect(vercelEnv).toContain(`VITE_SUPABASE_PUBLISHABLE_KEY=${fallbackKey}`);
-    expect(vercelEnv).toContain(`VITE_SUPABASE_PROJECT_ID=${fallbackRef}`);
-    expect(vercelEnv).toContain(`VITE_SUPABASE_AUTH_DOMAIN=${fallbackRef}.supabase.co`);
+    expect(vercelEnv).toContain('src/integrations/supabase/env.ts');
+    expect(vercelEnv).toContain('.env.example');
+    expect(vercelEnv).toContain('VITE_SUPABASE_URL');
+    expect(vercelEnv).toContain('VITE_SUPABASE_PUBLISHABLE_KEY');
     expect(read('.env.example')).toContain(`VITE_SUPABASE_URL=${fallbackUrl}`);
     expect(read('.env.example')).toContain('VITE_SUPABASE_PUBLISHABLE_KEY=');
     expect(read('.env.example')).toContain(`VITE_SUPABASE_PROJECT_ID=${fallbackRef}`);

@@ -17,7 +17,7 @@ import {
   normalizePreviewFilePath,
   parseJsonSafely,
   sendError,
-} from '../../_lib/security';
+} from '../../api-lib/security';
 
 export default async function handler(
   req: VercelRequest,

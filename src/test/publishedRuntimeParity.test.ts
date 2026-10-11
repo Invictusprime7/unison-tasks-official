@@ -27,6 +27,7 @@ const mocks = vi.hoisted(() => {
   projectQuery.maybeSingle = vi.fn();
   return {
     invoke: vi.fn(),
+    rpc: vi.fn(),
     from: vi.fn(() => projectQuery),
     loadLatestPublishReadyRevisionForProject: vi.fn(),
     recordRepublishEvent: vi.fn(),
@@ -35,7 +36,7 @@ const mocks = vi.hoisted(() => {
 });
 
 vi.mock('@/integrations/supabase/client', () => ({
-  supabase: { functions: { invoke: mocks.invoke }, from: mocks.from },
+  supabase: { functions: { invoke: mocks.invoke }, from: mocks.from, rpc: mocks.rpc },
 }));
 
 vi.mock('@/services/vfsCommitService', () => ({
@@ -95,6 +96,10 @@ describe('persisted publish parity (M1 exit condition)', () => {
       error: null,
     });
     mocks.projectQuery.maybeSingle.mockResolvedValue({ data: { id: 'project-1' }, error: null });
+    mocks.rpc.mockResolvedValue({
+      data: { bindingId: 'binding-1', projectId: 'project-1', siteId: null, mode: 'shared-legacy', status: 'ready' },
+      error: null,
+    });
   });
 
   it.each(TEMPLATE_IDS)('publishes the canonical VFS bytes for %s', async (templateId) => {
@@ -133,10 +138,14 @@ describe('persisted publish parity (M1 exit condition)', () => {
       expect(published[publishedPath], `${publishedPath} must publish canonical bytes`).toBe(content);
     }
 
-    // No published file may exist outside the canonical set (attribution aside).
+    // Attribution and the backend runtime descriptor are explicit publish additions.
+    expect(JSON.parse(published['unison.runtime.json'])).toMatchObject({
+      projectId: 'project-1', backendMode: 'shared-legacy',
+      publicEnv: { VITE_UNISON_PROJECT_ID: 'project-1' },
+    });
     const canonicalPaths = new Set(Object.keys(canonical).map((p) => p.replace(/^\/+/, '')));
     for (const publishedPath of Object.keys(published)) {
-      if (publishedPath === UNISON_ATTRIBUTION_ASSET) continue;
+      if (publishedPath === UNISON_ATTRIBUTION_ASSET || publishedPath === 'unison.runtime.json') continue;
       expect(canonicalPaths.has(publishedPath), `${publishedPath} is not canonical`).toBe(true);
     }
   });
@@ -181,7 +190,7 @@ describe('persisted publish parity (M1 exit condition)', () => {
     const published = publishedPayload();
     const comparable = Object.fromEntries(
       Object.entries(published).filter(
-        ([path]) => path !== UNISON_ATTRIBUTION_ASSET && path !== 'index.html',
+        ([path]) => path !== UNISON_ATTRIBUTION_ASSET && path !== 'index.html' && path !== 'unison.runtime.json',
       ),
     );
     const canonicalComparable = Object.fromEntries(

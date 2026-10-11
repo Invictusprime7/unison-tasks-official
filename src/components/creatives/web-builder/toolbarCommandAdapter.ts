@@ -108,7 +108,7 @@ export function useToolbarCommands(
       return result;
     },
     // Handlers are stable host callbacks; rebuilding per render is cheap and safe.
-    [handlers, resource.businessId, resource.projectId],
+    [handlers, resource],
   );
 }
 

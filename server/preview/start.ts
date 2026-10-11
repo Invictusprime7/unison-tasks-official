@@ -4,17 +4,16 @@ import {
   getForwardedAuthHeaders,
   getPreviewGatewayUrl,
   handlePreflight,
-  isValidSessionId,
   parseJsonSafely,
   sendError,
-} from '../../_lib/security';
+} from '../api-lib/security';
 
 export default async function handler(
   req: VercelRequest,
   res: VercelResponse
 ) {
   const requestId = applyApiSecurityHeaders(req, res, {
-    methods: ['GET', 'OPTIONS'],
+    methods: ['POST', 'OPTIONS'],
     allowCredentials: true,
   });
 
@@ -22,37 +21,29 @@ export default async function handler(
     return;
   }
 
-  if (req.method !== 'GET') {
+  if (req.method !== 'POST') {
     return sendError(res, 405, 'Method not allowed', requestId);
   }
 
-  const { sessionId } = req.query;
-  if (!isValidSessionId(sessionId)) {
-    return sendError(res, 400, 'Invalid session id', requestId);
-  }
-
   const gatewayUrl = getPreviewGatewayUrl();
-
   if (!gatewayUrl) {
-    return res.status(200).json({ logs: [], hasMore: false, requestId });
+    return sendError(
+      res,
+      410,
+      'Server-side preview is not available in this environment',
+      requestId,
+    );
   }
 
   try {
-    const search = new URLSearchParams();
-    if (typeof req.query.since === 'string') {
-      search.set('since', req.query.since);
-    }
-
-    const upstreamUrl = `${gatewayUrl}/api/preview/${sessionId}/logs${
-      search.size > 0 ? `?${search.toString()}` : ''
-    }`;
-
-    const upstream = await fetch(upstreamUrl, {
-      method: 'GET',
+    const upstream = await fetch(`${gatewayUrl}/api/preview/start`, {
+      method: 'POST',
       headers: {
+        'Content-Type': 'application/json',
         ...getForwardedAuthHeaders(req, requestId),
       },
-      signal: AbortSignal.timeout(5_000),
+      body: JSON.stringify(req.body ?? {}),
+      signal: AbortSignal.timeout(10_000),
     });
 
     const data = await parseJsonSafely(upstream);

@@ -22,7 +22,7 @@ import {
   applyApiSecurityHeaders,
   handlePreflight,
   sendError,
-} from './_lib/security';
+} from '../server/api-lib/security';
 
 // Allowed events that can be sent via this endpoint
 const ALLOWED_EVENTS: Set<keyof InngestEvents> = new Set([

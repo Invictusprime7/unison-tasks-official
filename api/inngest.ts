@@ -18,7 +18,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { serve } from "inngest/express";
 import { inngest } from "../src/lib/inngest.js";
 import { inngestFunctions } from "../src/lib/inngest-workflows.js";
-import { applyApiSecurityHeaders, handlePreflight, sendError } from './_lib/security.js';
+import { applyApiSecurityHeaders, handlePreflight, sendError } from '../server/api-lib/security.js';
 
 // Vercel Functions expose an Express-compatible request/response contract.
 // Inngest v3.54 no longer exports `inngest/vercel`; its Express adapter is the
