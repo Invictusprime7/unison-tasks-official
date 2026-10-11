@@ -159,13 +159,17 @@ describe('launch business runtime persistence', () => {
   it('keeps Builder hydration while adding the standalone public runtime path', () => {
     expect(CATALOG_HYDRATION_MODULE).toContain('CATALOG_HYDRATE_REQUEST');
     expect(CATALOG_HYDRATION_MODULE).toContain("from '@/unison/publishedRuntime'");
-    expect(CATALOG_HYDRATION_MODULE).toContain("operation: 'read'");
-    expect(CATALOG_HYDRATION_MODULE).toContain('runtime.runtimeEndpoint');
+    // Published live reads target the public read gateway (site-runtime-read)
+    // with its flat body contract — never the action runtime's operation shape.
+    expect(CATALOG_HYDRATION_MODULE).toContain("type: 'catalog'");
+    expect(CATALOG_HYDRATION_MODULE).toContain('fetch(runtime.endpoint');
+    expect(CATALOG_HYDRATION_MODULE).not.toContain("operation: 'read'");
     expect(CATALOG_HYDRATION_MODULE).toContain('PUBLISHED_CATALOG_REVALIDATE_MS = 60_000');
     expect(CATALOG_HYDRATION_MODULE).toContain("document.addEventListener('visibilitychange', onVisibilityChange)");
     expect(CATALOG_HYDRATION_MODULE).toContain('refreshPublishedCatalog(false)');
     expect(BUSINESS_PROFILE_HYDRATION_MODULE).toContain('BUSINESS_PROFILE_REQUEST');
-    expect(BUSINESS_PROFILE_HYDRATION_MODULE).toContain("read: { type: 'profile' }");
+    expect(BUSINESS_PROFILE_HYDRATION_MODULE).toContain("type: 'profile'");
+    expect(BUSINESS_PROFILE_HYDRATION_MODULE).toContain('fetch(runtime.endpoint');
   });
 
   it('captures only generated standalone forms through the public submit endpoint', () => {
