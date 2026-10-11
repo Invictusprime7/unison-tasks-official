@@ -228,6 +228,8 @@ Deno.serve(async (req) => {
 
     const NETLIFY_AUTH_TOKEN = Deno.env.get("NETLIFY_AUTH_TOKEN");
     const VERCEL_TOKEN = Deno.env.get("VERCEL_TOKEN");
+    const vercelTeamId = Deno.env.get("VERCEL_TEAM_ID")?.trim();
+    const vercelScope = vercelTeamId ? `?teamId=${encodeURIComponent(vercelTeamId)}` : "";
     const indexHtmlPreview = files["index.html"] ? sanitizeLogPreview(files["index.html"]) : "no index.html";
     console.log(
       "[publish-site] user=%s provider=%s siteName=%s customDomain=%s indexPreview=%s attestation=%s",
@@ -396,7 +398,7 @@ Deno.serve(async (req) => {
 
     // Track 1 — provider liveness preflight for Vercel.
     try {
-      const liveness = await fetch("https://api.vercel.com/v2/user", {
+      const liveness = await fetch(`https://api.vercel.com/v6/deployments${vercelScope}${vercelScope ? "&" : "?"}limit=1`, {
         method: "GET",
         headers: { Authorization: `Bearer ${VERCEL_TOKEN}` },
       });
@@ -423,7 +425,7 @@ Deno.serve(async (req) => {
       data: btoa(unescape(encodeURIComponent(content))),
     }));
 
-    const vercelRes = await fetch("https://api.vercel.com/v13/deployments", {
+    const vercelRes = await fetch(`https://api.vercel.com/v13/deployments${vercelScope}`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${VERCEL_TOKEN}`,
