@@ -25,6 +25,7 @@ import {
   recordRepublishEvent,
 } from '@/services/vfsCommitService';
 import { withPoweredByUnisonAttribution } from '@/services/export/unisonAttribution';
+import { runDeployBackendPreflight } from '@/services/project-backend/deployBackendPreflight';
 import type { BusinessSystemType } from '@/lib/infrastructureContext';
 
 export type DeploymentProvider = 'vercel' | 'netlify';
