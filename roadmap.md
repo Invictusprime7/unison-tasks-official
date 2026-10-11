@@ -68,4 +68,4 @@
 - [x] Deterministic article/case-study pages + Read button wiring (Create page & link button / Create all pages)
 - [ ] Run it on SPARK (needs user click: Assets → Content → Articles)
 
-- [~] Direct WYSIWYG + project-isolated backend (guidebook 2026-10-09): Phases 0,1,2,4,5 done; Phase 6 asset refs + context contract and Phase 9 runtime manifest done; Phase 3 (per-site databases) blocked on Supabase account choice; 7,8,10 follow Phase 3
+- [~] Direct WYSIWYG + project-isolated backend (guidebook 2026-10-09): Phases 0,1,2,4,5,6,9 done; Phase 7 shared-mode slice done (public resolve_published_site_backend + publishedRuntimeBackend read client); Phase 8 shared-mode slice done (deploy backend preflight + unison.runtime.json injected into deploys); Phase 3 (per-site databases) blocked on Supabase account choice; Phase 10 and dedicated-mode reads follow Phase 3

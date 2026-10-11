@@ -25,6 +25,7 @@ import {
   recordRepublishEvent,
 } from '@/services/vfsCommitService';
 import { withPoweredByUnisonAttribution } from '@/services/export/unisonAttribution';
+import { runDeployBackendPreflight } from '@/services/project-backend/deployBackendPreflight';
 import type { BusinessSystemType } from '@/lib/infrastructureContext';
 
 export type DeploymentProvider = 'vercel' | 'netlify';
@@ -224,6 +225,7 @@ export async function deployToProvider(
     // supplied we use the ledger as the source of truth for files and
     // snapshot, eliminating any chance of shipping un-committed live state.
     let publishedRevision: Awaited<ReturnType<typeof loadLatestPublishReadyRevisionForProject>> | null = null;
+    let backendPreflight: Awaited<ReturnType<typeof runDeployBackendPreflight>> | null = null;
     if (request.projectId) {
       publishedRevision = await loadLatestPublishReadyRevisionForProject(request.projectId);
       if (!publishedRevision) {
@@ -247,6 +249,25 @@ export async function deployToProvider(
         files: publishedRevision.vfsFiles,
         snapshot: (publishedRevision.siteBundleSnapshot as SiteBundleSnapshot | null) ?? request.snapshot ?? null,
       };
+
+      // Phase 8 — backend/deploy identity preflight. The site must deploy
+      // against a ready backend binding, and the deployed bundle carries its
+      // public runtime contract (unison.runtime.json). Public values only.
+      backendPreflight = await runDeployBackendPreflight({ projectId: request.projectId });
+      if (!backendPreflight.ok) {
+        const errorResponse: DeploymentResponse = {
+          status: 'error',
+          provider: request.provider,
+          error: `Publish blocked: ${backendPreflight.reason}`,
+        };
+        onProgress?.({
+          isDeploying: false,
+          progress: 0,
+          message: 'Publish blocked — backend binding is not ready.',
+          result: errorResponse,
+        });
+        return errorResponse;
+      }
     }
 
 
@@ -294,6 +315,9 @@ export async function deployToProvider(
       throw new Error('Missing index.html - required for deployment');
     }
     normalizedFiles = withPoweredByUnisonAttribution(normalizedFiles);
+    if (backendPreflight?.manifestJson) {
+      normalizedFiles['unison.runtime.json'] = backendPreflight.manifestJson;
+    }
 
     updateProgress(30, `Connecting to ${request.provider}...`);
 

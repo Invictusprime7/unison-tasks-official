@@ -5692,6 +5692,10 @@ export type Database = {
         Returns: undefined
       }
       resolve_project_backend: { Args: { p_project_id: string }; Returns: Json }
+      resolve_published_site_backend: {
+        Args: { p_project_id: string }
+        Returns: Json
+      }
       user_business_role: {
         Args: { _business_id: string; _user_id: string }
         Returns: string
