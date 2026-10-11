@@ -66,27 +66,34 @@ export function useSectionData(
         activeController = controller;
         const timer = window.setTimeout(() => controller.abort(), 1500);
         const runtime = PUBLISHED_RUNTIME_CONFIG;
-        if (!runtime.siteId || !runtime.runtimeEndpoint || controller.signal.aborted) {
+        // Live reads go to the public read gateway (site-runtime-read), which
+        // expects a flat body — not the action runtime's { operation, read } shape.
+        if (!runtime.siteId || !runtime.endpoint || controller.signal.aborted) {
           window.clearTimeout(timer);
           if (mounted.current) setState({ loading: false, rows: null, cardBinding: null, fallback: null, error: null });
           return;
         }
+        // Published sites route by hash (HashRouter); bindings are keyed by the
+        // hash path, so prefer it over the static pathname.
+        const publishedPath = (() => {
+          if (typeof window === 'undefined') return '/';
+          const hash = (window.location.hash || '').replace(/^#/, '');
+          if (hash.startsWith('/')) return hash;
+          return window.location.pathname || '/';
+        })();
         try {
-          const response = await fetch(runtime.runtimeEndpoint, {
+          const response = await fetch(runtime.endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             signal: controller.signal,
             body: JSON.stringify({
-              operation: 'read',
+              type: 'catalog',
               runtimeVersion: runtime.runtimeVersion,
               siteId: runtime.siteId,
-              read: {
-                type: 'catalog',
-                pagePath: typeof window.location !== 'undefined' ? (window.location.pathname || '/') : '/',
-                sectionId,
-                sectionType: sectionType || null,
-                occurrenceIndex: typeof occurrenceIndex === 'number' ? occurrenceIndex : null,
-              },
+              pagePath: publishedPath,
+              sectionId,
+              sectionType: sectionType || null,
+              occurrenceIndex: typeof occurrenceIndex === 'number' ? occurrenceIndex : null,
             }),
           });
           const data: any = response.ok ? await response.json() : null;
