@@ -314,6 +314,9 @@ export async function deployToProvider(
       throw new Error('Missing index.html - required for deployment');
     }
     normalizedFiles = withPoweredByUnisonAttribution(normalizedFiles);
+    if (backendPreflight?.manifestJson) {
+      normalizedFiles['unison.runtime.json'] = backendPreflight.manifestJson;
+    }
 
     updateProgress(30, `Connecting to ${request.provider}...`);
 
