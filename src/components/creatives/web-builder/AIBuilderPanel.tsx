@@ -146,6 +146,7 @@ import {
   interpretBuilderRequest,
   requiresRenderableUiPatch,
 } from '@/services/builderRequestInterpreter';
+import { uploadForPlacement, buildUploadPlacementBlock, CERTIFIED_VOCABULARY_NOTE, type PlacedUpload } from '@/services/assets/uploadPlacement';
 import { extractMultiFileOutput, extractStylesheetOutput } from '@/utils/aiResponseParser';
 import {
   AIPermissionControl,
@@ -1426,9 +1427,8 @@ export const AIBuilderPanel: React.FC<AIBuilderPanelProps> = ({
 
 
     // Keep fileContext & attachments in closure for the rest of handleSend
-    const _fileContext = fileContext;
+    const _fileContext = fileContext + placementContext;
     const _attachments = attachments;
-    void placementContext;
     const _userContent = userContent;
     const launchBrief = isLaunchPlanningRequest ? extractLaunchBriefFromPrompt(_userContent) : undefined;
 
