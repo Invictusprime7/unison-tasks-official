@@ -27,7 +27,10 @@ describe("Vercel publisher credential scope", () => {
       serve: (callback: typeof handler) => { handler = callback; },
     });
     vi.stubGlobal("fetch", fetchMock);
-    await import("../../supabase/functions/publish-site/index.ts");
+    // Load the Deno entrypoint at runtime without adding its remote imports
+    // to the browser application's TypeScript compilation.
+    const edgeEntrypoint = "../../supabase/functions/publish-site/index.ts";
+    await import(edgeEntrypoint);
   });
 
   afterEach(() => vi.unstubAllGlobals());
