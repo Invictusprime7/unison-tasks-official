@@ -57,15 +57,16 @@ function readFromWindow(): BusinessProfileLive | null {
 async function readPublishedBusinessProfile(): Promise<BusinessProfileLive | null> {
   try {
     const runtime = PUBLISHED_RUNTIME_CONFIG;
-    if (!runtime.siteId || !runtime.runtimeEndpoint) return null;
-    const response = await fetch(runtime.runtimeEndpoint, {
+    // Live reads go to the public read gateway (site-runtime-read), which
+    // expects a flat body — not the action runtime's { operation, read } shape.
+    if (!runtime.siteId || !runtime.endpoint) return null;
+    const response = await fetch(runtime.endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        operation: 'read',
+        type: 'profile',
         runtimeVersion: runtime.runtimeVersion,
         siteId: runtime.siteId,
-        read: { type: 'profile' },
       }),
     });
     if (!response.ok) return null;
