@@ -75,7 +75,8 @@ export async function uploadForPlacement(file: File, projectId: string | null | 
   if (error) throw new Error(`Couldn't upload ${file.name}.`);
   const { data, error: signErr } = await supabase.storage.from(UPLOAD_BUCKET).createSignedUrl(path, TEN_YEARS);
   if (signErr || !data?.signedUrl) throw new Error(`Couldn't create a link for ${file.name}.`);
-  return { name: file.name, kind: classifyUpload(file.type, file.name), mimeType: file.type || 'application/octet-stream', url: data.signedUrl };
+  const text = await extractUploadText(file);
+  return { name: file.name, kind: classifyUpload(file.type, file.name), mimeType: file.type || 'application/octet-stream', url: data.signedUrl, text };
 }
 
 /**
