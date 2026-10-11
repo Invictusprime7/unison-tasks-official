@@ -606,6 +606,8 @@ interface DroppedFile {
   /** Full text content for text/code files */
   content?: string;
   size: number;
+  /** Raw file, kept so it can be uploaded and placed on the site. */
+  file?: File;
 }
 
 interface PendingPermissionAction {
